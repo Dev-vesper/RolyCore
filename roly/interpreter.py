@@ -1,6 +1,10 @@
-from roly.ast import Assign, BinOp, Block, CompoundAssign, If, Num, Program, Var, While
+from roly.ast import Assign, BinOp, Block, CompoundAssign, If, Num, Print, Program, Var, While
 
 DEFAULT_MAX_STEPS = 10_000_000
+
+
+def _stdout_print(value):
+    print(value)
 
 
 class RolyError(Exception):
@@ -8,10 +12,11 @@ class RolyError(Exception):
 
 
 class Interpreter:
-    def __init__(self, max_steps=DEFAULT_MAX_STEPS):
+    def __init__(self, max_steps=DEFAULT_MAX_STEPS, out=None):
         self.max_steps = max_steps
         self.steps = 0
         self.env = {}
+        self.out = out if out is not None else _stdout_print
 
     def run(self, program):
         self.exec_statements(program.statements)
@@ -36,6 +41,8 @@ class Interpreter:
                 self.exec_statement(statement.else_block)
         elif isinstance(statement, Block):
             self.exec_statements(statement.statements)
+        elif isinstance(statement, Print):
+            self.out(self.eval(statement.value))
         elif isinstance(statement, While):
             while self.truthy(self.eval(statement.condition)):
                 self.exec_statement(statement.body)
