@@ -1,0 +1,7 @@
+base = 2
+exp = 10
+result = 1
+while (exp > 0) {
+    result *= base
+    exp -= 1
+}
