@@ -3,6 +3,11 @@
 import argparse
 import sys
 
+from roly.interpreter import RolyError
+from roly.lexer import LexError
+from roly.parser import ParseError
+from roly.utils.runner import run_source
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -25,12 +30,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "run":
-        with open(args.file, encoding="utf-8") as source_file:
-            source = source_file.read()
+        try:
+            with open(args.file, encoding="utf-8") as source_file:
+                source = source_file.read()
+        except OSError as error:
+            print(f"error: cannot read '{args.file}': {error.strerror}", file=sys.stderr)
+            return 1
     else:
         source = args.code
 
-    print(f"Roly: received {len(source)} characters of source.")
+    try:
+        env = run_source(source)
+    except (LexError, ParseError, RolyError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+    for name in sorted(env):
+        print(f"{name} = {env[name]}")
     return 0
 
 
