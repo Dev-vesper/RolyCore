@@ -1,4 +1,18 @@
-from roly.ast import Assign, BinOp, Block, CompoundAssign, If, Num, Print, Program, Str, Var, While
+from roly.ast import (
+    Assign,
+    BinOp,
+    Block,
+    Break,
+    CompoundAssign,
+    Continue,
+    If,
+    Num,
+    Print,
+    Program,
+    Str,
+    Var,
+    While,
+)
 
 DEFAULT_MAX_STEPS = 10_000_000
 
@@ -8,6 +22,14 @@ def _stdout_print(value):
 
 
 class RolyError(Exception):
+    pass
+
+
+class BreakSignal(Exception):
+    pass
+
+
+class ContinueSignal(Exception):
     pass
 
 
@@ -43,9 +65,18 @@ class Interpreter:
             self.exec_statements(statement.statements)
         elif isinstance(statement, Print):
             self.out(self.eval(statement.value))
+        elif isinstance(statement, Break):
+            raise BreakSignal()
+        elif isinstance(statement, Continue):
+            raise ContinueSignal()
         elif isinstance(statement, While):
             while self.truthy(self.eval(statement.condition)):
-                self.exec_statement(statement.body)
+                try:
+                    self.exec_statement(statement.body)
+                except BreakSignal:
+                    break
+                except ContinueSignal:
+                    continue
         else:
             raise RolyError(f"cannot execute {statement!r}")
 
