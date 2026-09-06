@@ -1,0 +1,21 @@
+fn fact (n: int) {
+    if (n <= 1) { return 1 }
+    return n * fact(n - 1)
+}
+
+fn fib (n: int) {
+    if (n < 2) { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+
+fn sign (n: int) {
+    if (n < 0) { return -1 }
+    if (n > 0) { return 1 }
+    return 0
+}
+
+print(fact(10))
+print(fib(15))
+print(sign(-42))
+print(sign(0))
+print(sign(42))

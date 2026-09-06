@@ -1,0 +1,9 @@
+seen = FALSE
+i = 0
+while (i < 5) {
+    if (i == 3) { seen = TRUE }
+    i += 1
+}
+print(seen)
+print(seen == FALSE)
+print(seen == TRUE)

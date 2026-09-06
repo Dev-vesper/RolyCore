@@ -1,0 +1,6 @@
+first = "roly"
+second = "core"
+full = first + "-" + second
+print(full)
+print(full == "roly-core")
+print(full == "rolycore")

@@ -1,0 +1,19 @@
+n = 2
+count = 0
+while (n < 30) {
+    d = 2
+    is_prime = TRUE
+    while (d * d <= n) {
+        if (n / d * d == n) {
+            is_prime = FALSE
+            break
+        }
+        d += 1
+    }
+    if (is_prime) {
+        print(n)
+        count += 1
+    }
+    n += 1
+}
+print(count)

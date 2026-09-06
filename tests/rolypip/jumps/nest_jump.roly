@@ -1,0 +1,13 @@
+total = 0
+i = 0
+while (i < 5) {
+    j = 0
+    while (j < 5) {
+        j += 1
+        if (j == 3) { continue }
+        if (j == 5) { break }
+        total += j
+    }
+    i += 1
+}
+print(total)
