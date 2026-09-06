@@ -263,7 +263,7 @@ footer {
     <p>Roly has exactly three kinds of values:</p>
     <ul>
         <li><b>Integers</b> — arbitrary size, written in decimal digits: <code>42</code>, <code>0</code>, <code>1234567</code></li>
-        <li><b>Booleans</b> — only produced by comparisons; there are no boolean literals</li>
+        <li><b>Booleans</b> — written <code>TRUE</code> and <code>FALSE</code>, always in capital letters; also produced by comparisons</li>
         <li><b>Strings</b> — double-quoted, may contain any characters: <code>"hello world"</code></li>
     </ul>
     <div class="note">Booleans never mix with arithmetic. <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Types never convert into each other: <code>"1" == 1</code> is simply <code>False</code>.</div>
@@ -297,7 +297,7 @@ x /= 2</code></pre>
         <tr><td>*</td><td>multiplication</td><td><code>6 * 7</code> is <code>42</code></td></tr>
         <tr><td>/</td><td>integer floor division</td><td><code>(0 - 7) / 2</code> is <code>-4</code></td></tr>
     </table>
-    <div class="note">Division always floors toward negative infinity. Division by zero is a runtime error. There is no unary minus — write <code>0 - 5</code> for negative values.</div>
+    <div class="note">Division always floors toward negative infinity. Division by zero is a runtime error. Negative values can be written directly with a unary minus: <code>-5</code>, <code>-x</code>, <code>--3</code>. Negating a boolean or string is a runtime error.</div>
 </section>
 
 <section id="comparisons">
@@ -339,6 +339,8 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
 
 <span class="tok-kw">if</span> (x == 1) { y = 10 } <span class="tok-kw">else</span> { <span class="tok-kw">if</span> (x == 2) { y = 20 } }</code></pre>
     <div class="note">There is no <code>else if</code> construct — nest an <code>if</code> inside the <code>else</code> block. An integer condition works: zero is false, nonzero is true. A string condition is an error.</div>
+
+    <div class="note">Boolean literals are <code>TRUE</code> and <code>FALSE</code> — capital letters only. Lowercase <code>true</code> / <code>false</code> are ordinary identifiers (undefined variables).</div>
 
     <h3>while</h3>
     <p>The condition is re-checked before every iteration. The body is a braced block.</p>
@@ -480,7 +482,8 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | IDENT | call | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | unary | '(' expression ')' ;
+unary               : '-' unary ;
 call                : IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;</div>
 </section>
