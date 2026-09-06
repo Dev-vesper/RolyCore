@@ -45,6 +45,18 @@ def test_exec_bool_value_printed():
     assert result.stdout.strip() == "x = True"
 
 
+def test_cli_print_statement_output():
+    result = run_cli("exec", "print(5)")
+    assert result.returncode == 0
+    assert result.stdout == "5\n"
+
+
+def test_cli_print_before_env_dump():
+    result = run_cli("exec", "x = 1 print(x)")
+    assert result.returncode == 0
+    assert result.stdout == "1\nx = 1\n"
+
+
 def test_exec_lex_error_exit_code():
     result = run_cli("exec", "x = @")
     assert result.returncode == 1
