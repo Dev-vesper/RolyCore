@@ -1,0 +1,20 @@
+n = 2
+found = 0
+while (found < 3) {
+    s = 0
+    d = 1
+    while (d < n) {
+        if (n / d * d == n) {
+            s += d
+            if (s > n) {
+                break
+            }
+        }
+        d += 1
+    }
+    if (s == n) {
+        print(n)
+        found += 1
+    }
+    n += 1
+}

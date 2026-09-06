@@ -1,0 +1,38 @@
+year = 2024
+leap = FALSE
+if (year / 4 * 4 == year) {
+    leap = TRUE
+    if (year / 100 * 100 == year) {
+        leap = FALSE
+        if (year / 400 * 400 == year) {
+            leap = TRUE
+        }
+    }
+}
+print(leap)
+
+year = 1900
+leap = FALSE
+if (year / 4 * 4 == year) {
+    leap = TRUE
+    if (year / 100 * 100 == year) {
+        leap = FALSE
+        if (year / 400 * 400 == year) {
+            leap = TRUE
+        }
+    }
+}
+print(leap)
+
+year = 2000
+leap = FALSE
+if (year / 4 * 4 == year) {
+    leap = TRUE
+    if (year / 100 * 100 == year) {
+        leap = FALSE
+        if (year / 400 * 400 == year) {
+            leap = TRUE
+        }
+    }
+}
+print(leap)

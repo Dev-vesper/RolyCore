@@ -1,0 +1,19 @@
+i = 1
+while (i <= 30) {
+    is_even = i / 2 * 2 == i
+    is_prime = TRUE
+    d = 2
+    while (d * d <= i) {
+        if (i / d * d == i) {
+            is_prime = FALSE
+            break
+        }
+        d += 1
+    }
+    if (is_even) {
+        if (is_prime) {
+            print(i)
+        }
+    }
+    i += 1
+}

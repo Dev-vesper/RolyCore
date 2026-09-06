@@ -1,0 +1,13 @@
+i = 1
+evens = 0
+odds = 0
+while (i <= 20) {
+    if (i / 2 * 2 == i) {
+        evens += 1
+    } else {
+        odds += 1
+    }
+    i += 1
+}
+print(evens)
+print(odds)

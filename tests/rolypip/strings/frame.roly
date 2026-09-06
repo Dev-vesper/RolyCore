@@ -1,0 +1,14 @@
+name = "roly"
+label = "  " + name + "  "
+
+border = "+"
+i = 0
+while (i < 8) {
+    border += "-"
+    i += 1
+}
+border += "+"
+
+print(border)
+print("|" + label + "|")
+print(border)

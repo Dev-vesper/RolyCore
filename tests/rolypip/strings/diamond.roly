@@ -1,0 +1,35 @@
+n = 4
+
+row = 1
+while (row <= n) {
+    line = ""
+    s = 0
+    while (s < n - row) {
+        line += " "
+        s += 1
+    }
+    k = 0
+    while (k < row * 2 - 1) {
+        line += "*"
+        k += 1
+    }
+    print(line)
+    row += 1
+}
+
+row = n - 1
+while (row >= 1) {
+    line = ""
+    s = 0
+    while (s < n - row) {
+        line += " "
+        s += 1
+    }
+    k = 0
+    while (k < row * 2 - 1) {
+        line += "*"
+        k += 1
+    }
+    print(line)
+    row -= 1
+}

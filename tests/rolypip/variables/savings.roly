@@ -1,0 +1,8 @@
+balance = 1000
+years = 0
+while (balance < 1000000) {
+    balance *= 2
+    years += 1
+}
+print(years)
+print(balance)

@@ -1,0 +1,13 @@
+total = 0
+i = 0
+while (i < 100) {
+    i += 1
+    if (i / 2 * 2 == i) {
+        continue
+    }
+    if (i / 3 * 3 == i) {
+        continue
+    }
+    total += i
+}
+print(total)

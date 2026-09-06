@@ -1,0 +1,24 @@
+amount = 67
+
+quarters = 0
+while (amount >= 25) {
+    quarters += 1
+    amount -= 25
+}
+
+dimes = 0
+while (amount >= 10) {
+    dimes += 1
+    amount -= 10
+}
+
+nickels = 0
+while (amount >= 5) {
+    nickels += 1
+    amount -= 5
+}
+
+print(quarters)
+print(dimes)
+print(nickels)
+print(amount)

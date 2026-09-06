@@ -1,0 +1,52 @@
+n = 3524
+steps = 0
+while (TRUE) {
+    d3 = n / 1000
+    d2 = n / 100 - d3 * 10
+    d1 = n / 10 - n / 100 * 10
+    d0 = n - n / 10 * 10
+
+    a = d0
+    b = d1
+    c = d2
+    e = d3
+    if (b < a) {
+        t = a
+        a = b
+        b = t
+    }
+    if (c < a) {
+        t = a
+        a = c
+        c = t
+    }
+    if (e < a) {
+        t = a
+        a = e
+        e = t
+    }
+    if (c < b) {
+        t = b
+        b = c
+        c = t
+    }
+    if (e < b) {
+        t = b
+        b = e
+        e = t
+    }
+    if (e < c) {
+        t = c
+        c = e
+        e = t
+    }
+
+    next = e * 1000 + c * 100 + b * 10 + a - (a * 1000 + b * 100 + c * 10 + e)
+    steps += 1
+    if (next == n) {
+        break
+    }
+    n = next
+}
+print(n)
+print(steps)

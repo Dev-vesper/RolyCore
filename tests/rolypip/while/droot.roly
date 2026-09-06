@@ -1,0 +1,11 @@
+n = 987654
+while (n > 9) {
+    s = 0
+    m = n
+    while (m > 0) {
+        s += m - m / 10 * 10
+        m /= 10
+    }
+    n = s
+}
+print(n)

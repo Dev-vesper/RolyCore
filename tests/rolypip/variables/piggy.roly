@@ -1,0 +1,21 @@
+target = 63
+bank = 0
+coins = 0
+while (bank < target) {
+    if (bank + 25 <= target) {
+        bank += 25
+    } else {
+        if (bank + 10 <= target) {
+            bank += 10
+        } else {
+            if (bank + 5 <= target) {
+                bank += 5
+            } else {
+                bank += 1
+            }
+        }
+    }
+    coins += 1
+}
+print(bank)
+print(coins)

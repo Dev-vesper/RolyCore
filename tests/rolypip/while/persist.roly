@@ -1,0 +1,14 @@
+n = 39
+steps = 0
+while (n > 9) {
+    p = 1
+    m = n
+    while (m > 0) {
+        p *= m - m / 10 * 10
+        m /= 10
+    }
+    n = p
+    steps += 1
+}
+print(n)
+print(steps)

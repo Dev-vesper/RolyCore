@@ -1,0 +1,12 @@
+fn hanoi (n: int, from: str, to: str, via: str) {
+    if (n > 0) {
+        moved = hanoi(n - 1, from, via, to)
+        print("move disk from " + from + " to " + to)
+        moved = moved + hanoi(n - 1, via, to, from) + 1
+        return moved
+    }
+    return 0
+}
+
+total = hanoi(3, "A", "C", "B")
+print(total)

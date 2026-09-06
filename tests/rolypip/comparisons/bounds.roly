@@ -1,0 +1,29 @@
+lo = 10
+hi = 50
+
+x = 37
+inside = FALSE
+if (x >= lo) {
+    if (x <= hi) {
+        inside = TRUE
+    }
+}
+print(inside)
+
+x = 63
+inside = FALSE
+if (x >= lo) {
+    if (x <= hi) {
+        inside = TRUE
+    }
+}
+print(inside)
+
+x = 10
+inside = FALSE
+if (x >= lo) {
+    if (x <= hi) {
+        inside = TRUE
+    }
+}
+print(inside)

@@ -1,0 +1,18 @@
+fn is_even (n: int) {
+    if (n == 0) {
+        return TRUE
+    }
+    return is_odd(n - 1)
+}
+
+fn is_odd (n: int) {
+    if (n == 0) {
+        return FALSE
+    }
+    return is_even(n - 1)
+}
+
+print(is_even(10))
+print(is_odd(10))
+print(is_even(7))
+print(is_odd(7))

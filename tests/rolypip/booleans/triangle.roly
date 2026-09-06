@@ -1,0 +1,23 @@
+a = 3
+b = 4
+c = 5
+ok = TRUE
+if (a + b <= c) {
+    ok = FALSE
+}
+if (a + c <= b) {
+    ok = FALSE
+}
+if (b + c <= a) {
+    ok = FALSE
+}
+print(ok)
+
+a = 1
+b = 2
+c = 9
+ok = TRUE
+if (a + b <= c) {
+    ok = FALSE
+}
+print(ok)

@@ -1,0 +1,17 @@
+n = 101
+while (TRUE) {
+    is_prime = TRUE
+    d = 2
+    while (d * d <= n) {
+        if (n / d * d == n) {
+            is_prime = FALSE
+            break
+        }
+        d += 1
+    }
+    if (is_prime) {
+        break
+    }
+    n += 1
+}
+print(n)
