@@ -30,7 +30,7 @@ Run inline code directly:
 .venv/bin/python roly.py exec "x = 10 while (x > 0) { x -= 3 }"
 ```
 
-After execution, the CLI prints every final variable value as `name = value`, sorted by name. Anything printed with `print(...)` appears first, before the variable dump.
+After execution, the CLI prints only what the program prints with `print(...)` — final variable values are not dumped. Use `print(x)` to see a value.
 
 ## Running the tests
 
