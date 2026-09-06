@@ -1,0 +1,11 @@
+S = "STRINGS, abcdefghijklmnopqx"
+I = 1234567890
+Iv2 = -123456789
+B = TRUE
+Bv2 = FALSE
+
+print(S)
+print(I)
+print(Iv2)
+print(B)
+print(Bv2)
