@@ -1,4 +1,4 @@
-The purpose of this repository and the so-called programming language is to be used in another repository I'm working on. I also wanted to test submodules on GitHub, and to have a practice piece and portfolio item on my profile.
+The purpose of this repository and the so-called programming language is to be used in another repository([CaseCode](https://github.com/Dev-vesper/CaseCode)) I'm working on. I also wanted to test submodules on GitHub, and to have a practice piece and portfolio item on my profile.
 
 ![Python](https://img.shields.io/badge/Python-3.13+-blue?logo=python&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-9.1+-yellow?logo=pytest&logoColor=white)
