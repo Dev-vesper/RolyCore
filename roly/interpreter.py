@@ -50,15 +50,25 @@ class Interpreter:
             raise RolyError(f"cannot execute {statement!r}")
 
     def eval(self, expr):
-        if isinstance(expr, Num):
-            return expr.value
-        if isinstance(expr, Str):
-            return expr.value
-        if isinstance(expr, Var):
-            return self.lookup(expr.name)
-        if isinstance(expr, BinOp):
-            return self.apply_op(expr.op, self.eval(expr.left), self.eval(expr.right))
-        raise RolyError(f"cannot evaluate {expr!r}")
+        work = [expr]
+        values = []
+        while work:
+            item = work.pop()
+            if isinstance(item, tuple):
+                right = values.pop()
+                left = values.pop()
+                values.append(self.apply_op(item[1], left, right))
+            elif isinstance(item, BinOp):
+                work.append(("apply", item.op))
+                work.append(item.right)
+                work.append(item.left)
+            elif isinstance(item, (Num, Str)):
+                values.append(item.value)
+            elif isinstance(item, Var):
+                values.append(self.lookup(item.name))
+            else:
+                raise RolyError(f"cannot evaluate {item!r}")
+        return values[-1]
 
     def apply_op(self, op, left, right):
         if op == "+":
@@ -88,9 +98,9 @@ class Interpreter:
                 return left <= right
             return left >= right
         if op == "==":
-            return left == right
+            return type(left) is type(right) and left == right
         if op == "!=":
-            return left != right
+            return not (type(left) is type(right) and left == right)
         raise RolyError(f"unknown operator '{op}'")
 
     def truthy(self, value):
