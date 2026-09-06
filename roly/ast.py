@@ -1,13 +1,18 @@
 from dataclasses import dataclass
 from typing import Union
 
-Expr = Union["Num", "Var", "BinOp"]
+Expr = Union["Num", "Str", "Var", "BinOp"]
 Statement = Union["Assign", "CompoundAssign", "If", "While", "Print", "Block"]
 
 
 @dataclass
 class Num:
     value: int
+
+
+@dataclass
+class Str:
+    value: str
 
 
 @dataclass
