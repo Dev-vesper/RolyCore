@@ -3,17 +3,20 @@ from roly.ast import (
     BinOp,
     Block,
     Break,
+    Call,
     CompoundAssign,
     Continue,
+    FnDef,
     If,
     Num,
     Print,
     Program,
+    Return,
     Str,
     Var,
     While,
 )
-from roly.tokens import T
+from roly.tokens import TYPE_TOKENS, T
 
 COMPOUND_OPS = {
     T.PLUS_ASSIGN: "+",
@@ -43,6 +46,12 @@ MULTIPLICATIVE_OPS = {
 
 MAX_NESTING = 100
 
+PARAM_TYPES = {
+    T.INT_TYPE: int,
+    T.STR_TYPE: str,
+    T.BOOL_TYPE: bool,
+}
+
 
 class ParseError(Exception):
     def __init__(self, message, token):
@@ -56,6 +65,7 @@ class Parser:
         self.pos = 0
         self.depth = 0
         self.loop_depth = 0
+        self.fn_depth = 0
 
     def parse(self):
         statements = self.parse_statements(T.EOF)
@@ -97,7 +107,15 @@ class Parser:
     def parse_statements(self, terminator):
         statements = []
         while not self.check(terminator):
-            statements.append(self.parse_statement())
+            if self.check(T.FN):
+                if terminator is not T.EOF:
+                    raise ParseError(
+                        "function declarations are only allowed at top level",
+                        self.current(),
+                    )
+                statements.append(self.parse_function())
+            else:
+                statements.append(self.parse_statement())
         return statements
 
     def parse_statement(self):
@@ -112,6 +130,8 @@ class Parser:
             return self.parse_break()
         if token_type is T.CONTINUE:
             return self.parse_continue()
+        if token_type is T.RETURN:
+            return self.parse_return()
         if token_type is T.LBRACE:
             return self.parse_block()
         if token_type is T.IDENT:
@@ -178,6 +198,45 @@ class Parser:
         self.match(T.RPAREN, "')'")
         return Print(value)
 
+    def parse_return(self):
+        token = self.advance()
+        if self.fn_depth == 0:
+            raise ParseError("'return' outside function", token)
+        return Return(self.parse_expression())
+
+    def parse_function(self):
+        self.match(T.FN, "'fn'")
+        name_token = self.match(T.IDENT, "a function name")
+        params = []
+        self.match(T.LPAREN, "'('")
+        if not self.check(T.RPAREN):
+            params.append(self.parse_parameter())
+            while self.check(T.COMMA):
+                self.advance()
+                params.append(self.parse_parameter())
+        self.match(T.RPAREN, "')' or ','")
+
+        self.fn_depth += 1
+        saved_loop_depth = self.loop_depth
+        self.loop_depth = 0
+        body = self.parse_block()
+        self.loop_depth = saved_loop_depth
+        self.fn_depth -= 1
+        return FnDef(name_token.value, params, body)
+
+    def parse_parameter(self):
+        name_token = self.match(T.IDENT, "a parameter name")
+        self.match(T.COLON, "':'")
+        type_token = self.current()
+        if type_token.type not in PARAM_TYPES:
+            raise ParseError(
+                f"unknown type '{self.describe(type_token)}' "
+                f"(expected int, str, or bool)",
+                type_token,
+            )
+        self.advance()
+        return (name_token.value, PARAM_TYPES[type_token.type])
+
     def parse_block(self):
         self.enter()
         self.match(T.LBRACE, "'{'")
@@ -213,6 +272,17 @@ class Parser:
             node = BinOp(op, node, self.parse_primary())
         return node
 
+    def parse_call_tail(self, name):
+        self.match(T.LPAREN, "'('")
+        args = []
+        if not self.check(T.RPAREN):
+            args.append(self.parse_expression())
+            while self.check(T.COMMA):
+                self.advance()
+                args.append(self.parse_expression())
+        self.match(T.RPAREN, "')' or ','")
+        return Call(name, args)
+
     def parse_primary(self):
         token = self.current()
         if token.type is T.INT:
@@ -223,6 +293,8 @@ class Parser:
             return Str(token.value)
         if token.type is T.IDENT:
             self.advance()
+            if self.check(T.LPAREN):
+                return self.parse_call_tail(token.value)
             return Var(token.value)
         if token.type is T.LPAREN:
             self.advance()
