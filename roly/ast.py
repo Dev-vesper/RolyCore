@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Union
 
 Expr = Union["Num", "Var", "BinOp"]
-Statement = Union["Assign", "CompoundAssign", "If", "While", "Block"]
+Statement = Union["Assign", "CompoundAssign", "If", "While", "Print", "Block"]
 
 
 @dataclass
@@ -40,6 +40,11 @@ class If:
     condition: Expr
     then_block: "Block"
     else_block: "Block | None"
+
+
+@dataclass
+class Print:
+    value: Expr
 
 
 @dataclass
