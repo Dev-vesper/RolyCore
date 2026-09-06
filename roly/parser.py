@@ -7,6 +7,7 @@ from roly.ast import (
     Num,
     Print,
     Program,
+    Str,
     Var,
     While,
 )
@@ -178,6 +179,9 @@ class Parser:
         if token.type is T.INT:
             self.advance()
             return Num(token.value)
+        if token.type is T.STRING:
+            self.advance()
+            return Str(token.value)
         if token.type is T.IDENT:
             self.advance()
             return Var(token.value)
@@ -187,6 +191,6 @@ class Parser:
             self.match(T.RPAREN, "')'")
             return node
         raise ParseError(
-            f"expected a number, an identifier, or '(', got {self.describe(token)}",
+            f"expected a number, a string, an identifier, or '(', got {self.describe(token)}",
             token,
         )
