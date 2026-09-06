@@ -18,11 +18,13 @@ EXPECTED_ENV = {
     "digit_fold.roly": {"n": 0, "s": 15},
     "print_showcase.roly": {"x": 42, "i": 0},
     "print.roly": {"strings": "hello world", "i": 11},
+    "odd_seek.roly": {"n": 20},
 }
 
 EXPECTED_PRINTS = {
     "print_showcase.roly": [42, 84, 3, 2, 1],
     "print.roly": ["hello world", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "odd_seek.roly": [3, 5, 7, 9, 11, 13, 15, 17, 19],
 }
 
 

@@ -1,0 +1,9 @@
+n = 2
+while (n < 20) {
+    if (n / 2 * 2 == n) {
+        n += 1
+        continue
+    }
+    print(n)
+    n += 1
+}
