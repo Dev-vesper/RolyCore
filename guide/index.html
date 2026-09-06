@@ -252,6 +252,7 @@ footer {
     <a href="#strings">Strings</a>
     <a href="#control">Control Flow</a>
     <a href="#jumps">break / continue</a>
+    <a href="#functions">Functions</a>
     <a href="#print">print</a>
     <a href="#grammar">Grammar</a>
     <a href="#limits">Limits</a>
@@ -382,6 +383,50 @@ total = 0
     </ul>
 </section>
 
+<section id="functions">
+    <h2>Functions</h2>
+    <p>A function is declared with <code>fn</code>, a name, typed parameters, and a body that returns a value. Declarations are only allowed at the top level of a program.</p>
+    <pre><code><span class="tok-kw">fn</span> add (a: <span class="tok-kw">int</span>, b: <span class="tok-kw">int</span>) {
+    <span class="tok-kw">return</span> a + b
+}
+
+<span class="tok-kw">fn</span> greet (name: <span class="tok-kw">str</span>) {
+    <span class="tok-kw">return</span> <span class="tok-str">"hello "</span> + name
+}
+
+x = add(2, 3)
+<span class="tok-fn">print</span>(greet(<span class="tok-str">"roly"</span>))</code></pre>
+
+    <h3>Types</h3>
+    <p>Parameter types are <code>int</code>, <code>str</code>, and <code>bool</code>. They are checked at call time — each argument must match exactly. There is no <code>float</code> type; <code>a: float</code> is a parse error. No return type is declared.</p>
+
+    <h3>Scope</h3>
+    <p>Each call gets its own local scope: parameters and newly assigned variables are local and disappear when the call ends. Global variables are readable from inside functions, and writing to an existing global updates the global. A parameter may shadow a global.</p>
+    <pre><code>g = 10
+<span class="tok-kw">fn</span> f (g: <span class="tok-kw">int</span>) { <span class="tok-kw">return</span> g }  <span class="tok-com">// parameter shadows the global</span>
+x = f(2)          <span class="tok-com">// x is 2, g stays 10</span></code></pre>
+
+    <h3>Calls and recursion</h3>
+    <p>A call is an expression — <code>f(a, b)</code> — usable anywhere a value is. Functions are pre-registered before execution, so recursion and mutual recursion work, and a function may be called before its definition appears. Recursion depth is limited to 200 calls.</p>
+    <pre><code><span class="tok-kw">fn</span> fact (n: <span class="tok-kw">int</span>) {
+    <span class="tok-kw">if</span> (n &lt;= 1) { <span class="tok-kw">return</span> 1 }
+    <span class="tok-kw">return</span> n * fact(n - 1)
+}
+<span class="tok-fn">print</span>(fact(<span class="tok-num">10</span>))   <span class="tok-com">// 3628800</span></code></pre>
+
+    <h3>return</h3>
+    <p><code>return</code> ends the call immediately with a value. Inside a loop, <code>return</code> overrides <code>break</code> and <code>continue</code> — it terminates the whole call. Multiple returns in different branches are fine. Every function must return on every path that is used — calling a function that falls off the end of its body is a runtime error. <code>return</code> outside a function is a parse error, just like <code>break</code> outside a loop.</p>
+
+    <h3>Rules</h3>
+    <ul>
+        <li>argument count must match the parameter count exactly</li>
+        <li>each argument's type must match its annotation exactly</li>
+        <li>redefining a function name is an error</li>
+        <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code></li>
+        <li><code>break</code> / <code>continue</code> inside a function body but outside a loop is a parse error</li>
+    </ul>
+</section>
+
 <section id="print">
     <h2>print</h2>
     <p>The only built-in. A statement — not an expression — taking one expression in parentheses. Values print in their plain form: integers in decimal, strings without quotes, booleans as <code>True</code> / <code>False</code>.</p>
@@ -399,7 +444,12 @@ i = 3
 <section id="grammar">
     <h2>Grammar</h2>
     <p>The complete formal grammar of the language:</p>
-    <div class="rule">program             : statement* EOF ;
+    <div class="rule">program             : ( function_declaration | statement )* EOF ;
+
+function_declaration : 'fn' IDENT '(' parameters? ')' block ;
+parameters          : parameter ( ',' parameter )* ;
+parameter           : IDENT ':' type ;
+type                : 'int' | 'str' | 'bool' ;
 
 statement           : assignment
                     | compound_assignment
@@ -408,6 +458,7 @@ statement           : assignment
                     | print_statement
                     | break_statement
                     | continue_statement
+                    | return_statement
                     | block
                     ;
 
@@ -421,6 +472,7 @@ print_statement     : 'print' '(' expression ')' ;
 
 break_statement     : 'break' ;
 continue_statement  : 'continue' ;
+return_statement    : 'return' expression ;
 
 block               : '{' statement* '}' ;
 
@@ -428,7 +480,9 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | IDENT | '(' expression ')' ;</div>
+primary             : INT | STRING | IDENT | call | '(' expression ')' ;
+call                : IDENT '(' arguments? ')' ;
+arguments           : expression ( ',' expression )* ;</div>
 </section>
 
 <section id="limits">
@@ -437,9 +491,10 @@ primary             : INT | STRING | IDENT | '(' expression ')' ;</div>
         <tr><th>Rule</th><th>Value</th></tr>
         <tr><td>Statement step limit</td><td>10,000,000 — protects against infinite loops</td></tr>
         <tr><td>Nesting depth (parentheses / blocks)</td><td>100 levels</td></tr>
-        <tr><td>Loop jumps</td><td>innermost loop only</td></tr>
-        <tr><td>Scope</td><td>single global scope</td></tr>
-        <tr><td>Keywords</td><td>if, else, while, print, break, continue</td></tr>
+        <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
+        <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
+        <tr><td>Scope</td><td>globals plus one local scope per function call</td></tr>
+        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
 </section>
