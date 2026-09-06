@@ -7,6 +7,8 @@ The purpose of this repository and the so-called programming language is to be u
 
 Roly is a tiny programming language implemented in pure Python with no runtime dependencies.
 
+A complete single-page language guide (values, syntax, grammar, limits) is available at [guide/index.html](guide/index.html).
+
 ## Setup
 
 Create a virtual environment and install the only dev dependency (pytest, needed only for running the test suite):
