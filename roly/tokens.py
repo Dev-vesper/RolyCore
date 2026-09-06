@@ -17,6 +17,8 @@ class T(Enum):
     INT_TYPE = auto()
     STR_TYPE = auto()
     BOOL_TYPE = auto()
+    TRUE = auto()
+    FALSE = auto()
     COLON = auto()
     COMMA = auto()
     ASSIGN = auto()
@@ -61,6 +63,8 @@ KEYWORDS = {
     "int": T.INT_TYPE,
     "str": T.STR_TYPE,
     "bool": T.BOOL_TYPE,
+    "TRUE": T.TRUE,
+    "FALSE": T.FALSE,
 }
 
 TYPE_TOKENS = {

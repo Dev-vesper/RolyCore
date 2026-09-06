@@ -34,6 +34,7 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | IDENT | call | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | unary | '(' expression ')' ;
+unary               : '-' unary ;
 call                : IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;

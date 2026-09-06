@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-Expr = Union["Num", "Str", "Var", "BinOp", "Call"]
+Expr = Union["Num", "Str", "Bool", "Neg", "Var", "BinOp", "Call"]
 Statement = Union[
     "Assign",
     "CompoundAssign",
@@ -24,6 +24,16 @@ class Num:
 @dataclass
 class Str:
     value: str
+
+
+@dataclass
+class Bool:
+    value: bool
+
+
+@dataclass
+class Neg:
+    operand: Expr
 
 
 @dataclass
