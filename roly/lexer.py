@@ -28,6 +28,13 @@ ONE_CHAR_OPS = {
 
 WHITESPACE = " \t\r\n"
 
+ESCAPES = {
+    '"': '"',
+    "\\": "\\",
+    "n": "\n",
+    "t": "\t",
+}
+
 
 class LexError(Exception):
     def __init__(self, message, line, column):
@@ -62,6 +69,9 @@ class Lexer:
         if char.isdigit():
             return self.read_number(start_line, start_column)
 
+        if char == '"':
+            return self.read_string(start_line, start_column)
+
         if char.isalpha() or char == "_":
             return self.read_identifier(start_line, start_column)
 
@@ -83,6 +93,34 @@ class Lexer:
             self.advance()
         text = self.source[start : self.pos]
         return Token(T.INT, int(text), start_line, start_column)
+
+    def read_string(self, start_line, start_column):
+        self.advance()
+        chars = []
+        while self.pos < len(self.source):
+            char = self.source[self.pos]
+            if char == '"':
+                self.advance()
+                return Token(T.STRING, "".join(chars), start_line, start_column)
+            if char == "\n":
+                raise LexError("unterminated string", start_line, start_column)
+            if char == "\\":
+                self.advance()
+                if self.pos >= len(self.source):
+                    raise LexError("unterminated string", start_line, start_column)
+                escape_char = self.source[self.pos]
+                if escape_char not in ESCAPES:
+                    raise LexError(
+                        f"unknown escape sequence '\\{escape_char}'",
+                        start_line,
+                        start_column,
+                    )
+                chars.append(ESCAPES[escape_char])
+                self.advance()
+            else:
+                chars.append(char)
+                self.advance()
+        raise LexError("unterminated string", start_line, start_column)
 
     def read_identifier(self, start_line, start_column):
         start = self.pos
