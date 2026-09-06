@@ -22,4 +22,4 @@ expression        : comparison ;
 comparison        : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
 additive          : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative    : primary ( ( '*' | '/' ) primary )* ;
-primary           : INT | IDENT | '(' expression ')' ;
+primary           : INT | STRING | IDENT | '(' expression ')' ;
