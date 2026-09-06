@@ -1,20 +1,26 @@
+import sys
+
 from roly.ast import (
     Assign,
     BinOp,
     Block,
     Break,
+    Call,
     CompoundAssign,
     Continue,
+    FnDef,
     If,
     Num,
     Print,
     Program,
+    Return,
     Str,
     Var,
     While,
 )
 
 DEFAULT_MAX_STEPS = 10_000_000
+MAX_CALL_DEPTH = 200
 
 
 def _stdout_print(value):
@@ -33,16 +39,36 @@ class ContinueSignal(Exception):
     pass
 
 
+class ReturnSignal(Exception):
+    def __init__(self, value):
+        self.value = value
+
+
 class Interpreter:
     def __init__(self, max_steps=DEFAULT_MAX_STEPS, out=None):
         self.max_steps = max_steps
         self.steps = 0
-        self.env = {}
+        self.globals = {}
+        self.locals_stack = []
+        self.functions = {}
         self.out = out if out is not None else _stdout_print
+        self.call_depth = 0
+        sys.setrecursionlimit(10_000)
+
+    @property
+    def env(self):
+        if self.locals_stack:
+            return self.locals_stack[-1]
+        return self.globals
 
     def run(self, program):
+        for statement in program.statements:
+            if isinstance(statement, FnDef):
+                if statement.name in self.functions:
+                    raise RolyError(f"function '{statement.name}' already defined")
+                self.functions[statement.name] = statement
         self.exec_statements(program.statements)
-        return self.env
+        return self.globals
 
     def exec_statements(self, statements):
         for statement in statements:
@@ -51,11 +77,13 @@ class Interpreter:
     def exec_statement(self, statement):
         self.count_step()
         if isinstance(statement, Assign):
-            self.env[statement.name] = self.eval(statement.value)
+            self.assign(statement.name, self.eval(statement.value))
         elif isinstance(statement, CompoundAssign):
             current = self.lookup(statement.name)
             operand = self.eval(statement.value)
-            self.env[statement.name] = self.apply_op(statement.op, current, operand)
+            self.assign(
+                statement.name, self.apply_op(statement.op, current, operand)
+            )
         elif isinstance(statement, If):
             if self.truthy(self.eval(statement.condition)):
                 self.exec_statement(statement.then_block)
@@ -69,6 +97,10 @@ class Interpreter:
             raise BreakSignal()
         elif isinstance(statement, Continue):
             raise ContinueSignal()
+        elif isinstance(statement, Return):
+            raise ReturnSignal(self.eval(statement.value))
+        elif isinstance(statement, FnDef):
+            pass
         elif isinstance(statement, While):
             while self.truthy(self.eval(statement.condition)):
                 try:
@@ -97,9 +129,49 @@ class Interpreter:
                 values.append(item.value)
             elif isinstance(item, Var):
                 values.append(self.lookup(item.name))
+            elif isinstance(item, Call):
+                values.append(self.call_function(item))
             else:
                 raise RolyError(f"cannot evaluate {item!r}")
         return values[-1]
+
+    def call_function(self, call):
+        self.count_step()
+        if call.name not in self.functions:
+            raise RolyError(f"undefined function '{call.name}'")
+        function = self.functions[call.name]
+        if len(call.args) != len(function.params):
+            raise RolyError(
+                f"function '{call.name}' expects {len(function.params)} "
+                f"arguments, got {len(call.args)}"
+            )
+        args = [self.eval(arg) for arg in call.args]
+        for (name, param_type), value in zip(function.params, args):
+            if type(value) is not param_type:
+                raise RolyError(
+                    f"argument '{name}' of '{call.name}' must be "
+                    f"{self.type_name(param_type)}, got {value!r}"
+                )
+        if self.call_depth >= MAX_CALL_DEPTH:
+            raise RolyError(
+                f"call depth of {MAX_CALL_DEPTH} exceeded "
+                f"(possible runaway recursion)"
+            )
+
+        frame = dict(zip([name for name, _ in function.params], args))
+        self.locals_stack.append(frame)
+        self.call_depth += 1
+        try:
+            self.exec_statement(function.body)
+        except ReturnSignal as signal:
+            return signal.value
+        finally:
+            self.call_depth -= 1
+            self.locals_stack.pop()
+        raise RolyError(f"function '{call.name}' did not return a value")
+
+    def type_name(self, param_type):
+        return {int: "int", str: "str", bool: "bool"}[param_type]
 
     def apply_op(self, op, left, right):
         if op == "+":
@@ -142,9 +214,22 @@ class Interpreter:
         raise RolyError(f"condition must be a number, got {value!r}")
 
     def lookup(self, name):
-        if name not in self.env:
-            raise RolyError(f"undefined variable '{name}'")
-        return self.env[name]
+        for scope in reversed(self.locals_stack):
+            if name in scope:
+                return scope[name]
+        if name in self.globals:
+            return self.globals[name]
+        raise RolyError(f"undefined variable '{name}'")
+
+    def assign(self, name, value):
+        for scope in reversed(self.locals_stack):
+            if name in scope:
+                scope[name] = value
+                return
+        if name in self.globals or not self.locals_stack:
+            self.globals[name] = value
+        else:
+            self.locals_stack[-1][name] = value
 
     def require_int(self, op, value):
         if type(value) is not int:
