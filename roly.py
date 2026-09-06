@@ -40,13 +40,11 @@ def main(argv: list[str] | None = None) -> int:
         source = args.code
 
     try:
-        env = run_source(source)
+        run_source(source)
     except (LexError, ParseError, RolyError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
-    for name in sorted(env):
-        print(f"{name} = {env[name]}")
     return 0
 
 
