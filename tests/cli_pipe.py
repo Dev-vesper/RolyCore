@@ -15,22 +15,22 @@ def run_cli(*args):
     )
 
 
-def test_exec_simple_assignment():
+def test_exec_simple_assignment_no_output():
     result = run_cli("exec", "x = 5")
     assert result.returncode == 0
-    assert result.stdout.strip() == "x = 5"
+    assert result.stdout == ""
 
 
-def test_exec_env_sorted_by_name():
+def test_exec_assignments_produce_no_env_dump():
     result = run_cli("exec", "b = 2 a = 1")
     assert result.returncode == 0
-    assert result.stdout.splitlines() == ["a = 1", "b = 2"]
+    assert result.stdout == ""
 
 
-def test_exec_loop_computes_result():
+def test_exec_loop_computes_no_output_without_print():
     result = run_cli("exec", "i = 0 total = 0 while (i < 5) { total += i i += 1 }")
     assert result.returncode == 0
-    assert "total = 10" in result.stdout
+    assert result.stdout == ""
 
 
 def test_exec_empty_code_prints_nothing():
@@ -39,10 +39,10 @@ def test_exec_empty_code_prints_nothing():
     assert result.stdout == ""
 
 
-def test_exec_bool_value_printed():
-    result = run_cli("exec", "x = 2 == 2")
+def test_exec_bool_needs_print_to_show():
+    result = run_cli("exec", "x = 2 == 2 print(x)")
     assert result.returncode == 0
-    assert result.stdout.strip() == "x = True"
+    assert result.stdout == "True\n"
 
 
 def test_cli_print_statement_output():
@@ -51,10 +51,22 @@ def test_cli_print_statement_output():
     assert result.stdout == "5\n"
 
 
-def test_cli_print_before_env_dump():
+def test_cli_only_print_output_is_shown():
     result = run_cli("exec", "x = 1 print(x)")
     assert result.returncode == 0
-    assert result.stdout == "1\nx = 1\n"
+    assert result.stdout == "1\n"
+
+
+def test_cli_string_printed_raw():
+    result = run_cli("exec", 'print("hello world")')
+    assert result.returncode == 0
+    assert result.stdout == "hello world\n"
+
+
+def test_cli_multiple_prints_in_order():
+    result = run_cli("exec", "print(1) print(2) print(3)")
+    assert result.returncode == 0
+    assert result.stdout == "1\n2\n3\n"
 
 
 def test_exec_lex_error_exit_code():
@@ -81,13 +93,25 @@ def test_exec_undefined_variable_error():
     assert "undefined variable 'y'" in result.stderr
 
 
+def test_error_goes_to_stderr_not_stdout():
+    result = run_cli("exec", "print(1) x = 1 / 0")
+    assert result.returncode == 1
+    assert result.stdout == "1\n"
+    assert "error" in result.stderr
+
+
 def test_run_file(tmp_path):
     script = tmp_path / "count.roly"
-    script.write_text("n = 3 while (n > 0) { n -= 1 } result = n")
+    script.write_text("n = 3 while (n > 0) { n -= 1 } print(n)")
     result = run_cli("run", str(script))
     assert result.returncode == 0
-    assert "n = 0" in result.stdout
-    assert "result = 0" in result.stdout
+    assert result.stdout == "0\n"
+
+
+def test_run_syntax_print_file():
+    result = run_cli("run", str(ROOT / "syntax" / "print.roly"))
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == ["hello world", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
 
 
 def test_run_missing_file():
