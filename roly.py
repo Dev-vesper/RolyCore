@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import sys
 
 from roly.interpreter import RolyError
@@ -34,7 +35,10 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.file, encoding="utf-8") as source_file:
                 source = source_file.read()
         except OSError as error:
-            print(f"error: cannot read '{args.file}': {error.strerror}", file=sys.stderr)
+            try:
+                print(f"error: cannot read '{args.file}': {error.strerror}", file=sys.stderr)
+            except OSError:
+                pass
             return 1
     else:
         source = args.code
@@ -42,7 +46,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         run_source(source)
     except (LexError, ParseError, RolyError) as error:
-        print(f"error: {error}", file=sys.stderr)
+        try:
+            print(f"error: {error}", file=sys.stderr)
+        except OSError:
+            pass
+        return 1
+    except BrokenPipeError:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
         return 1
 
     return 0

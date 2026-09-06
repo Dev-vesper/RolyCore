@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -118,6 +119,23 @@ def test_run_missing_file():
     result = run_cli("run", "/nonexistent/no_such.roly")
     assert result.returncode == 1
     assert "error" in result.stderr
+
+
+def test_broken_pipe_handled_cleanly(tmp_path):
+    code = "i = 0 while (i < 100000) { print(i) i += 1 }"
+    err_file = tmp_path / "stderr.txt"
+    cmd = (
+        f"{sys.executable} {shlex.quote(str(ROLY))} exec {shlex.quote(code)} "
+        f"2>{shlex.quote(str(err_file))} | head -1; exit ${{PIPESTATUS[0]}}"
+    )
+    result = subprocess.run(
+        ["bash", "-c", cmd], capture_output=True, text=True, cwd=ROOT
+    )
+    assert result.returncode == 1
+    assert result.stdout.splitlines()[0] == "0"
+    stderr = err_file.read_text()
+    assert "Traceback" not in stderr
+    assert "BrokenPipeError" not in stderr
 
 
 def test_no_subcommand_exits_with_error():
