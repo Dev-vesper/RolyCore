@@ -1,8 +1,19 @@
 from dataclasses import dataclass
 from typing import Union
 
-Expr = Union["Num", "Str", "Var", "BinOp"]
-Statement = Union["Assign", "CompoundAssign", "If", "While", "Print", "Break", "Continue", "Block"]
+Expr = Union["Num", "Str", "Var", "BinOp", "Call"]
+Statement = Union[
+    "Assign",
+    "CompoundAssign",
+    "If",
+    "While",
+    "Print",
+    "Break",
+    "Continue",
+    "Return",
+    "FnDef",
+    "Block",
+]
 
 
 @dataclass
@@ -25,6 +36,12 @@ class BinOp:
     op: str
     left: Expr
     right: Expr
+
+
+@dataclass
+class Call:
+    name: str
+    args: "list[Expr]"
 
 
 @dataclass
@@ -71,6 +88,18 @@ class While:
 @dataclass
 class Block:
     statements: "list[Statement]"
+
+
+@dataclass
+class Return:
+    value: Expr
+
+
+@dataclass
+class FnDef:
+    name: str
+    params: "list[tuple[str, type]]"
+    body: "Block"
 
 
 @dataclass

@@ -24,6 +24,8 @@ ONE_CHAR_OPS = {
     ")": T.RPAREN,
     "{": T.LBRACE,
     "}": T.RBRACE,
+    ":": T.COLON,
+    ",": T.COMMA,
 }
 
 WHITESPACE = " \t\r\n"

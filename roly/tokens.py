@@ -12,6 +12,13 @@ class T(Enum):
     PRINT = auto()
     BREAK = auto()
     CONTINUE = auto()
+    FN = auto()
+    RETURN = auto()
+    INT_TYPE = auto()
+    STR_TYPE = auto()
+    BOOL_TYPE = auto()
+    COLON = auto()
+    COMMA = auto()
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
     MINUS_ASSIGN = auto()
@@ -49,4 +56,15 @@ KEYWORDS = {
     "print": T.PRINT,
     "break": T.BREAK,
     "continue": T.CONTINUE,
+    "fn": T.FN,
+    "return": T.RETURN,
+    "int": T.INT_TYPE,
+    "str": T.STR_TYPE,
+    "bool": T.BOOL_TYPE,
+}
+
+TYPE_TOKENS = {
+    T.INT_TYPE: int,
+    T.STR_TYPE: str,
+    T.BOOL_TYPE: bool,
 }

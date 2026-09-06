@@ -1,30 +1,39 @@
-program           : statement* EOF ;
+program             : ( function_declaration | statement )* EOF ;
 
-statement         : assignment
-                  | compound_assignment
-                  | if_statement
-                  | while_statement
-                  | print_statement
-                  | break_statement
-                  | continue_statement
-                  | block
-                  ;
+function_declaration : 'fn' IDENT '(' parameters? ')' block ;
+parameters          : parameter ( ',' parameter )* ;
+parameter           : IDENT ':' type ;
+type                : 'int' | 'str' | 'bool' ;
 
-assignment        : IDENT '=' expression ;
+statement           : assignment
+                    | compound_assignment
+                    | if_statement
+                    | while_statement
+                    | print_statement
+                    | break_statement
+                    | continue_statement
+                    | return_statement
+                    | block
+                    ;
+
+assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
-compound_op       : '+=' | '-=' | '*=' | '/=' ;
+compound_op         : '+=' | '-=' | '*=' | '/=' ;
 
-if_statement      : 'if' '(' expression ')' block ( 'else' block )? ;
-while_statement   : 'while' '(' expression ')' block ;
-print_statement   : 'print' '(' expression ')' ;
+if_statement        : 'if' '(' expression ')' block ( 'else' block )? ;
+while_statement     : 'while' '(' expression ')' block ;
+print_statement     : 'print' '(' expression ')' ;
 
-break_statement   : 'break' ;
-continue_statement : 'continue' ;
+break_statement     : 'break' ;
+continue_statement  : 'continue' ;
+return_statement    : 'return' expression ;
 
-block             : '{' statement* '}' ;
+block               : '{' statement* '}' ;
 
-expression        : comparison ;
-comparison        : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
-additive          : multiplicative ( ( '+' | '-' ) multiplicative )* ;
-multiplicative    : primary ( ( '*' | '/' ) primary )* ;
-primary           : INT | STRING | IDENT | '(' expression ')' ;
+expression          : comparison ;
+comparison          : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
+additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
+multiplicative      : primary ( ( '*' | '/' ) primary )* ;
+primary             : INT | STRING | IDENT | call | '(' expression ')' ;
+call                : IDENT '(' arguments? ')' ;
+arguments           : expression ( ',' expression )* ;
