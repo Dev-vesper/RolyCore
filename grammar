@@ -1,0 +1,23 @@
+program           : statement* EOF ;
+
+statement         : assignment
+                  | compound_assignment
+                  | if_statement
+                  | while_statement
+                  | block
+                  ;
+
+assignment        : IDENT '=' expression ;
+compound_assignment : IDENT compound_op expression ;
+compound_op       : '+=' | '-=' | '*=' | '/=' ;
+
+if_statement      : 'if' '(' expression ')' block ( 'else' block )? ;
+while_statement   : 'while' '(' expression ')' block ;
+
+block             : '{' statement* '}' ;
+
+expression        : comparison ;
+comparison        : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
+additive          : multiplicative ( ( '+' | '-' ) multiplicative )* ;
+multiplicative    : primary ( ( '*' | '/' ) primary )* ;
+primary           : INT | IDENT | '(' expression ')' ;
