@@ -82,9 +82,9 @@ def test_comparison_left_associativity():
 
 def test_comparison_chain_mixed():
     assert expr_of("a <= b == c >= d") == BinOp(
-        "==",
-        BinOp("<=", Var("a"), Var("b")),
-        BinOp(">=", Var("c"), Var("d")),
+        ">=",
+        BinOp("==", BinOp("<=", Var("a"), Var("b")), Var("c")),
+        Var("d"),
     )
 
 
