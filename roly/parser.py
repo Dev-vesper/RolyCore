@@ -2,7 +2,9 @@ from roly.ast import (
     Assign,
     BinOp,
     Block,
+    Break,
     CompoundAssign,
+    Continue,
     If,
     Num,
     Print,
@@ -53,6 +55,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.depth = 0
+        self.loop_depth = 0
 
     def parse(self):
         statements = self.parse_statements(T.EOF)
@@ -105,6 +108,10 @@ class Parser:
             return self.parse_while()
         if token_type is T.PRINT:
             return self.parse_print()
+        if token_type is T.BREAK:
+            return self.parse_break()
+        if token_type is T.CONTINUE:
+            return self.parse_continue()
         if token_type is T.LBRACE:
             return self.parse_block()
         if token_type is T.IDENT:
@@ -142,12 +149,26 @@ class Parser:
             else_block = self.parse_block()
         return If(condition, then_block, else_block)
 
+    def parse_break(self):
+        token = self.advance()
+        if self.loop_depth == 0:
+            raise ParseError("'break' outside loop", token)
+        return Break()
+
+    def parse_continue(self):
+        token = self.advance()
+        if self.loop_depth == 0:
+            raise ParseError("'continue' outside loop", token)
+        return Continue()
+
     def parse_while(self):
         self.match(T.WHILE, "'while'")
         self.match(T.LPAREN, "'('")
         condition = self.parse_expression()
         self.match(T.RPAREN, "')'")
+        self.loop_depth += 1
         body = self.parse_block()
+        self.loop_depth -= 1
         return While(condition, body)
 
     def parse_print(self):
