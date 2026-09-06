@@ -39,6 +39,8 @@ MULTIPLICATIVE_OPS = {
     T.SLASH: "/",
 }
 
+MAX_NESTING = 100
+
 
 class ParseError(Exception):
     def __init__(self, message, token):
@@ -50,6 +52,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
+        self.depth = 0
 
     def parse(self):
         statements = self.parse_statements(T.EOF)
@@ -77,6 +80,16 @@ class Parser:
         if token.value is None:
             return "end of input"
         return f"'{token.value}'"
+
+    def enter(self):
+        self.depth += 1
+        if self.depth > MAX_NESTING:
+            raise ParseError(
+                f"nesting too deep (limit is {MAX_NESTING})", self.current()
+            )
+
+    def leave(self):
+        self.depth -= 1
 
     def parse_statements(self, terminator):
         statements = []
@@ -145,13 +158,18 @@ class Parser:
         return Print(value)
 
     def parse_block(self):
+        self.enter()
         self.match(T.LBRACE, "'{'")
         statements = self.parse_statements(T.RBRACE)
         self.match(T.RBRACE, "'}'")
+        self.leave()
         return Block(statements)
 
     def parse_expression(self):
-        return self.parse_comparison()
+        self.enter()
+        node = self.parse_comparison()
+        self.leave()
+        return node
 
     def parse_comparison(self):
         node = self.parse_additive()
