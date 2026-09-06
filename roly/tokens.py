@@ -10,6 +10,8 @@ class T(Enum):
     ELSE = auto()
     WHILE = auto()
     PRINT = auto()
+    BREAK = auto()
+    CONTINUE = auto()
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
     MINUS_ASSIGN = auto()
@@ -45,4 +47,6 @@ KEYWORDS = {
     "else": T.ELSE,
     "while": T.WHILE,
     "print": T.PRINT,
+    "break": T.BREAK,
+    "continue": T.CONTINUE,
 }

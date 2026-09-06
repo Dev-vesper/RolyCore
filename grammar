@@ -5,6 +5,8 @@ statement         : assignment
                   | if_statement
                   | while_statement
                   | print_statement
+                  | break_statement
+                  | continue_statement
                   | block
                   ;
 
@@ -15,6 +17,9 @@ compound_op       : '+=' | '-=' | '*=' | '/=' ;
 if_statement      : 'if' '(' expression ')' block ( 'else' block )? ;
 while_statement   : 'while' '(' expression ')' block ;
 print_statement   : 'print' '(' expression ')' ;
+
+break_statement   : 'break' ;
+continue_statement : 'continue' ;
 
 block             : '{' statement* '}' ;
 

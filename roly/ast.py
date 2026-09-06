@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Union
 
 Expr = Union["Num", "Str", "Var", "BinOp"]
-Statement = Union["Assign", "CompoundAssign", "If", "While", "Print", "Block"]
+Statement = Union["Assign", "CompoundAssign", "If", "While", "Print", "Break", "Continue", "Block"]
 
 
 @dataclass
@@ -50,6 +50,16 @@ class If:
 @dataclass
 class Print:
     value: Expr
+
+
+@dataclass
+class Break:
+    pass
+
+
+@dataclass
+class Continue:
+    pass
 
 
 @dataclass
