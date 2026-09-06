@@ -4,6 +4,7 @@ from enum import Enum, auto
 
 class T(Enum):
     INT = auto()
+    STRING = auto()
     IDENT = auto()
     IF = auto()
     ELSE = auto()
