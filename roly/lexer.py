@@ -28,6 +28,8 @@ ONE_CHAR_OPS = {
 
 WHITESPACE = " \t\r\n"
 
+DIGITS = "0123456789"
+
 ESCAPES = {
     '"': '"',
     "\\": "\\",
@@ -66,13 +68,13 @@ class Lexer:
 
         char = self.source[self.pos]
 
-        if char.isdigit():
+        if char in DIGITS:
             return self.read_number(start_line, start_column)
 
         if char == '"':
             return self.read_string(start_line, start_column)
 
-        if char.isalpha() or char == "_":
+        if (char.isascii() and char.isalpha()) or char == "_":
             return self.read_identifier(start_line, start_column)
 
         pair = self.source[self.pos : self.pos + 2]
@@ -89,7 +91,7 @@ class Lexer:
 
     def read_number(self, start_line, start_column):
         start = self.pos
-        while self.pos < len(self.source) and self.source[self.pos].isdigit():
+        while self.pos < len(self.source) and self.source[self.pos] in DIGITS:
             self.advance()
         text = self.source[start : self.pos]
         return Token(T.INT, int(text), start_line, start_column)
@@ -124,9 +126,10 @@ class Lexer:
 
     def read_identifier(self, start_line, start_column):
         start = self.pos
-        while self.pos < len(self.source) and (
-            self.source[self.pos].isalnum() or self.source[self.pos] == "_"
-        ):
+        while self.pos < len(self.source):
+            char = self.source[self.pos]
+            if not ((char.isascii() and char.isalnum()) or char == "_"):
+                break
             self.advance()
         text = self.source[start : self.pos]
         return Token(KEYWORDS.get(text, T.IDENT), text, start_line, start_column)
