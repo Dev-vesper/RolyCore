@@ -4,12 +4,14 @@ from roly.ast import (
     Assign,
     BinOp,
     Block,
+    Bool,
     Break,
     Call,
     CompoundAssign,
     Continue,
     FnDef,
     If,
+    Neg,
     Num,
     Print,
     Program,
@@ -118,6 +120,11 @@ class Interpreter:
         while work:
             item = work.pop()
             if isinstance(item, tuple):
+                if item[0] == "negate":
+                    value = values.pop()
+                    self.require_int("-", value)
+                    values.append(-value)
+                    continue
                 right = values.pop()
                 left = values.pop()
                 values.append(self.apply_op(item[1], left, right))
@@ -125,7 +132,10 @@ class Interpreter:
                 work.append(("apply", item.op))
                 work.append(item.right)
                 work.append(item.left)
-            elif isinstance(item, (Num, Str)):
+            elif isinstance(item, Neg):
+                work.append(("negate",))
+                work.append(item.operand)
+            elif isinstance(item, (Num, Str, Bool)):
                 values.append(item.value)
             elif isinstance(item, Var):
                 values.append(self.lookup(item.name))

@@ -2,12 +2,14 @@ from roly.ast import (
     Assign,
     BinOp,
     Block,
+    Bool,
     Break,
     Call,
     CompoundAssign,
     Continue,
     FnDef,
     If,
+    Neg,
     Num,
     Print,
     Program,
@@ -291,17 +293,27 @@ class Parser:
         if token.type is T.STRING:
             self.advance()
             return Str(token.value)
+        if token.type is T.TRUE:
+            self.advance()
+            return Bool(True)
+        if token.type is T.FALSE:
+            self.advance()
+            return Bool(False)
         if token.type is T.IDENT:
             self.advance()
             if self.check(T.LPAREN):
                 return self.parse_call_tail(token.value)
             return Var(token.value)
+        if token.type is T.MINUS:
+            self.advance()
+            return Neg(self.parse_primary())
         if token.type is T.LPAREN:
             self.advance()
             node = self.parse_expression()
             self.match(T.RPAREN, "')'")
             return node
         raise ParseError(
-            f"expected a number, a string, an identifier, or '(', got {self.describe(token)}",
+            f"expected a number, a string, a boolean, an identifier, or '(', "
+            f"got {self.describe(token)}",
             token,
         )

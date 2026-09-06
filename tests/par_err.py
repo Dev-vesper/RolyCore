@@ -33,9 +33,12 @@ def test_missing_expression_after_compound_assign():
         parse("x +=")
 
 
-def test_unary_minus_not_supported():
-    with pytest.raises(ParseError):
-        parse("x = -5")
+def test_unary_minus_on_bool_rejected_at_runtime():
+    from roly.interpreter import RolyError
+    from roly.utils.runner import run_source
+
+    with pytest.raises(RolyError, match="integer operands"):
+        run_source("x = -TRUE")
 
 
 def test_unclosed_parenthesis():
