@@ -1,4 +1,4 @@
-from roly.ast import Assign, BinOp, Block, CompoundAssign, If, Num, Print, Program, Var, While
+from roly.ast import Assign, BinOp, Block, CompoundAssign, If, Num, Print, Program, Str, Var, While
 
 DEFAULT_MAX_STEPS = 10_000_000
 
@@ -52,6 +52,8 @@ class Interpreter:
     def eval(self, expr):
         if isinstance(expr, Num):
             return expr.value
+        if isinstance(expr, Str):
+            return expr.value
         if isinstance(expr, Var):
             return self.lookup(expr.name)
         if isinstance(expr, BinOp):
@@ -59,11 +61,15 @@ class Interpreter:
         raise RolyError(f"cannot evaluate {expr!r}")
 
     def apply_op(self, op, left, right):
-        if op in ("+", "-", "*", "/"):
+        if op == "+":
+            if type(left) is str and type(right) is str:
+                return left + right
             self.require_int(op, left)
             self.require_int(op, right)
-            if op == "+":
-                return left + right
+            return left + right
+        if op in ("-", "*", "/"):
+            self.require_int(op, left)
+            self.require_int(op, right)
             if op == "-":
                 return left - right
             if op == "*":
