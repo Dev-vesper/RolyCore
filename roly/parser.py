@@ -5,6 +5,7 @@ from roly.ast import (
     CompoundAssign,
     If,
     Num,
+    Print,
     Program,
     Var,
     While,
@@ -88,6 +89,8 @@ class Parser:
             return self.parse_if()
         if token_type is T.WHILE:
             return self.parse_while()
+        if token_type is T.PRINT:
+            return self.parse_print()
         if token_type is T.LBRACE:
             return self.parse_block()
         if token_type is T.IDENT:
@@ -132,6 +135,13 @@ class Parser:
         self.match(T.RPAREN, "')'")
         body = self.parse_block()
         return While(condition, body)
+
+    def parse_print(self):
+        self.match(T.PRINT, "'print'")
+        self.match(T.LPAREN, "'('")
+        value = self.parse_expression()
+        self.match(T.RPAREN, "')'")
+        return Print(value)
 
     def parse_block(self):
         self.match(T.LBRACE, "'{'")
