@@ -17,10 +17,12 @@ EXPECTED_ENV = {
     "gcd_pair.roly": {"a": 6, "b": 0, "r": 0},
     "digit_fold.roly": {"n": 0, "s": 15},
     "print_showcase.roly": {"x": 42, "i": 0},
+    "print.roly": {"strings": "hello world", "i": 11},
 }
 
 EXPECTED_PRINTS = {
     "print_showcase.roly": [42, 84, 3, 2, 1],
+    "print.roly": ["hello world", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 }
 
 
