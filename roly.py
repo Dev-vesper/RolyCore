@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""Roly — a tiny, stable programming language.
-
-Entry point for running Roly source files and inline code:
-
-    python roly.py run script.roly
-    python roly.py -c 'x = 2 + 3'
-"""
 
 import argparse
 import sys
@@ -37,7 +30,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         source = args.code
 
-    # Pipeline: lexer -> parser -> interpreter (implemented in later steps).
     print(f"Roly: received {len(source)} characters of source.")
     return 0
 
