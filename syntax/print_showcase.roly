@@ -1,0 +1,8 @@
+x = 40 + 2
+print(x)
+print(x * 2)
+i = 3
+while (i > 0) {
+    print(i)
+    i -= 1
+}
