@@ -8,6 +8,7 @@ class T(Enum):
     IF = auto()
     ELSE = auto()
     WHILE = auto()
+    PRINT = auto()
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
     MINUS_ASSIGN = auto()
@@ -42,4 +43,5 @@ KEYWORDS = {
     "if": T.IF,
     "else": T.ELSE,
     "while": T.WHILE,
+    "print": T.PRINT,
 }
