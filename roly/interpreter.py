@@ -89,8 +89,16 @@ class Interpreter:
         elif isinstance(statement, If):
             if self.truthy(self.eval(statement.condition)):
                 self.exec_statement(statement.then_block)
-            elif statement.else_block is not None:
-                self.exec_statement(statement.else_block)
+            else:
+                matched = False
+                if statement.elifs is not None:
+                    for condition, block in statement.elifs:
+                        if self.truthy(self.eval(condition)):
+                            self.exec_statement(block)
+                            matched = True
+                            break
+                if not matched and statement.else_block is not None:
+                    self.exec_statement(statement.else_block)
         elif isinstance(statement, Block):
             self.exec_statements(statement.statements)
         elif isinstance(statement, Print):
