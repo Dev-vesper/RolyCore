@@ -329,16 +329,22 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
 <section id="control">
     <h2>Control Flow</h2>
 
-    <h3>if / else</h3>
-    <p>The condition is any expression in parentheses; the body is a braced block. The <code>else</code> branch is optional and always takes a block.</p>
+    <h3>if / else if / else</h3>
+    <p>The condition is any expression in parentheses; the body is a braced block. <code>else if</code> chains freely, and one optional <code>else</code> ends the chain.</p>
     <pre><code><span class="tok-kw">if</span> (x &gt; 10) {
     y = 1
 } <span class="tok-kw">else</span> {
     y = 2
 }
 
-<span class="tok-kw">if</span> (x == 1) { y = 10 } <span class="tok-kw">else</span> { <span class="tok-kw">if</span> (x == 2) { y = 20 } }</code></pre>
-    <div class="note">There is no <code>else if</code> construct — nest an <code>if</code> inside the <code>else</code> block. An integer condition works: zero is false, nonzero is true. A string condition is an error.</div>
+<span class="tok-kw">if</span> (x == 1) {
+    y = 10
+} <span class="tok-kw">else if</span> (x == 2) {
+    y = 20
+} <span class="tok-kw">else</span> {
+    y = 30
+}</code></pre>
+    <div class="note">Branches are checked top to bottom — the first true condition wins, and later conditions are not evaluated at all. At most one <code>else</code>, at the end of the chain. An integer condition works: zero is false, nonzero is true. A string condition is an error.</div>
 
     <div class="note">Boolean literals are <code>TRUE</code> and <code>FALSE</code> — capital letters only. Lowercase <code>true</code> / <code>false</code> are ordinary identifiers (undefined variables).</div>
 
@@ -468,7 +474,7 @@ assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
 compound_op         : '+=' | '-=' | '*=' | '/=' ;
 
-if_statement        : 'if' '(' expression ')' block ( 'else' block )? ;
+if_statement        : 'if' '(' expression ')' block ( 'else' 'if' '(' expression ')' block )* ( 'else' block )? ;
 while_statement     : 'while' '(' expression ')' block ;
 print_statement     : 'print' '(' expression ')' ;
 
