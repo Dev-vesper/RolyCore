@@ -20,7 +20,7 @@ assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
 compound_op         : '+=' | '-=' | '*=' | '/=' ;
 
-if_statement        : 'if' '(' expression ')' block ( 'else' block )? ;
+if_statement        : 'if' '(' expression ')' block ( 'else' 'if' '(' expression ')' block )* ( 'else' block )? ;
 while_statement     : 'while' '(' expression ')' block ;
 print_statement     : 'print' '(' expression ')' ;
 
