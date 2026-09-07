@@ -1,4 +1,4 @@
-fn hanoi (n: int, from: str, to: str, via: str) {
+fn hanoi(n: int, from: str, to: str, via: str) {
     if (n > 0) {
         moved = hanoi(n - 1, from, via, to)
         print("move disk from " + from + " to " + to)

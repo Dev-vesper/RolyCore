@@ -1,4 +1,4 @@
-fn is_even (n: int) {
+fn is_even(n: int) {
     if (n == 0) {
         return TRUE
     }

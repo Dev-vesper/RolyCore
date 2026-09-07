@@ -1,4 +1,4 @@
-fn josephus (n: int, k: int) {
+fn josephus(n: int, k: int) {
     if (n == 1) {
         return 0
     }
