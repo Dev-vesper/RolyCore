@@ -1,0 +1,2 @@
+class RolyError(Exception):
+    pass
