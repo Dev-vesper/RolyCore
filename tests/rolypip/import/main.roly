@@ -5,7 +5,6 @@ print(users)
 assigned = setBlock(7)
 print(testme.blocks)
 print(assigned)
-print(testme.users)
 print(banner())
 
 print(mathmyself.triple(14))
