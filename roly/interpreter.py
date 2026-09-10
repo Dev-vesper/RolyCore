@@ -22,6 +22,7 @@ from roly.ast import (
 )
 from roly.builtins import BUILTINS
 from roly.errors import RolyError
+from roly.stdlib import lib_functions
 
 DEFAULT_MAX_STEPS = 10_000_000
 MAX_CALL_DEPTH = 200
@@ -50,9 +51,11 @@ class Interpreter:
         self.steps = 0
         self.globals = {}
         self.locals_stack = []
-        self.functions = {}
+        self.functions = dict(lib_functions())
+        self.reserved = set(self.functions)
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
+        self.lib_depth = 0
         sys.setrecursionlimit(10_000)
 
     @property
@@ -64,6 +67,11 @@ class Interpreter:
     def run(self, program):
         for statement in program.statements:
             if isinstance(statement, FnDef):
+                if statement.name in self.reserved:
+                    raise RolyError(
+                        f"function '{statement.name}' is reserved "
+                        f"by the standard library"
+                    )
                 if statement.name in self.functions:
                     raise RolyError(f"function '{statement.name}' already defined")
                 self.functions[statement.name] = statement
@@ -177,13 +185,18 @@ class Interpreter:
             )
 
         frame = dict(zip([name for name, _ in function.params], args))
+        is_lib = function.name in self.reserved
         self.locals_stack.append(frame)
         self.call_depth += 1
+        if is_lib:
+            self.lib_depth += 1
         try:
             self.exec_statement(function.body)
         except ReturnSignal as signal:
             return signal.value
         finally:
+            if is_lib:
+                self.lib_depth -= 1
             self.call_depth -= 1
             self.locals_stack.pop()
         raise RolyError(f"function '{call.name}' did not return a value")
@@ -240,6 +253,11 @@ class Interpreter:
         raise RolyError(f"condition must be a number, got {value!r}")
 
     def lookup(self, name):
+        if self.lib_depth > 0:
+            frame = self.locals_stack[-1]
+            if name in frame:
+                return frame[name]
+            raise RolyError(f"undefined variable '{name}'")
         for scope in reversed(self.locals_stack):
             if name in scope:
                 return scope[name]
@@ -248,6 +266,11 @@ class Interpreter:
         raise RolyError(f"undefined variable '{name}'")
 
     def assign(self, name, value):
+        if name in self.reserved:
+            raise RolyError(f"name '{name}' is reserved by the standard library")
+        if self.lib_depth > 0:
+            self.locals_stack[-1][name] = value
+            return
         for scope in reversed(self.locals_stack):
             if name in scope:
                 scope[name] = value
