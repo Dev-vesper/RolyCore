@@ -84,3 +84,36 @@ def test_unknown_operator_raises():
 
 def test_fresh_interpreter_empty_env():
     assert Interpreter().env == {}
+
+
+def test_builtin_used_as_value_clear_error():
+    with pytest.raises(RolyError, match="'len' is a builtin, not a value"):
+        run_source("x = len")
+    with pytest.raises(RolyError, match="'format' is a builtin, not a value"):
+        run_source("x = format")
+
+
+def test_arity_checked_before_argument_effects():
+    printed = []
+    with pytest.raises(RolyError, match="expects 1 argument"):
+        run_source(
+            'fn f (a: int) { return a } fn g () { print(42) return 1 }'
+            " x = f(g(), 2)",
+            out=printed.append,
+        )
+    assert printed == []
+
+
+def test_arity_message_singular():
+    with pytest.raises(RolyError, match="expects 1 argument, got 0"):
+        run_source("fn f (a: int) { return a } x = f()")
+
+
+def test_recursion_error_becomes_clean_message():
+    body = "return r(n - 1)"
+    for _ in range(30):
+        body = "if (TRUE) { " + body + " }"
+    with pytest.raises(RolyError, match="call depth of 200"):
+        run_source(
+            "fn r (n: int) { if (n <= 0) { return 0 } " + body + " } x = r(1000)"
+        )

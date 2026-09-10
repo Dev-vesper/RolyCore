@@ -1,6 +1,7 @@
 from roly.ast import (
     Assign,
     BinOp,
+    Chain,
     Block,
     CompoundAssign,
     If,
@@ -85,7 +86,7 @@ def test_if_with_else():
     assert parse("if (x > 0) { y = 1 } else { y = 2 }") == Program(
         [
             If(
-                BinOp(">", Var("x"), Num(0)),
+                Chain([Var("x"), Num(0)], [">"]),
                 Block([Assign("y", Num(1))]),
                 Block([Assign("y", Num(2))]),
             )
@@ -97,7 +98,7 @@ def test_if_condition_is_full_expression():
     assert parse("if (a + b * 2 == 10) { }") == Program(
         [
             If(
-                BinOp("==", BinOp("+", Var("a"), BinOp("*", Var("b"), Num(2))), Num(10)),
+                Chain([BinOp("+", Var("a"), BinOp("*", Var("b"), Num(2))), Num(10)], ["=="]),
                 Block([]),
                 None,
             )
@@ -139,7 +140,7 @@ def test_while_simple():
 
 def test_while_empty_body():
     assert parse("while (x < 10) { }") == Program(
-        [While(BinOp("<", Var("x"), Num(10)), Block([]))]
+        [While(Chain([Var("x"), Num(10)], ["<"]), Block([]))]
     )
 
 
@@ -147,7 +148,7 @@ def test_while_with_multiple_statements():
     assert parse("while (a < b) { a += 1 b -= 1 }") == Program(
         [
             While(
-                BinOp("<", Var("a"), Var("b")),
+                Chain([Var("a"), Var("b")], ["<"]),
                 Block([CompoundAssign("a", "+", Num(1)), CompoundAssign("b", "-", Num(1))]),
             )
         ]
@@ -178,11 +179,11 @@ def test_full_program_mixing_everything():
         [
             Assign("x", Num(10)),
             While(
-                BinOp(">", Var("x"), Num(0)),
+                Chain([Var("x"), Num(0)], [">"]),
                 Block(
                     [
                         If(
-                            BinOp("==", BinOp("/", Var("x"), Num(2)), Num(5)),
+                            Chain([BinOp("/", Var("x"), Num(2)), Num(5)], ["=="]),
                             Block([CompoundAssign("x", "-", Num(3))]),
                             Block([CompoundAssign("x", "-", Num(1))]),
                         )

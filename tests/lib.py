@@ -73,7 +73,8 @@ def test_lib_pow():
     assert run_source("x = pow(2, 10)")["x"] == 1024
     assert run_source("x = pow(3, 0)")["x"] == 1
     assert run_source("x = pow(-2, 3)")["x"] == -8
-    assert run_source("x = pow(2, -1)")["x"] == 1
+    with pytest.raises(RolyError, match="non-negative"):
+        run_source("x = pow(2, -1)")
 
 
 def test_lib_pow_big():
@@ -98,7 +99,8 @@ def test_lib_isqrt():
     assert run_source("x = isqrt(0)")["x"] == 0
     assert run_source("x = isqrt(3)")["x"] == 1
     assert run_source("x = isqrt(4)")["x"] == 2
-    assert run_source("x = isqrt(-4)")["x"] == -4
+    with pytest.raises(RolyError, match="non-negative"):
+        run_source("x = isqrt(-4)")
 
 
 def test_lib_repeat():
@@ -129,8 +131,10 @@ def test_lib_to_base_edge_cases():
 
 
 def test_lib_to_base_invalid_base():
-    assert run_source('x = to_base(5, 1)')["x"] == ""
-    assert run_source('x = to_base(5, 17)')["x"] == ""
+    with pytest.raises(RolyError, match="between 2 and 16"):
+        run_source("x = to_base(5, 1)")
+    with pytest.raises(RolyError, match="between 2 and 16"):
+        run_source("x = to_base(5, 17)")
 
 
 def test_lib_binary_hex():
@@ -163,7 +167,10 @@ def test_lib_roman():
     assert run_source('x = roman(58)')["x"] == "LVIII"
     assert run_source('x = roman(4)')["x"] == "IV"
     assert run_source('x = roman(9)')["x"] == "IX"
-    assert run_source('x = roman(0)')["x"] == ""
+    with pytest.raises(RolyError, match="between 1 and 3999"):
+        run_source("x = roman(0)")
+    with pytest.raises(RolyError, match="between 1 and 3999"):
+        run_source("x = roman(4000)")
 
 
 def test_lib_digit_count():
@@ -245,7 +252,8 @@ def test_lib_divisor_count():
     assert run_source("x = divisor_count(28)")["x"] == 6
     assert run_source("x = divisor_count(36)")["x"] == 9
     assert run_source("x = divisor_count(1)")["x"] == 1
-    assert run_source("x = divisor_count(0)")["x"] == 0
+    with pytest.raises(RolyError, match="positive integer"):
+        run_source("x = divisor_count(0)")
 
 
 def test_lib_collatz_steps():
@@ -356,3 +364,15 @@ def test_lib_does_not_touch_user_locals():
 def test_lib_result_can_assign_to_user_variable():
     env = run_source('s = repeat("=", 3) print(digit_sum(99))')
     assert env["s"] == "==="
+
+
+def test_lib_fail_builtin_raises():
+    with pytest.raises(RolyError, match="custom message"):
+        run_source('x = fail("custom message")')
+
+
+def test_lib_negative_inputs_error():
+    with pytest.raises(RolyError, match="fibonacci: n must be non-negative"):
+        run_source("x = fibonacci(-1)")
+    with pytest.raises(RolyError, match="collatz_steps: n must be a positive"):
+        run_source("x = collatz_steps(0)")

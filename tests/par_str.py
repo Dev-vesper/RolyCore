@@ -1,6 +1,6 @@
 import pytest
 
-from roly.ast import BinOp, Num, Print, Str, Var
+from roly.ast import BinOp, Chain, Num, Print, Str, Var
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
 
@@ -33,7 +33,7 @@ def test_string_with_number_literal():
 
 def test_string_compared_in_condition():
     program = parse('if ("a" == "a") { x = 1 }')
-    assert program.statements[0].condition == BinOp("==", Str("a"), Str("a"))
+    assert program.statements[0].condition == Chain([Str("a"), Str("a")], ["=="])
 
 
 def test_string_variable_expression():

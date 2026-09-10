@@ -57,7 +57,12 @@ EXPECTED_PRINTS = {
 def run_syntax_file(name):
     source = (SYNTAX_DIR / name).read_text(encoding="utf-8")
     printed = []
-    env = run_source(source, out=printed.append, base_dir=SYNTAX_DIR)
+    env = run_source(
+        source,
+        out=printed.append,
+        base_dir=SYNTAX_DIR,
+        entry_path=SYNTAX_DIR / name,
+    )
     return env, printed
 
 

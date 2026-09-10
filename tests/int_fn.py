@@ -260,7 +260,7 @@ def test_deep_but_valid_recursion():
 
 
 def test_function_not_a_value():
-    with pytest.raises(RolyError, match="undefined variable 'f'"):
+    with pytest.raises(RolyError, match="'f' is a function, call it as"):
         run_source("fn f () { return 1 } x = f")
 
 

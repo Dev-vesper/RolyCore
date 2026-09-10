@@ -292,7 +292,7 @@ def test_brace_function_arg_types_checked(tmp_path):
 
 def test_brace_function_name_read_as_variable_errors(tmp_path):
     write_module(tmp_path, "testme", "fn f () { return 1 }")
-    with pytest.raises(RolyError, match="undefined variable 'f'"):
+    with pytest.raises(RolyError, match="'f' is a function, call it as"):
         run_source("import testme {f} x = f", base_dir=tmp_path)
 
 
@@ -661,3 +661,21 @@ def test_qualified_call_counts_steps(tmp_path):
             base_dir=tmp_path,
             max_steps=250,
         )
+
+
+def test_brace_variable_colliding_with_user_fn_errors(tmp_path):
+    write_module(tmp_path, "testme", "x = 9")
+    with pytest.raises(RolyError, match="'x' is already a function name"):
+        run_source("fn x () { return 1 } import testme {x}", base_dir=tmp_path)
+
+
+def test_module_arity_checked_before_argument_effects(tmp_path):
+    write_module(tmp_path, "testme", "fn f (a: int) { return a }")
+    printed = []
+    with pytest.raises(RolyError, match="expects 1 argument"):
+        run_source(
+            'import testme fn g () { print(42) return 1 } x = testme.f(g(), 2)',
+            base_dir=tmp_path,
+            out=printed.append,
+        )
+    assert printed == []
