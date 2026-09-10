@@ -54,6 +54,12 @@ PARAM_TYPES = {
     T.BOOL_TYPE: bool,
 }
 
+BUILTIN_NAMES = {
+    T.INT_TYPE: "int",
+    T.STR_TYPE: "str",
+    T.BOOL_TYPE: "bool",
+}
+
 
 class ParseError(Exception):
     def __init__(self, message, token):
@@ -313,6 +319,15 @@ class Parser:
             if self.check(T.LPAREN):
                 return self.parse_call_tail(token.value)
             return Var(token.value)
+        if token.type in BUILTIN_NAMES:
+            self.advance()
+            if self.check(T.LPAREN):
+                return self.parse_call_tail(BUILTIN_NAMES[token.type])
+            raise ParseError(
+                f"expected '(' after '{token.value}', "
+                f"got {self.describe(self.current())}",
+                self.current(),
+            )
         if token.type is T.MINUS:
             self.advance()
             return Neg(self.parse_primary())

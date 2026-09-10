@@ -20,6 +20,8 @@ from roly.ast import (
     Var,
     While,
 )
+from roly.builtins import BUILTINS
+from roly.errors import RolyError
 
 DEFAULT_MAX_STEPS = 10_000_000
 MAX_CALL_DEPTH = 200
@@ -27,10 +29,6 @@ MAX_CALL_DEPTH = 200
 
 def _stdout_print(value):
     print(value)
-
-
-class RolyError(Exception):
-    pass
 
 
 class BreakSignal(Exception):
@@ -155,6 +153,8 @@ class Interpreter:
 
     def call_function(self, call):
         self.count_step()
+        if call.name in BUILTINS:
+            return self.call_builtin(call)
         if call.name not in self.functions:
             raise RolyError(f"undefined function '{call.name}'")
         function = self.functions[call.name]
@@ -187,6 +187,14 @@ class Interpreter:
             self.call_depth -= 1
             self.locals_stack.pop()
         raise RolyError(f"function '{call.name}' did not return a value")
+
+    def call_builtin(self, call):
+        if len(call.args) != 1:
+            raise RolyError(
+                f"builtin '{call.name}' expects 1 argument, "
+                f"got {len(call.args)}"
+            )
+        return BUILTINS[call.name](self.eval(call.args[0]))
 
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool"}[param_type]
