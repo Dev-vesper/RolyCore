@@ -235,12 +235,21 @@ class Parser:
         self.match(T.FN, "'fn'")
         name_token = self.match(T.IDENT, "a function name")
         params = []
+        seen = set()
         self.match(T.LPAREN, "'('")
         if not self.check(T.RPAREN):
             params.append(self.parse_parameter())
+            seen.add(params[0][0])
             while self.check(T.COMMA):
                 self.advance()
-                params.append(self.parse_parameter())
+                param = self.parse_parameter()
+                if param[0] in seen:
+                    raise ParseError(
+                        f"duplicate parameter '{param[0]}'",
+                        self.current(),
+                    )
+                seen.add(param[0])
+                params.append(param)
         self.match(T.RPAREN, "')' or ','")
 
         self.fn_depth += 1
