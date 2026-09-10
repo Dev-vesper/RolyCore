@@ -185,8 +185,8 @@ def test_module_state_live_between_calls(tmp_path):
 
 
 def test_module_fn_reads_own_globals(tmp_path):
-    write_module(tmp_path, "testme", "base = 10 fn get () { return base }")
-    env = run_source("import testme x = testme.get()", base_dir=tmp_path)
+    write_module(tmp_path, "testme", "base = 10 fn fetch () { return base }")
+    env = run_source("import testme x = testme.fetch()", base_dir=tmp_path)
     assert env["x"] == 10
 
 
@@ -235,11 +235,11 @@ def test_brace_variable_read_without_prefix(tmp_path):
 
 def test_brace_variable_read_is_live(tmp_path):
     write_module(
-        tmp_path, "testme", "users = 0 fn set (n: int) { users = n return users }"
+        tmp_path, "testme", "users = 0 fn store (n: int) { users = n return users }"
     )
     env = run_source(
-        "import testme {users, set}"
-        " a = users b = set(7) c = users d = testme.users",
+        "import testme {users, store}"
+        " a = users b = store(7) c = users d = testme.users",
         base_dir=tmp_path,
     )
     assert env["a"] == 0
@@ -371,10 +371,10 @@ def test_module_shared_across_importers(tmp_path):
 
 
 def test_module_cannot_see_main_globals(tmp_path):
-    write_module(tmp_path, "testme", "fn get () { return mainonly }")
+    write_module(tmp_path, "testme", "fn fetch () { return mainonly }")
     with pytest.raises(RolyError, match="undefined variable 'mainonly'"):
         run_source(
-            "mainonly = 7 import testme x = testme.get()", base_dir=tmp_path
+            "mainonly = 7 import testme x = testme.fetch()", base_dir=tmp_path
         )
 
 

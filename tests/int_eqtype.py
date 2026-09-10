@@ -97,3 +97,52 @@ def test_chained_comparison_first_false_pair_wins():
 def test_chained_comparison_type_error_still_raised():
     with pytest.raises(RolyError, match="requires integer operands"):
         run_source('x = 1 < 2 < "a"')
+
+
+def test_empty_lists_equal():
+    assert run_source("x = list() == list()")["x"] is True
+
+
+def test_lists_equal_structurally():
+    env = run_source(
+        "a = push(push(list(), 1), 2) b = push(push(list(), 1), 2) x = a == b"
+    )
+    assert env["x"] is True
+
+
+def test_lists_unequal_by_length_and_content():
+    assert run_source("x = push(list(), 1) == list()")["x"] is False
+    assert run_source("x = push(list(), 1) == push(list(), 2)")["x"] is False
+
+
+def test_list_never_equals_non_list():
+    assert run_source("x = list() == 0")["x"] is False
+    assert run_source('x = list() == ""')["x"] is False
+
+
+def test_bool_inside_list_never_equals_int():
+    env = run_source(
+        "a = push(list(), TRUE) b = push(list(), 1) x = a == b"
+    )
+    assert env["x"] is False
+
+
+def test_mixed_lists_equal_structurally():
+    env = run_source(
+        'a = list() a = push(a, 1) a = push(a, "x") '
+        'b = list() b = push(b, 1) b = push(b, "x") '
+        "x = a == b"
+    )
+    assert env["x"] is True
+
+
+def test_nested_lists_equal_structurally():
+    env = run_source(
+        "a = push(list(), push(list(), 1)) b = push(list(), push(list(), 1)) x = a == b"
+    )
+    assert env["x"] is True
+
+
+def test_list_inequality():
+    assert run_source("x = push(list(), 1) != push(list(), 1)")["x"] is False
+    assert run_source("x = list() != push(list(), 1)")["x"] is True

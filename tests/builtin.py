@@ -208,3 +208,186 @@ def test_str_from_counter_and_bench():
         out=printed.append,
     )
     assert printed == ["i=0", "i=1", "i=2"]
+
+
+def test_parse_list_builtin_call():
+    node = parse("x = list()").statements[0].value
+    assert node.name == "list"
+
+
+def test_lex_list_keyword():
+    from roly.tokens import T
+
+    tokens = Lexer("list").tokenize()
+    assert tokens[0].type is T.LIST_TYPE
+    tokens = Lexer("listing").tokenize()
+    assert tokens[0].type is T.IDENT
+    tokens = Lexer("List").tokenize()
+    assert tokens[0].type is T.IDENT
+
+
+def test_bare_list_in_expression_is_error():
+    with pytest.raises(ParseError):
+        parse("x = list")
+
+
+def test_list_parameter_type_parses():
+    assert parse("fn f (l: list) { return l }").statements[0].name == "f"
+
+
+def test_list_parameter_name_is_error():
+    with pytest.raises(ParseError):
+        parse("fn f (list: int) { return list }")
+
+
+def test_empty_list():
+    assert run_source("x = list()")["x"] == []
+
+
+def test_list_from_string():
+    assert run_source('x = list("abc")')["x"] == ["a", "b", "c"]
+    assert run_source('x = list("")')["x"] == []
+
+
+def test_list_from_non_string_errors():
+    with pytest.raises(RolyError, match="expects a str"):
+        run_source("x = list(42)")
+
+
+def test_list_two_args_errors():
+    with pytest.raises(RolyError, match="no arguments or a str"):
+        run_source('x = list("a", "b")')
+
+
+def test_push_appends_and_returns_new_list():
+    env = run_source("a = list() b = push(a, 5) c = push(b, 9)")
+    assert env["a"] == []
+    assert env["b"] == [5]
+    assert env["c"] == [5, 9]
+
+
+def test_push_is_immutable():
+    env = run_source("a = push(list(), 1) b = push(a, 2)")
+    assert env["a"] == [1]
+    assert env["b"] == [1, 2]
+
+
+def test_push_accepts_any_value_type():
+    env = run_source('b = list() b = push(b, 1) b = push(b, "x") b = push(b, TRUE)')
+    assert env["b"] == [1, "x", True]
+
+
+def test_push_non_list_errors():
+    with pytest.raises(RolyError, match="expects a list"):
+        run_source("x = push(5, 1)")
+
+
+def test_push_arity_checked():
+    with pytest.raises(RolyError, match="expects 2 arguments"):
+        run_source("x = push(list())")
+
+
+def test_get_returns_element():
+    assert run_source('x = get(list("abc"), 1)')["x"] == "b"
+
+
+def test_get_out_of_range_errors():
+    with pytest.raises(RolyError, match="index 3 out of range for length 3"):
+        run_source('x = get(list("abc"), 3)')
+    with pytest.raises(RolyError, match="index -1 out of range"):
+        run_source('x = get(list("abc"), -1)')
+    with pytest.raises(RolyError, match="index 0 out of range for length 0"):
+        run_source("x = get(list(), 0)")
+
+
+def test_get_wrong_types_error():
+    with pytest.raises(RolyError, match="expects a list"):
+        run_source('x = get("abc", 0)')
+    with pytest.raises(RolyError, match="expects an int index"):
+        run_source('x = get(list("abc"), "0")')
+
+
+def test_get_arity_checked():
+    with pytest.raises(RolyError, match="expects 2 arguments"):
+        run_source("x = get(list())")
+
+
+def test_set_replaces_and_returns_new_list():
+    env = run_source("a = list() a = push(a, 1) a = push(a, 2) b = set(a, 0, 50)")
+    assert env["a"] == [1, 2]
+    assert env["b"] == [50, 2]
+
+
+def test_set_out_of_range_errors():
+    with pytest.raises(RolyError, match="index 2 out of range for length 2"):
+        run_source("x = set(push(push(list(), 1), 2), 2, 9)")
+    with pytest.raises(RolyError, match="index -1 out of range"):
+        run_source("x = set(list(), -1, 9)")
+
+
+def test_set_arity_checked():
+    with pytest.raises(RolyError, match="expects 3 arguments"):
+        run_source("x = set(list(), 0)")
+
+
+def test_len_of_list():
+    assert run_source("x = len(list())")["x"] == 0
+    assert run_source('x = len(list("abc"))')["x"] == 3
+    assert run_source("x = len(push(list(), 1))")["x"] == 1
+
+
+def test_len_of_int_still_errors():
+    with pytest.raises(RolyError, match="expects a str or a list"):
+        run_source("x = len(42)")
+
+
+def test_list_names_are_reserved():
+    with pytest.raises(RolyError, match="builtin"):
+        run_source("push = 5")
+    with pytest.raises(RolyError, match="builtin"):
+        run_source("fn get () { return 1 }")
+    with pytest.raises(RolyError, match="builtin"):
+        run_source("fn f (set: int) { return set }")
+
+
+def test_int_from_list_errors():
+    with pytest.raises(RolyError, match="cannot convert"):
+        run_source("x = int(list())")
+
+
+def test_bool_from_list_errors():
+    with pytest.raises(RolyError, match="cannot convert"):
+        run_source("x = bool(list())")
+
+
+def test_str_of_list_renders_python_style():
+    assert run_source("x = str(push(list(), 42))")["x"] == "[42]"
+    assert run_source('x = str(list("ab"))')["x"] == "['a', 'b']"
+
+
+def test_list_as_function_argument():
+    env = run_source(
+        "fn head (l: list) { return get(l, 0) } x = head(list(\"ab\"))"
+    )
+    assert env["x"] == "a"
+
+
+def test_list_argument_type_checked():
+    with pytest.raises(RolyError, match="must be list"):
+        run_source("fn f (l: list) { return l } x = f(5)")
+
+
+def test_list_not_truthy_in_condition():
+    with pytest.raises(RolyError, match="condition must be a number"):
+        run_source("if (list()) { x = 1 }")
+
+
+def test_list_in_format():
+    printed = []
+    run_source('print(format("l={}", push(list(), 7)))', out=printed.append)
+    assert printed == ["l=[7]"]
+
+
+def test_list_plus_list_errors():
+    with pytest.raises(RolyError, match="requires integer operands"):
+        run_source("x = list() + list()")
