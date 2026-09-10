@@ -46,6 +46,6 @@ The suite executes the real Roly programs in `syntax/` as part of the tests, so 
 
 - Any Python 3.13+ interpreter works; no third-party packages are needed to run the language itself.
 - Exit code is `0` on success and `1` on any lex, parse, or runtime error, with the error message (including line/column for lex and parse errors) written to stderr.
-- There is a step limit (10,000,000 statements) protecting against infinite loops like `while (1) { }`.
+- There is a step limit (10,000,000 executed statements and function calls) protecting against infinite loops like `while (1) { }`.
 - Nesting of parentheses and blocks is limited to 100 levels; deeper programs fail with a clean parse error instead of a Python traceback.
 - Integer division floors toward negative infinity: `7 / 2` is `3`.
