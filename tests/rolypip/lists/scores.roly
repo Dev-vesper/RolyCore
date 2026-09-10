@@ -1,0 +1,18 @@
+scores = list()
+scores = push(scores, 87)
+scores = push(scores, 42)
+scores = push(scores, 95)
+scores = push(scores, 68)
+
+sorted_scores = sort_list(scores)
+
+print(format("all: {}", join(scores, " ")))
+print(format("sorted: {}", join(sorted_scores, " ")))
+print(format("sum={} avg={} max={} min={}",
+    sum_list(scores),
+    sum_list(scores) / len(scores),
+    max_list(scores),
+    min_list(scores)))
+
+top = remove_at(sorted_scores, 0)
+print(format("without the lowest: {}", join(top, " ")))

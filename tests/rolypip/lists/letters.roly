@@ -1,0 +1,15 @@
+letters = list("roly")
+print(letters)
+print(join(reverse_list(letters), ""))
+
+shifted = list()
+i = 0
+while (i < len(letters)) {
+    c = char_lower(get(letters, i))
+    shifted = push(shifted, char_upper(c))
+    i += 1
+}
+print(join(shifted, ""))
+
+nested = push(list(), letters)
+print(nested == push(list(), list("roly")))

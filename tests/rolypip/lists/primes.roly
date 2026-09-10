@@ -1,0 +1,20 @@
+primes = list()
+n = 2
+while (n < 50) {
+    prime = TRUE
+    d = 2
+    while (d * d <= n) {
+        if (n / d * d == n) {
+            prime = FALSE
+            break
+        }
+        d += 1
+    }
+    if (prime) {
+        primes = push(primes, n)
+    }
+    n += 1
+}
+
+print(join(primes, " "))
+print(len(primes))
