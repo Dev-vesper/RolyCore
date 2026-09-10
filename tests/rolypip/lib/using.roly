@@ -3,13 +3,20 @@ b = 36
 
 print(gcd(a, b))
 print(lcm(a, b))
+print(mod(a, b))
 print(max(a, b) + abs(-5))
-print(sqrt(a * b))
+print(isqrt(a * b))
 
 n = 123456789
-print(digitsum(n))
-print(reverse(n))
-print(count_digits(fact(12)))
+print(digit_sum(n))
+print(reverse_digits(n))
+print(is_palindrome(n))
+
+print(group(factorial(12)))
+print(hex(4096))
+print(binary(255))
+print(pad(7, 4))
+print(roman(1994))
 
 banner = "+" + repeat("-", 20) + "+"
 print(banner)

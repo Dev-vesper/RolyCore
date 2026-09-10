@@ -1,11 +1,11 @@
-fn factorial(n: int) {
+fn rec_fact(n: int) {
     if (n <= 1) { return 1 }
-    return n * factorial(n - 1)
+    return n * rec_fact(n - 1)
 }
 
-fn fibonacci (n: int) {
+fn rec_fib (n: int) {
     if (n < 2) { return n }
-    return fibonacci(n - 1) + fibonacci(n - 2)
+    return rec_fib(n - 1) + rec_fib(n - 2)
 }
 
 fn sgn (n: int) {
@@ -14,8 +14,8 @@ fn sgn (n: int) {
     return 0
 }
 
-print(factorial(10))
-print(fibonacci(15))
+print(rec_fact(10))
+print(rec_fib(15))
 print(sgn(-42))
 print(sgn(0))
 print(sgn(42))
