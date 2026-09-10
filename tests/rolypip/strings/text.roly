@@ -1,0 +1,21 @@
+name = "  Roly Core  "
+clean = trim(name)
+
+print(format("[{}]", clean))
+print(format("upper={} lower={}", upper(clean), lower(clean)))
+print(format("len={} first={}", len(clean), char(clean, 0)))
+
+if (starts_with(clean, "Roly")) {
+    print("starts with Roly")
+}
+if (contains(clean, "ly C")) {
+    print("contains 'ly C'")
+}
+
+eq = index_of("author=roly", "=")
+print(format("key={} value={}", substr("author=roly", 0, eq), substr("author=roly", eq + 1, len("author=roly"))))
+
+word = "racecar"
+print(format("{} reversed is {}", word, reverse_str(word)))
+print(is_palindrome_str(word))
+print(count_sub("abababa", "aba"))
