@@ -1,0 +1,12 @@
+fn triple (n: int) {
+    return n * 3
+}
+
+fn average (a: int, b: int) {
+    return (a + b) / 2
+}
+
+fn is_square (n: int) {
+    r = isqrt(n)
+    return r * r == n
+}

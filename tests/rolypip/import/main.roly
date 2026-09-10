@@ -1,0 +1,13 @@
+import testme {users, setBlock, banner}
+import mathmyself
+
+print(testme.users)
+assigned = testme.setBlock(7)
+print(testme.users)
+print(testme.banner())
+
+print(mathmyself.triple(14))
+print(mathmyself.average(10, 21))
+if (mathmyself.is_square(144)) {
+    print("144 is a perfect square")
+}

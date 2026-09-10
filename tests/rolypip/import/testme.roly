@@ -1,0 +1,12 @@
+users = 0
+blocks = 0
+
+fn setBlock (count: int) {
+    users = count
+    blocks += 1
+    return users
+}
+
+fn banner () {
+    return format("[{} users, {} block(s) set]", users, blocks)
+}
