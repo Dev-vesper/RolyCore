@@ -566,15 +566,15 @@ print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
 x = testme.users
 y = testme.setBlock(7)</code></pre>
 
-    <h3>Choosing members</h3>
-    <p>Braces list the members you want — only those are reachable through the module. Without braces, every member is. The braces never bring names in directly: <code>users</code> stays an undefined variable, only <code>testme.users</code> works.</p>
+    <h3>Bringing names in</h3>
+    <p>With or without braces, every member stays reachable through the module's name — braces never restrict access. What braces do is bring the listed names in directly, so you can use them without writing the module name.</p>
     <pre><code><span class="tok-kw">import</span> testme {users, setBlock}
 
 x = testme.users          <span class="tok-com">// works</span>
-y = testme.setBlock(7)    <span class="tok-com">// works</span>
-z = testme.hidden         <span class="tok-com">// error — was not imported</span>
-w = users                 <span class="tok-com">// error — undefined variable</span></code></pre>
-    <div class="note">Importing again with more names extends the list, and a plain re-import opens everything — the module itself still runs only once.</div>
+y = testme.blocks         <span class="tok-com">// also works — braces do not hide anything</span>
+z = setBlock(7)           <span class="tok-com">// works — the name came in with the braces</span>
+w = hidden                <span class="tok-com">// error — only listed names come in</span></code></pre>
+    <div class="note">A name that comes in with braces is read live: if a module function changes <code>users</code>, the bare <code>users</code> shows the new value. Assigning to it yourself (<code>users = 5</code>) replaces your copy — the module keeps its own value.</div>
 
     <h3>Members</h3>
     <p><code>testme.x</code> reads a variable; <code>testme.f(...)</code> calls a function — the parentheses decide, like everywhere else in Roly. Members are read-only from outside: an assignment like <code>testme.x = 5</code> is a parse error. A module function can change its own globals, and later reads see the new values.</p>
@@ -605,6 +605,7 @@ d = counter.c        <span class="tok-com">// 2 — reads the live value</span><
         <li>module functions cannot see the locals of the function calling them</li>
         <li>library and built-in names are not module members — <code>testme.gcd</code> does not work</li>
         <li>member names follow identifier rules — keywords cannot be members</li>
+        <li>a brace name replaces a variable with the same name; a brace function colliding with one of your functions is an error</li>
         <li><code>import</code> is a keyword; it cannot be used as a variable or function name</li>
     </ul>
 </section>
