@@ -1,0 +1,94 @@
+fn pow(b: int, e: int) {
+    r = 1
+    i = 0
+    while (i < e) {
+        r *= b
+        i += 1
+    }
+    return r
+}
+
+fn sqrt(n: int) {
+    if (n < 2) {
+        return n
+    }
+    x = n
+    y = (x + n / x) / 2
+    while (y < x) {
+        x = y
+        y = (x + n / x) / 2
+    }
+    return x
+}
+
+fn gcd(a: int, b: int) {
+    if (a < 0) {
+        a = -a
+    }
+    if (b < 0) {
+        b = -b
+    }
+    while (b != 0) {
+        t = a - a / b * b
+        a = b
+        b = t
+    }
+    return a
+}
+
+fn lcm(a: int, b: int) {
+    g = gcd(a, b)
+    if (g == 0) {
+        return 0
+    }
+    r = a / g * b
+    if (r < 0) {
+        return -r
+    }
+    return r
+}
+
+fn fact(n: int) {
+    r = 1
+    i = 2
+    while (i <= n) {
+        r *= i
+        i += 1
+    }
+    return r
+}
+
+fn fib(n: int) {
+    a = 0
+    b = 1
+    i = 0
+    while (i < n) {
+        t = a + b
+        a = b
+        b = t
+        i += 1
+    }
+    return a
+}
+
+fn is_prime(n: int) {
+    if (n < 2) {
+        return FALSE
+    }
+    d = 2
+    while (d * d <= n) {
+        if (n / d * d == n) {
+            return FALSE
+        }
+        d += 1
+    }
+    return TRUE
+}
+
+fn is_even(n: int) {
+    return n / 2 * 2 == n
+}
+
+fn is_odd(n: int) {
+    return n / 2 * 2 != n
+}

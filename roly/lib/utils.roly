@@ -1,0 +1,97 @@
+fn abs(n: int) {
+    if (n < 0) {
+        return -n
+    }
+    return n
+}
+
+fn sign(n: int) {
+    if (n < 0) {
+        return -1
+    }
+    if (n > 0) {
+        return 1
+    }
+    return 0
+}
+
+fn max(a: int, b: int) {
+    if (a > b) {
+        return a
+    }
+    return b
+}
+
+fn min(a: int, b: int) {
+    if (a < b) {
+        return a
+    }
+    return b
+}
+
+fn clamp(n: int, lo: int, hi: int) {
+    if (n < lo) {
+        return lo
+    }
+    if (n > hi) {
+        return hi
+    }
+    return n
+}
+
+fn digitsum(n: int) {
+    if (n < 0) {
+        n = -n
+    }
+    s = 0
+    while (n > 0) {
+        s += n - n / 10 * 10
+        n /= 10
+    }
+    return s
+}
+
+fn count_digits(n: int) {
+    if (n < 0) {
+        n = -n
+    }
+    c = 1
+    while (n > 9) {
+        c += 1
+        n /= 10
+    }
+    return c
+}
+
+fn reverse(n: int) {
+    m = n
+    if (m < 0) {
+        m = -m
+    }
+    r = 0
+    while (m > 0) {
+        r = r * 10 + m - m / 10 * 10
+        m /= 10
+    }
+    if (n < 0) {
+        return -r
+    }
+    return r
+}
+
+fn repeat(s: str, n: int) {
+    r = ""
+    i = 0
+    while (i < n) {
+        r = r + s
+        i += 1
+    }
+    return r
+}
+
+fn sum_to(n: int) {
+    if (n < 1) {
+        return 0
+    }
+    return (n + 1) * n / 2
+}
