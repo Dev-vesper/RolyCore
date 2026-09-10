@@ -145,3 +145,10 @@ def test_while_inside_fn_body_allows_break():
     while_loop = body[0]
     assert while_loop.body.statements[0].__class__.__name__ == "Break"
     assert body[1] == Return(Num(1))
+
+
+def test_duplicate_parameter_errors():
+    with pytest.raises(ParseError, match="duplicate parameter 'a'"):
+        parse("fn f (a: int, a: int) { return a }")
+    with pytest.raises(ParseError, match="duplicate parameter 'b'"):
+        parse("fn f (a: int, b: str, b: bool) { return a }")

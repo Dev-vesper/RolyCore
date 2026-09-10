@@ -198,3 +198,13 @@ def test_string_functions_do_not_touch_user_globals():
     assert env["ls"] == 7
     assert env["lf"] == 8
     assert env["match"] == 9
+
+
+def test_index_from_negative_start_clamps():
+    assert run_source('x = index_from("abc", "a", -1)')["x"] == 0
+    assert run_source('x = index_from("abc", "c", -5)')["x"] == 2
+
+
+def test_index_from_empty_sub_beyond_length():
+    assert run_source('x = index_from("abc", "", 5)')["x"] == -1
+    assert run_source('x = index_from("abc", "", 2)')["x"] == 2

@@ -110,3 +110,29 @@ def test_if_else_program():
 def test_invalid_character_raises(source):
     with pytest.raises(LexError):
         Lexer(source).tokenize()
+
+
+def test_line_comment_skipped():
+    assert types("x = 1 // trailing") == types("x = 1")
+
+
+def test_line_comment_alone():
+    assert types("// whole line\nx = 1") == types("x = 1")
+
+
+def test_line_comment_at_eof_without_newline():
+    assert types("x = 1 // end") == types("x = 1")
+
+
+def test_only_comment_yields_eof():
+    assert types("// nothing") == [T.EOF]
+
+
+def test_comment_after_compound_slash_assign():
+    assert types("x /= 2 // halve") == types("x /= 2")
+
+
+def test_double_slash_in_string_is_content():
+    tokens = Lexer('x = "http://roly"').tokenize()
+    assert tokens[2].type is T.STRING
+    assert tokens[2].value == "http://roly"

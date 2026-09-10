@@ -267,3 +267,35 @@ def test_function_not_a_value():
 def test_call_counted_in_step_limit():
     with pytest.raises(RolyError, match="step limit"):
         run_source("fn f () { return f() } x = f()", max_steps=30)
+
+
+def test_callee_cannot_read_caller_local():
+    with pytest.raises(RolyError, match="undefined variable 'v'"):
+        run_source(
+            "fn inner () { return v } fn outer (n: int) { v = n + 1 return inner() }"
+            " x = outer(3)"
+        )
+
+
+def test_callee_cannot_write_caller_local():
+    env = run_source(
+        "fn g () { t = 5 return t }"
+        " fn f (n: int) { t = n + 1 x = g() return t }"
+        " x = f(10)"
+    )
+    assert env["x"] == 11
+
+
+def test_sibling_calls_have_separate_locals():
+    env = run_source(
+        "fn a () { t = 1 return t } fn b () { t = 2 return t } x = a() y = b()"
+    )
+    assert env["x"] == 1
+    assert env["y"] == 2
+
+
+def test_reserved_parameter_name_errors():
+    with pytest.raises(RolyError, match="parameter 'gcd' of 'f' is reserved"):
+        run_source("fn f (gcd: int) { return gcd }")
+    with pytest.raises(RolyError, match="parameter 'len' of 'f' is a builtin"):
+        run_source("fn f (len: int) { return len }")

@@ -623,3 +623,41 @@ def test_module_global_updated_during_load_visible(tmp_path):
     )
     assert env["a"] == 5
     assert env["b"] == 7
+
+
+def test_module_can_reference_itself_qualified(tmp_path):
+    write_module(
+        tmp_path,
+        "testme",
+        "c = 0 fn bump () { c += 1 return c }"
+        " fn go () { return testme.bump() + testme.bump() }",
+    )
+    env = run_source(
+        "import testme a = testme.go() b = testme.c", base_dir=tmp_path
+    )
+    assert env["a"] == 3
+    assert env["b"] == 2
+
+
+def test_module_self_reference_at_top_level(tmp_path):
+    write_module(
+        tmp_path, "testme", "fn five () { return 5 } top = testme.five()"
+    )
+    env = run_source("import testme a = testme.top", base_dir=tmp_path)
+    assert env["a"] == 5
+
+
+def test_import_self_inside_module_still_circular(tmp_path):
+    write_module(tmp_path, "looped", "import looped x = 1")
+    with pytest.raises(RolyError, match="circular import"):
+        run_source("import looped", base_dir=tmp_path)
+
+
+def test_qualified_call_counts_steps(tmp_path):
+    write_module(tmp_path, "testme", "fn f () { return 1 }")
+    with pytest.raises(RolyError, match="step limit"):
+        run_source(
+            "import testme i = 0 while (i < 100) { i = testme.f() }",
+            base_dir=tmp_path,
+            max_steps=250,
+        )
