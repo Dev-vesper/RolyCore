@@ -1,8 +1,10 @@
-import testme {users, setBlock, banner}
+import testme
 import mathmyself
 
 print(testme.users)
 assigned = testme.setBlock(7)
+print(testme.blocks)
+print(assigned)
 print(testme.users)
 print(testme.banner())
 
