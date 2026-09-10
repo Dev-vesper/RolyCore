@@ -33,7 +33,8 @@ return_statement    : 'return' expression ;
 block               : '{' statement* '}' ;
 
 expression          : comparison ;
-comparison          : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
+comparison          : additive ( comparison_op additive )+ ;
+comparison_op       : '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;

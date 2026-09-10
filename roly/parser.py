@@ -5,6 +5,7 @@ from roly.ast import (
     Bool,
     Break,
     Call,
+    Chain,
     CompoundAssign,
     Continue,
     FnDef,
@@ -238,15 +239,17 @@ class Parser:
         seen = set()
         self.match(T.LPAREN, "'('")
         if not self.check(T.RPAREN):
-            params.append(self.parse_parameter())
-            seen.add(params[0][0])
+            first = self.parse_parameter()
+            params.append(first)
+            seen.add(first[0])
             while self.check(T.COMMA):
                 self.advance()
+                name = self.current()
                 param = self.parse_parameter()
                 if param[0] in seen:
                     raise ParseError(
                         f"duplicate parameter '{param[0]}'",
-                        self.current(),
+                        name,
                     )
                 seen.add(param[0])
                 params.append(param)
@@ -302,10 +305,14 @@ class Parser:
 
     def parse_comparison(self):
         node = self.parse_additive()
+        if self.current().type not in COMPARISON_OPS:
+            return node
+        operands = [node]
+        ops = []
         while self.current().type in COMPARISON_OPS:
-            op = COMPARISON_OPS[self.advance().type]
-            node = BinOp(op, node, self.parse_additive())
-        return node
+            ops.append(COMPARISON_OPS[self.advance().type])
+            operands.append(self.parse_additive())
+        return Chain(operands, ops)
 
     def parse_additive(self):
         node = self.parse_multiplicative()
