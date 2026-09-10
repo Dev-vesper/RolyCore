@@ -1,3 +1,48 @@
+fn abs(n: int) {
+    if (n < 0) {
+        return -n
+    }
+    return n
+}
+
+fn sign(n: int) {
+    if (n < 0) {
+        return -1
+    }
+    if (n > 0) {
+        return 1
+    }
+    return 0
+}
+
+fn min(a: int, b: int) {
+    if (a < b) {
+        return a
+    }
+    return b
+}
+
+fn max(a: int, b: int) {
+    if (a > b) {
+        return a
+    }
+    return b
+}
+
+fn clamp(n: int, lo: int, hi: int) {
+    if (n < lo) {
+        return lo
+    }
+    if (n > hi) {
+        return hi
+    }
+    return n
+}
+
+fn mod(n: int, d: int) {
+    return n - n / d * d
+}
+
 fn pow(b: int, e: int) {
     r = 1
     i = 0
@@ -6,19 +51,6 @@ fn pow(b: int, e: int) {
         i += 1
     }
     return r
-}
-
-fn sqrt(n: int) {
-    if (n < 2) {
-        return n
-    }
-    x = n
-    y = (x + n / x) / 2
-    while (y < x) {
-        x = y
-        y = (x + n / x) / 2
-    }
-    return x
 }
 
 fn gcd(a: int, b: int) {
@@ -48,47 +80,15 @@ fn lcm(a: int, b: int) {
     return r
 }
 
-fn fact(n: int) {
-    r = 1
-    i = 2
-    while (i <= n) {
-        r *= i
-        i += 1
-    }
-    return r
-}
-
-fn fib(n: int) {
-    a = 0
-    b = 1
-    i = 0
-    while (i < n) {
-        t = a + b
-        a = b
-        b = t
-        i += 1
-    }
-    return a
-}
-
-fn is_prime(n: int) {
+fn isqrt(n: int) {
     if (n < 2) {
-        return FALSE
+        return n
     }
-    d = 2
-    while (d * d <= n) {
-        if (n / d * d == n) {
-            return FALSE
-        }
-        d += 1
+    x = n
+    y = (x + n / x) / 2
+    while (y < x) {
+        x = y
+        y = (x + n / x) / 2
     }
-    return TRUE
-}
-
-fn is_even(n: int) {
-    return n / 2 * 2 == n
-}
-
-fn is_odd(n: int) {
-    return n / 2 * 2 != n
+    return x
 }

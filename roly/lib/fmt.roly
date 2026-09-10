@@ -1,0 +1,166 @@
+fn repeat(s: str, n: int) {
+    r = ""
+    i = 0
+    while (i < n) {
+        r = r + s
+        i += 1
+    }
+    return r
+}
+
+fn digit_char(d: int) {
+    if (d < 10) {
+        return str(d)
+    }
+    if (d == 10) {
+        return "a"
+    }
+    if (d == 11) {
+        return "b"
+    }
+    if (d == 12) {
+        return "c"
+    }
+    if (d == 13) {
+        return "d"
+    }
+    if (d == 14) {
+        return "e"
+    }
+    return "f"
+}
+
+fn to_base(n: int, base: int) {
+    if (base < 2) {
+        return ""
+    }
+    if (base > 16) {
+        return ""
+    }
+    if (n == 0) {
+        return "0"
+    }
+    m = n
+    if (m < 0) {
+        m = -m
+    }
+    r = ""
+    while (m > 0) {
+        r = digit_char(m - m / base * base) + r
+        m = m / base
+    }
+    if (n < 0) {
+        return "-" + r
+    }
+    return r
+}
+
+fn binary(n: int) {
+    return to_base(n, 2)
+}
+
+fn hex(n: int) {
+    return to_base(n, 16)
+}
+
+fn pad(n: int, w: int) {
+    s = ""
+    m = n
+    target = w
+    if (m < 0) {
+        s = "-"
+        m = -m
+        target = w - 1
+    }
+    c = 1
+    t = m
+    while (t > 9) {
+        c += 1
+        t = t / 10
+    }
+    while (c < target) {
+        s = s + "0"
+        c += 1
+    }
+    return s + str(m)
+}
+
+fn group(n: int) {
+    if (n == 0) {
+        return "0"
+    }
+    m = n
+    s = ""
+    if (m < 0) {
+        s = "-"
+        m = -m
+    }
+    r = ""
+    while (m > 999) {
+        chunk = m - m / 1000 * 1000
+        r = "," + pad(chunk, 3) + r
+        m = m / 1000
+    }
+    return s + str(m) + r
+}
+
+fn roman(n: int) {
+    if (n < 1) {
+        return ""
+    }
+    m = n
+    r = ""
+    while (m >= 1000) {
+        r = r + "M"
+        m -= 1000
+    }
+    if (m >= 900) {
+        r = r + "CM"
+        m -= 900
+    }
+    if (m >= 500) {
+        r = r + "D"
+        m -= 500
+    }
+    if (m >= 400) {
+        r = r + "CD"
+        m -= 400
+    }
+    while (m >= 100) {
+        r = r + "C"
+        m -= 100
+    }
+    if (m >= 90) {
+        r = r + "XC"
+        m -= 90
+    }
+    if (m >= 50) {
+        r = r + "L"
+        m -= 50
+    }
+    if (m >= 40) {
+        r = r + "XL"
+        m -= 40
+    }
+    while (m >= 10) {
+        r = r + "X"
+        m -= 10
+    }
+    if (m >= 9) {
+        r = r + "IX"
+        m -= 9
+    }
+    if (m >= 5) {
+        r = r + "V"
+        m -= 5
+    }
+    if (m >= 4) {
+        r = r + "IV"
+        m -= 4
+    }
+    while (m >= 1) {
+        r = r + "I"
+        m -= 1
+    }
+    return r
+}
