@@ -254,6 +254,7 @@ footer {
     <a href="#jumps">break / continue</a>
     <a href="#functions">Functions</a>
     <a href="#print">print</a>
+    <a href="#builtins">Conversions</a>
     <a href="#grammar">Grammar</a>
     <a href="#limits">Limits</a>
 </nav>
@@ -437,7 +438,7 @@ x = f(2)          <span class="tok-com">// x is 2, g stays 10</span></code></pre
 
 <section id="print">
     <h2>print</h2>
-    <p>The only built-in. A statement — not an expression — taking one expression in parentheses. Values print in their plain form: integers in decimal, strings without quotes, booleans as <code>True</code> / <code>False</code>.</p>
+    <p>A statement — not an expression — taking one expression in parentheses. Values print in their plain form: integers in decimal, strings without quotes, booleans as <code>True</code> / <code>False</code>.</p>
     <pre><code><span class="tok-fn">print</span>(<span class="tok-str">"hello world"</span>)
 <span class="tok-fn">print</span>(<span class="tok-num">42</span>)
 <span class="tok-fn">print</span>(x + y)
@@ -447,6 +448,24 @@ i = 3
     <span class="tok-fn">print</span>(i)
     i -= 1
 }</code></pre>
+</section>
+
+<section id="builtins">
+    <h2>Conversions</h2>
+    <p>Three conversion built-ins — <code>int()</code>, <code>str()</code>, <code>bool()</code> — each taking exactly one argument. They are the only sanctioned way to cross a type boundary.</p>
+    <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
+y = int(TRUE)       <span class="tok-com">// 1</span>
+s = str(7)          <span class="tok-com">// "7"</span>
+t = str(FALSE)      <span class="tok-com">// "False" — same spelling as print</span>
+a = bool("")        <span class="tok-com">// FALSE — the empty string, otherwise TRUE</span>
+b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is true</span></code></pre>
+    <table>
+        <tr><th>Call</th><th>Accepts</th><th>Result</th></tr>
+        <tr><td>int(x)</td><td>int, bool, str</td><td>int — bool gives 1/0; str must be an optionally signed decimal number</td></tr>
+        <tr><td>str(x)</td><td>int, str, bool</td><td>str — booleans give <code>"True"</code> / <code>"False"</code></td></tr>
+        <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
+    </table>
+    <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
 </section>
 
 <section id="grammar">
@@ -488,9 +507,10 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | unary | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | unary | '(' expression ')' ;
 unary               : '-' unary ;
 call                : IDENT '(' arguments? ')' ;
+builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;</div>
 </section>
 

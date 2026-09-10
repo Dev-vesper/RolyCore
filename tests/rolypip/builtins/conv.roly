@@ -1,0 +1,15 @@
+a = 42
+b = 7
+
+line = "sum: " + str(a + b)
+print(line)
+print("diff: " + str(a - b))
+
+if (bool("digits")) {
+    print("a is " + str(a / b) + " times b, floored")
+}
+
+n = int("2026")
+m = int("-100")
+print(n + m)
+print(bool(n + m))
