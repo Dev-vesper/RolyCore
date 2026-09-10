@@ -255,6 +255,7 @@ footer {
     <a href="#functions">Functions</a>
     <a href="#print">print</a>
     <a href="#builtins">Conversions</a>
+    <a href="#stdlib">Library</a>
     <a href="#grammar">Grammar</a>
     <a href="#limits">Limits</a>
 </nav>
@@ -466,6 +467,31 @@ b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is 
         <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
     </table>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
+</section>
+
+<section id="stdlib">
+    <h2>Standard Library</h2>
+    <p>Functions in <code>roly/lib/</code> are loaded automatically before your program runs — no import, they are simply there. Their names are reserved: redefining one as a function or using one as a variable name is an error.</p>
+    <table>
+        <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>abs(n) / sign(n)</td><td>absolute value / -1, 0, or 1</td></tr>
+        <tr><td>max(a, b) / min(a, b)</td><td>larger / smaller of two integers</td></tr>
+        <tr><td>clamp(n, lo, hi)</td><td>n held inside [lo, hi]</td></tr>
+        <tr><td>digitsum(n) / count_digits(n)</td><td>sum of decimal digits / how many digits</td></tr>
+        <tr><td>reverse(n)</td><td>decimal digits reversed, sign kept</td></tr>
+        <tr><td>sum_to(n)</td><td>1 + 2 + ... + n (0 for n below 1)</td></tr>
+        <tr><td>repeat(s, n)</td><td>the string s concatenated n times</td></tr>
+        <tr><td>pow(b, e)</td><td>b multiplied by itself e times (1 for e below 0)</td></tr>
+        <tr><td>sqrt(n)</td><td>integer square root, floored</td></tr>
+        <tr><td>gcd(a, b) / lcm(a, b)</td><td>greatest common divisor / least common multiple</td></tr>
+        <tr><td>fact(n) / fib(n)</td><td>factorial / nth Fibonacci number</td></tr>
+        <tr><td>is_prime(n) / is_even(n) / is_odd(n)</td><td>boolean tests</td></tr>
+    </table>
+    <pre><code>print(gcd(48, 18))         <span class="tok-com">// 6</span>
+print(pow(2, 8))           <span class="tok-com">// 256</span>
+print(repeat(<span class="tok-str">"="</span>, 10))     <span class="tok-com">// ==========</span>
+<span class="tok-kw">if</span> (is_prime(97)) { print(<span class="tok-str">"prime"</span>) }</code></pre>
+    <div class="note">Library functions are ordinary Roly code — open <code>roly/lib/utils.roly</code> and <code>roly/lib/math.roly</code> to read them. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments.</div>
 </section>
 
 <section id="grammar">
