@@ -1,0 +1,214 @@
+fn char_upper(c: str) {
+    if (c == "a") { return "A" }
+    if (c == "b") { return "B" }
+    if (c == "c") { return "C" }
+    if (c == "d") { return "D" }
+    if (c == "e") { return "E" }
+    if (c == "f") { return "F" }
+    if (c == "g") { return "G" }
+    if (c == "h") { return "H" }
+    if (c == "i") { return "I" }
+    if (c == "j") { return "J" }
+    if (c == "k") { return "K" }
+    if (c == "l") { return "L" }
+    if (c == "m") { return "M" }
+    if (c == "n") { return "N" }
+    if (c == "o") { return "O" }
+    if (c == "p") { return "P" }
+    if (c == "q") { return "Q" }
+    if (c == "r") { return "R" }
+    if (c == "s") { return "S" }
+    if (c == "t") { return "T" }
+    if (c == "u") { return "U" }
+    if (c == "v") { return "V" }
+    if (c == "w") { return "W" }
+    if (c == "x") { return "X" }
+    if (c == "y") { return "Y" }
+    if (c == "z") { return "Z" }
+    return c
+}
+
+fn char_lower(c: str) {
+    if (c == "A") { return "a" }
+    if (c == "B") { return "b" }
+    if (c == "C") { return "c" }
+    if (c == "D") { return "d" }
+    if (c == "E") { return "e" }
+    if (c == "F") { return "f" }
+    if (c == "G") { return "g" }
+    if (c == "H") { return "h" }
+    if (c == "I") { return "i" }
+    if (c == "J") { return "j" }
+    if (c == "K") { return "k" }
+    if (c == "L") { return "l" }
+    if (c == "M") { return "m" }
+    if (c == "N") { return "n" }
+    if (c == "O") { return "o" }
+    if (c == "P") { return "p" }
+    if (c == "Q") { return "q" }
+    if (c == "R") { return "r" }
+    if (c == "S") { return "s" }
+    if (c == "T") { return "t" }
+    if (c == "U") { return "u" }
+    if (c == "V") { return "v" }
+    if (c == "W") { return "w" }
+    if (c == "X") { return "x" }
+    if (c == "Y") { return "y" }
+    if (c == "Z") { return "z" }
+    return c
+}
+
+fn upper(s: str) {
+    r = ""
+    i = 0
+    while (i < len(s)) {
+        r = r + char_upper(char(s, i))
+        i += 1
+    }
+    return r
+}
+
+fn lower(s: str) {
+    r = ""
+    i = 0
+    while (i < len(s)) {
+        r = r + char_lower(char(s, i))
+        i += 1
+    }
+    return r
+}
+
+fn trim(s: str) {
+    a = 0
+    b = len(s)
+    while (a < b) {
+        if (char(s, a) != " ") {
+            break
+        }
+        a += 1
+    }
+    while (b > a) {
+        if (char(s, b - 1) != " ") {
+            break
+        }
+        b -= 1
+    }
+    r = ""
+    i = a
+    while (i < b) {
+        r = r + char(s, i)
+        i += 1
+    }
+    return r
+}
+
+fn starts_with(s: str, prefix: str) {
+    if (len(prefix) > len(s)) {
+        return FALSE
+    }
+    i = 0
+    while (i < len(prefix)) {
+        if (char(s, i) != char(prefix, i)) {
+            return FALSE
+        }
+        i += 1
+    }
+    return TRUE
+}
+
+fn ends_with(s: str, suffix: str) {
+    ls = len(s)
+    lf = len(suffix)
+    if (lf > ls) {
+        return FALSE
+    }
+    i = 0
+    while (i < lf) {
+        if (char(s, ls - lf + i) != char(suffix, i)) {
+            return FALSE
+        }
+        i += 1
+    }
+    return TRUE
+}
+
+fn index_from(s: str, sub: str, start: int) {
+    if (len(sub) == 0) {
+        return start
+    }
+    ls = len(s)
+    lf = len(sub)
+    if (lf > ls) {
+        return -1
+    }
+    pos = start
+    while (pos <= ls - lf) {
+        match = TRUE
+        i = 0
+        while (i < lf) {
+            if (char(s, pos + i) != char(sub, i)) {
+                match = FALSE
+                break
+            }
+            i += 1
+        }
+        if (match) {
+            return pos
+        }
+        pos += 1
+    }
+    return -1
+}
+
+fn index_of(s: str, sub: str) {
+    return index_from(s, sub, 0)
+}
+
+fn contains(s: str, sub: str) {
+    return index_of(s, sub) != -1
+}
+
+fn count_sub(s: str, sub: str) {
+    if (len(sub) == 0) {
+        return 0
+    }
+    c = 0
+    pos = index_of(s, sub)
+    while (pos != -1) {
+        c += 1
+        pos = index_from(s, sub, pos + len(sub))
+    }
+    return c
+}
+
+fn reverse_str(s: str) {
+    r = ""
+    i = len(s) - 1
+    while (i >= 0) {
+        r = r + char(s, i)
+        i -= 1
+    }
+    return r
+}
+
+fn is_palindrome_str(s: str) {
+    return s == reverse_str(s)
+}
+
+fn substr(s: str, start: int, end: int) {
+    a = start
+    b = end
+    if (a < 0) {
+        a = 0
+    }
+    if (b > len(s)) {
+        b = len(s)
+    }
+    r = ""
+    i = a
+    while (i < b) {
+        r = r + char(s, i)
+        i += 1
+    }
+    return r
+}
