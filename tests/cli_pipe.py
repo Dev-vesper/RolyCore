@@ -146,3 +146,34 @@ def test_no_subcommand_exits_with_error():
         cwd=ROOT,
     )
     assert result.returncode != 0
+
+
+def test_run_imports_module_next_to_file(tmp_path):
+    (tmp_path / "mod.roly").write_text(
+        'print("silent") v = 5', encoding="utf-8"
+    )
+    script = tmp_path / "main.roly"
+    script.write_text("import mod print(mod.v)", encoding="utf-8")
+    result = run_cli("run", str(script))
+    assert result.returncode == 0
+    assert result.stdout == "5\n"
+
+
+def test_exec_imports_module_from_cwd(tmp_path):
+    (tmp_path / "mod.roly").write_text("v = 21", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(ROLY), "exec", "import mod print(mod.v)"],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0
+    assert result.stdout == "21\n"
+
+
+def test_run_missing_imported_module_errors(tmp_path):
+    script = tmp_path / "main.roly"
+    script.write_text("import nope print(1)", encoding="utf-8")
+    result = run_cli("run", str(script))
+    assert result.returncode == 1
+    assert "not found" in result.stderr

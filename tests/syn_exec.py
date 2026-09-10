@@ -26,6 +26,8 @@ EXPECTED_ENV = {
         "s": "==========",
         "big": 3628800,
     },
+    "mod_bank.roly": {"balance": 100},
+    "mod_use.roly": {"paid": 150, "took": 120},
 }
 
 EXPECTED_PRINTS = {
@@ -48,13 +50,14 @@ EXPECTED_PRINTS = {
         2,
         997,
     ],
+    "mod_use.roly": [100, 150, 120, 120],
 }
 
 
 def run_syntax_file(name):
     source = (SYNTAX_DIR / name).read_text(encoding="utf-8")
     printed = []
-    env = run_source(source, out=printed.append)
+    env = run_source(source, out=printed.append, base_dir=SYNTAX_DIR)
     return env, printed
 
 

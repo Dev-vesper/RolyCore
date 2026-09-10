@@ -1,0 +1,14 @@
+balance = 100
+
+fn deposit (amount: int) {
+    balance += amount
+    return balance
+}
+
+fn withdraw (amount: int) {
+    if (amount > balance) {
+        return -1
+    }
+    balance -= amount
+    return balance
+}

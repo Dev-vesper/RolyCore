@@ -1,0 +1,8 @@
+import mod_bank
+
+print(mod_bank.balance)
+paid = mod_bank.deposit(50)
+print(paid)
+took = mod_bank.withdraw(30)
+print(took)
+print(mod_bank.balance)
