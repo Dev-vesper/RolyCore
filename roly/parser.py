@@ -19,6 +19,7 @@ from roly.ast import (
     Program,
     Return,
     Str,
+    Subscript,
     Var,
     While,
 )
@@ -345,6 +346,15 @@ class Parser:
         return args
 
     def parse_primary(self):
+        node = self.parse_atom()
+        while self.check(T.LBRACKET):
+            self.advance()
+            index = self.parse_expression()
+            self.match(T.RBRACKET, "']'")
+            node = Subscript(node, index)
+        return node
+
+    def parse_atom(self):
         token = self.current()
         if token.type is T.INT:
             self.advance()

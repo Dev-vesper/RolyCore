@@ -23,6 +23,8 @@ ONE_CHAR_OPS = {
     ")": T.RPAREN,
     "{": T.LBRACE,
     "}": T.RBRACE,
+    "[": T.LBRACKET,
+    "]": T.RBRACKET,
     ":": T.COLON,
     ",": T.COMMA,
     ".": T.DOT,

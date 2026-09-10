@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-Expr = Union["Num", "Str", "Bool", "Neg", "Var", "BinOp", "Chain", "Call", "ModuleVar", "ModuleCall"]
+Expr = Union["Num", "Str", "Bool", "Neg", "Var", "BinOp", "Chain", "Call", "ModuleVar", "ModuleCall", "Subscript"]
 Statement = Union[
     "Assign",
     "CompoundAssign",
@@ -137,6 +137,12 @@ class ModuleCall:
     module: str
     name: str
     args: "list[Expr]"
+
+
+@dataclass
+class Subscript:
+    base: Expr
+    index: Expr
 
 
 @dataclass

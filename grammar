@@ -39,6 +39,7 @@ additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
 unary               : '-' unary | primary ;
+subscript           : primary ( '[' expression ']' )* ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;

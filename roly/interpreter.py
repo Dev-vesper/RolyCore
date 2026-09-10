@@ -22,10 +22,11 @@ from roly.ast import (
     Program,
     Return,
     Str,
+    Subscript,
     Var,
     While,
 )
-from roly.builtins import BUILTINS, BUILTIN_ARITIES, roly_equal
+from roly.builtins import BUILTINS, BUILTIN_ARITIES, list_get, roly_equal, text_char
 from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
@@ -209,6 +210,11 @@ class Interpreter:
                     self.require_int("-", value)
                     values.append(-value)
                     continue
+                if item[0] == "subscript":
+                    index = values.pop()
+                    base = values.pop()
+                    values.append(self.subscript(base, index))
+                    continue
                 if item[0] == "chain":
                     ops = item[1]
                     operands = [values.pop() for _ in range(len(ops) + 1)]
@@ -234,6 +240,10 @@ class Interpreter:
             elif isinstance(item, Neg):
                 work.append(("negate",))
                 work.append(item.operand)
+            elif isinstance(item, Subscript):
+                work.append(("subscript",))
+                work.append(item.index)
+                work.append(item.base)
             elif isinstance(item, (Num, Str, Bool)):
                 values.append(item.value)
             elif isinstance(item, Var):
@@ -501,6 +511,11 @@ class Interpreter:
         if type(value) is bool:
             return value
         raise RolyError(f"comparison must produce a bool, got {value!r}")
+
+    def subscript(self, base, index):
+        if type(base) is str:
+            return text_char(base, index)
+        return list_get(base, index)
 
     def lookup(self, name):
         if self.lib_depth > 0:
