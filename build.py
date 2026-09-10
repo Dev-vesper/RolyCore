@@ -1,33 +1,34 @@
+import argparse
 import shutil
-import subprocess
 import sys
 from pathlib import Path
+
+from builder.engine import run_pyinstaller
+from builder.libs import sync_lib
+from builder.platform import exe_name
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 
 
-def main() -> int:
-    subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "PyInstaller",
-            "--onefile",
-            "--clean",
-            "--noconfirm",
-            "--name",
-            "roly.exe",
-            str(ROOT / "roly.py"),
-        ],
-        check=True,
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="build",
+        description="Build the standalone Roly executable.",
     )
-    lib_target = DIST / "lib"
-    if lib_target.exists():
-        shutil.rmtree(lib_target)
-    shutil.copytree(ROOT / "roly" / "lib", lib_target)
-    print(f"built {DIST / 'roly.exe'}")
-    print(f"bundled libraries in {lib_target}")
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="remove dist/ before building",
+    )
+    args = parser.parse_args(argv)
+
+    if args.clean and DIST.exists():
+        shutil.rmtree(DIST)
+    run_pyinstaller(ROOT, DIST)
+    sync_lib(ROOT / "roly" / "lib", DIST / "lib")
+    print(f"built {DIST / exe_name()}")
+    print(f"bundled libraries in {DIST / 'lib'}")
     return 0
 
 

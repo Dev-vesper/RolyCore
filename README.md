@@ -51,7 +51,7 @@ The engine can be packaged into a single executable with the standard library ke
 .venv/bin/python build.py
 ```
 
-The build produces `dist/roly.exe` and a `dist/lib` folder. The `lib` folder must stay next to the executable — the engine looks there for the standard library when running. An executable built on Linux runs on Linux; build on Windows for a Windows executable.
+The build produces `dist/roly.exe` on Windows and `dist/roly` on Linux and macOS, next to a `dist/lib` folder. The `lib` folder must stay next to the executable — the engine looks there for the standard library when running. Executables are platform-native, so build on the target operating system.
 
 ## Notes
 
