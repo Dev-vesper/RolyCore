@@ -256,6 +256,7 @@ footer {
     <a href="#print">print</a>
     <a href="#builtins">Built-ins</a>
     <a href="#stdlib">Library</a>
+    <a href="#modules">Modules</a>
     <a href="#grammar">Grammar</a>
     <a href="#limits">Limits</a>
 </nav>
@@ -557,10 +558,63 @@ print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
     <div class="note">Library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every function is a program you could have written. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments.</div>
 </section>
 
+<section id="modules">
+    <h2>Modules</h2>
+    <p>A module is a Roly file placed next to your program. <code>import</code> runs it once and gives you its variables and functions through its name — the module's namespace keeps its members apart from your names.</p>
+    <pre><code><span class="tok-kw">import</span> testme
+
+x = testme.users
+y = testme.setBlock(7)</code></pre>
+
+    <h3>Choosing members</h3>
+    <p>Braces list the members you want — only those are reachable through the module. Without braces, every member is. The braces never bring names in directly: <code>users</code> stays an undefined variable, only <code>testme.users</code> works.</p>
+    <pre><code><span class="tok-kw">import</span> testme {users, setBlock}
+
+x = testme.users          <span class="tok-com">// works</span>
+y = testme.setBlock(7)    <span class="tok-com">// works</span>
+z = testme.hidden         <span class="tok-com">// error — was not imported</span>
+w = users                 <span class="tok-com">// error — undefined variable</span></code></pre>
+    <div class="note">Importing again with more names extends the list, and a plain re-import opens everything — the module itself still runs only once.</div>
+
+    <h3>Members</h3>
+    <p><code>testme.x</code> reads a variable; <code>testme.f(...)</code> calls a function — the parentheses decide, like everywhere else in Roly. Members are read-only from outside: an assignment like <code>testme.x = 5</code> is a parse error. A module function can change its own globals, and later reads see the new values.</p>
+    <pre><code>c = 0
+<span class="tok-kw">fn</span> bump () {
+    c += 1
+    <span class="tok-kw">return</span> c
+}</code></pre>
+    <pre><code><span class="tok-kw">import</span> counter
+a = counter.bump()   <span class="tok-com">// 1</span>
+b = counter.bump()   <span class="tok-com">// 2</span>
+d = counter.c        <span class="tok-com">// 2 — reads the live value</span></code></pre>
+
+    <h3>Loading</h3>
+    <p><code>import testme</code> looks for <code>testme.roly</code> in the directory of the importing file. The whole module file runs the first time it is imported — assignments compute and functions register — but its <code>print</code> output is discarded, so importing stays silent. Function calls you make later print normally. Errors inside a module are reported with its name.</p>
+    <ul>
+        <li>a module runs once — importing it again does not re-run it</li>
+        <li>the same module imported by several files is one copy with one state</li>
+        <li>a module's own imports are private to it</li>
+        <li>modules may not import each other in a cycle — <code>circular import</code></li>
+        <li>a file cannot import the program that started the run</li>
+    </ul>
+
+    <h3>Rules</h3>
+    <ul>
+        <li><code>import</code> is only allowed at the top level of a file</li>
+        <li>a module sees its own globals and the standard library — never yours</li>
+        <li>module functions cannot see the locals of the function calling them</li>
+        <li>library and built-in names are not module members — <code>testme.gcd</code> does not work</li>
+        <li>member names follow identifier rules — keywords cannot be members</li>
+        <li><code>import</code> is a keyword; it cannot be used as a variable or function name</li>
+    </ul>
+</section>
+
 <section id="grammar">
     <h2>Grammar</h2>
     <p>The complete formal grammar of the language:</p>
-    <div class="rule">program             : ( function_declaration | statement )* EOF ;
+    <div class="rule">program             : ( function_declaration | import_statement | statement )* EOF ;
+
+import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
@@ -596,10 +650,11 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | unary | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | unary | '(' expression ')' ;
 unary               : '-' unary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
+module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
 arguments           : expression ( ',' expression )* ;</div>
 </section>
 
@@ -612,7 +667,8 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
         <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call</td></tr>
-        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool</td></tr>
+        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, import</td></tr>
+        <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
 </section>
