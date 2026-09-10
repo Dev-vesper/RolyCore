@@ -1,0 +1,122 @@
+fn reverse_list(l: list) {
+    r = list()
+    i = len(l) - 1
+    while (i >= 0) {
+        r = push(r, get(l, i))
+        i -= 1
+    }
+    return r
+}
+
+fn join(l: list, sep: str) {
+    r = ""
+    i = 0
+    while (i < len(l)) {
+        if (i > 0) {
+            r = r + sep
+        }
+        r = r + str(get(l, i))
+        i += 1
+    }
+    return r
+}
+
+fn sum_list(l: list) {
+    s = 0
+    i = 0
+    while (i < len(l)) {
+        s += get(l, i)
+        i += 1
+    }
+    return s
+}
+
+fn max_list(l: list) {
+    if (len(l) == 0) {
+        return fail("max_list: list must not be empty")
+    }
+    m = get(l, 0)
+    i = 1
+    while (i < len(l)) {
+        if (get(l, i) > m) {
+            m = get(l, i)
+        }
+        i += 1
+    }
+    return m
+}
+
+fn min_list(l: list) {
+    if (len(l) == 0) {
+        return fail("min_list: list must not be empty")
+    }
+    m = get(l, 0)
+    i = 1
+    while (i < len(l)) {
+        if (get(l, i) < m) {
+            m = get(l, i)
+        }
+        i += 1
+    }
+    return m
+}
+
+fn sublist(l: list, start: int, end: int) {
+    a = start
+    b = end
+    if (a < 0) {
+        a = 0
+    }
+    if (b > len(l)) {
+        b = len(l)
+    }
+    r = list()
+    i = a
+    while (i < b) {
+        r = push(r, get(l, i))
+        i += 1
+    }
+    return r
+}
+
+fn remove_at(l: list, i: int) {
+    if (i < 0) {
+        return fail("remove_at: index out of range")
+    }
+    if (i >= len(l)) {
+        return fail("remove_at: index out of range")
+    }
+    r = list()
+    j = 0
+    while (j < len(l)) {
+        if (j != i) {
+            r = push(r, get(l, j))
+        }
+        j += 1
+    }
+    return r
+}
+
+fn sort_list(l: list) {
+    r = list()
+    i = 0
+    while (i < len(l)) {
+        x = get(l, i)
+        pos = len(r)
+        while (pos > 0) {
+            if (get(r, pos - 1) <= x) {
+                break
+            }
+            pos -= 1
+        }
+        r = push(r, x)
+        j = len(r) - 1
+        while (j > pos) {
+            r = set(r, j, get(r, j - 1))
+            j -= 1
+        }
+        r = set(r, pos, x)
+        i += 1
+    }
+    return r
+}
