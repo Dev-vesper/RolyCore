@@ -317,18 +317,20 @@ name = <span class="tok-str">"http://roly"</span>  <span class="tok-com">// the 
 
 <section id="comparisons">
     <h2>Comparisons</h2>
-    <p>Comparisons produce booleans. They chain left-to-associatively at a single precedence level, below arithmetic:</p>
+    <p>Comparisons produce booleans. They sit at a single precedence level, below arithmetic. Comparisons chain: every adjacent pair must hold, like in mathematics:</p>
     <pre><code>3 &lt; 5              <span class="tok-com">// True</span>
 a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
 "a" == "a"          <span class="tok-com">// True</span>
-"a" == "b"          <span class="tok-com">// False</span></code></pre>
+"a" == "b"          <span class="tok-com">// False</span>
+1 &lt; x &lt; 10         <span class="tok-com">// True when x is between 1 and 10</span>
+1 == 1 == 1         <span class="tok-com">// True</span></code></pre>
     <table>
         <tr><th>Operator</th><th>Meaning</th></tr>
         <tr><td>==</td><td>equal (same type only — cross-type is always False)</td></tr>
         <tr><td>!=</td><td>not equal</td></tr>
         <tr><td>&lt; &gt; &lt;= &gt;=</td><td>ordering — integers only</td></tr>
     </table>
-    <div class="note">Ordering comparisons on strings or booleans are runtime errors. Equality across different types is <code>False</code>, never an error: <code>1 == "1"</code> is <code>False</code>.</div>
+    <div class="note">Ordering comparisons on strings or booleans are runtime errors. Equality across different types is <code>False</code>, never an error: <code>1 == "1"</code> is <code>False</code>. A chain stops at the first false pair — later pairs are not evaluated.</div>
 </section>
 
 <section id="strings">
@@ -467,7 +469,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p>Six built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings.</p>
+    <p>Seven built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 s = str(7)          <span class="tok-com">// "7"</span>
@@ -486,6 +488,7 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
         <tr><td>len(s)</td><td>str</td><td>int — length of the string</td></tr>
         <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
+        <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
     </table>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
 
@@ -509,20 +512,20 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>min(a, b) / max(a, b)</td><td>smaller / larger of two integers</td></tr>
         <tr><td>clamp(n, lo, hi)</td><td>n held inside [lo, hi]</td></tr>
         <tr><td>mod(n, d)</td><td>floored remainder — always satisfies n == (n / d) * d + mod(n, d)</td></tr>
-        <tr><td>pow(b, e)</td><td>b multiplied by itself e times (1 when e is below 0)</td></tr>
+        <tr><td>pow(b, e)</td><td>b multiplied by itself e times — e must not be below 0</td></tr>
         <tr><td>gcd(a, b) / lcm(a, b)</td><td>greatest common divisor / least common multiple</td></tr>
-        <tr><td>isqrt(n)</td><td>integer square root, floored</td></tr>
+        <tr><td>isqrt(n)</td><td>integer square root, floored — n must not be below 0</td></tr>
     </table>
 
     <h3>format</h3>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
         <tr><td>repeat(s, n)</td><td>the string s concatenated n times</td></tr>
-        <tr><td>to_base(n, base)</td><td>n in base 2&ndash;16, lowercase digits, sign kept</td></tr>
+        <tr><td>to_base(n, base)</td><td>n in base 2&ndash;16, lowercase digits, sign kept — base outside 2&ndash;16 is an error</td></tr>
         <tr><td>binary(n) / hex(n)</td><td>shorthands for to_base in base 2 and 16</td></tr>
         <tr><td>pad(n, w)</td><td>zero-padded to width w, like printf %05d</td></tr>
         <tr><td>group(n)</td><td>thousands separators: 1,234,567</td></tr>
-        <tr><td>roman(n)</td><td>roman numerals; empty for n below 1</td></tr>
+        <tr><td>roman(n)</td><td>roman numerals — n must be between 1 and 3999</td></tr>
     </table>
 
     <h3>digits and bits</h3>
@@ -540,9 +543,9 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
         <tr><td>is_prime(n) / next_prime(n)</td><td>primality test / first prime above n</td></tr>
-        <tr><td>factorial(n) / fibonacci(n)</td><td>factorial / nth Fibonacci number</td></tr>
-        <tr><td>divisor_count(n)</td><td>how many divisors n has</td></tr>
-        <tr><td>collatz_steps(n)</td><td>steps to reach 1 by halving or 3n+1</td></tr>
+        <tr><td>factorial(n) / fibonacci(n)</td><td>factorial / nth Fibonacci number — n must not be below 0</td></tr>
+        <tr><td>divisor_count(n)</td><td>how many divisors n has — n must be at least 1</td></tr>
+        <tr><td>collatz_steps(n)</td><td>steps to reach 1 by halving or 3n+1 — n must be at least 1</td></tr>
     </table>
 
     <h3>strings</h3>
@@ -568,7 +571,7 @@ print(mod(-7, 3))          <span class="tok-com">// 2, floored like the division
 print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
 print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
-    <div class="note">Library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every function is a program you could have written. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments.</div>
+    <div class="note">Library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every function is a program you could have written. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>factorial(-1)</code> — the function tells you what it expected.</div>
 </section>
 
 <section id="modules">
@@ -662,7 +665,8 @@ return_statement    : 'return' expression ;
 block               : '{' statement* '}' ;
 
 expression          : comparison ;
-comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
+comparison          : additive ( comparison_op additive )+ ;
+comparison_op       : '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
