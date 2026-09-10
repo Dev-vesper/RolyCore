@@ -20,7 +20,7 @@ from roly.ast import (
     Var,
     While,
 )
-from roly.builtins import BUILTINS
+from roly.builtins import BUILTINS, BUILTIN_ARITIES
 from roly.errors import RolyError
 from roly.stdlib import lib_functions
 
@@ -53,6 +53,7 @@ class Interpreter:
         self.locals_stack = []
         self.functions = dict(lib_functions())
         self.reserved = set(self.functions)
+        self.builtin_names = set(BUILTINS)
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
         self.lib_depth = 0
@@ -67,6 +68,11 @@ class Interpreter:
     def run(self, program):
         for statement in program.statements:
             if isinstance(statement, FnDef):
+                if statement.name in self.builtin_names:
+                    raise RolyError(
+                        f"'{statement.name}' is a builtin "
+                        f"and cannot be redefined"
+                    )
                 if statement.name in self.reserved:
                     raise RolyError(
                         f"function '{statement.name}' is reserved "
@@ -202,12 +208,14 @@ class Interpreter:
         raise RolyError(f"function '{call.name}' did not return a value")
 
     def call_builtin(self, call):
-        if len(call.args) != 1:
+        arity = BUILTIN_ARITIES.get(call.name)
+        if arity is not None and len(call.args) != arity:
             raise RolyError(
-                f"builtin '{call.name}' expects 1 argument, "
-                f"got {len(call.args)}"
+                f"builtin '{call.name}' expects {arity} "
+                f"argument{'s' if arity != 1 else ''}, got {len(call.args)}"
             )
-        return BUILTINS[call.name](self.eval(call.args[0]))
+        values = [self.eval(arg) for arg in call.args]
+        return BUILTINS[call.name](*values)
 
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool"}[param_type]
@@ -266,6 +274,8 @@ class Interpreter:
         raise RolyError(f"undefined variable '{name}'")
 
     def assign(self, name, value):
+        if name in self.builtin_names:
+            raise RolyError(f"'{name}' is a builtin and cannot be redefined")
         if name in self.reserved:
             raise RolyError(f"name '{name}' is reserved by the standard library")
         if self.lib_depth > 0:
