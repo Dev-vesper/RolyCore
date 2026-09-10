@@ -254,7 +254,7 @@ footer {
     <a href="#jumps">break / continue</a>
     <a href="#functions">Functions</a>
     <a href="#print">print</a>
-    <a href="#builtins">Conversions</a>
+    <a href="#builtins">Built-ins</a>
     <a href="#stdlib">Library</a>
     <a href="#grammar">Grammar</a>
     <a href="#limits">Limits</a>
@@ -452,21 +452,36 @@ i = 3
 </section>
 
 <section id="builtins">
-    <h2>Conversions</h2>
-    <p>Three conversion built-ins — <code>int()</code>, <code>str()</code>, <code>bool()</code> — each taking exactly one argument. They are the only sanctioned way to cross a type boundary.</p>
+    <h2>Built-ins</h2>
+    <p>Six built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 s = str(7)          <span class="tok-com">// "7"</span>
 t = str(FALSE)      <span class="tok-com">// "False" — same spelling as print</span>
 a = bool("")        <span class="tok-com">// FALSE — the empty string, otherwise TRUE</span>
-b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is true</span></code></pre>
+b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is true</span>
+
+n = len("hello")    <span class="tok-com">// 5</span>
+c = char("hello", 1) <span class="tok-com">// "e" — indexes start at 0</span>
+f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span></code></pre>
     <table>
         <tr><th>Call</th><th>Accepts</th><th>Result</th></tr>
         <tr><td>int(x)</td><td>int, bool, str</td><td>int — bool gives 1/0; str must be an optionally signed decimal number</td></tr>
         <tr><td>str(x)</td><td>int, str, bool</td><td>str — booleans give <code>"True"</code> / <code>"False"</code></td></tr>
         <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
+        <tr><td>len(s)</td><td>str</td><td>int — length of the string</td></tr>
+        <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based</td></tr>
+        <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
     </table>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
+
+    <h3>format placeholders</h3>
+    <p><code>{}</code> takes the next argument in order; <code>{0}</code>, <code>{1}</code> pick a position and may repeat. <code>{{</code> and <code>}}</code> produce literal braces. Mixing <code>{}</code> and <code>{n}</code> in one format string is an error, as is a placeholder without a matching argument.</p>
+    <pre><code>format("{} and {}", 1, 2)     <span class="tok-com">// "1 and 2"</span>
+format("{0}-{1}-{0}", "a", "b") <span class="tok-com">// "a-b-a"</span>
+format("{{}}")                  <span class="tok-com">// "{}"</span>
+format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code></pre>
+    <div class="note">Values are converted the same way <code>str()</code> converts them. Extra arguments are ignored. There are no format specifications like <code>{:05d}</code> — compose with <code>pad()</code>, <code>group()</code>, or <code>binary()</code> from the library instead.</div>
 </section>
 
 <section id="stdlib">
@@ -515,6 +530,24 @@ b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is 
         <tr><td>divisor_count(n)</td><td>how many divisors n has</td></tr>
         <tr><td>collatz_steps(n)</td><td>steps to reach 1 by halving or 3n+1</td></tr>
     </table>
+
+    <h3>strings</h3>
+    <p>These are written in Roly itself, on top of the <code>len()</code> and <code>char()</code> built-ins.</p>
+    <table>
+        <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>upper(s) / lower(s)</td><td>ASCII letter case converted</td></tr>
+        <tr><td>trim(s)</td><td>spaces removed from both ends</td></tr>
+        <tr><td>starts_with(s, p) / ends_with(s, p)</td><td>border tests</td></tr>
+        <tr><td>contains(s, sub)</td><td>TRUE when sub appears in s</td></tr>
+        <tr><td>index_of(s, sub) / index_from(s, sub, start)</td><td>first match position, or -1</td></tr>
+        <tr><td>count_sub(s, sub)</td><td>non-overlapping occurrences</td></tr>
+        <tr><td>substr(s, start, end)</td><td>characters from start up to end, clamped to the string</td></tr>
+        <tr><td>reverse_str(s) / is_palindrome_str(s)</td><td>reversed / reads the same both ways</td></tr>
+    </table>
+    <pre><code>print(format("name={} len={}", upper(trim(" roly ")), len("roly")))
+<span class="tok-com">// name=ROLY len=4</span>
+eq = index_of("name=roly", "=")
+print(substr("name=roly", eq + 1, len("name=roly")))  <span class="tok-com">// roly</span></code></pre>
 
     <pre><code>print(gcd(48, 18))         <span class="tok-com">// 6</span>
 print(mod(-7, 3))          <span class="tok-com">// 2, floored like the division itself</span>
