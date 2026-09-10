@@ -32,10 +32,10 @@ fn digit_char(d: int) {
 
 fn to_base(n: int, base: int) {
     if (base < 2) {
-        return ""
+        return fail("to_base: base must be between 2 and 16")
     }
     if (base > 16) {
-        return ""
+        return fail("to_base: base must be between 2 and 16")
     }
     if (n == 0) {
         return "0"
@@ -106,7 +106,10 @@ fn group(n: int) {
 
 fn roman(n: int) {
     if (n < 1) {
-        return ""
+        return fail("roman: n must be between 1 and 3999")
+    }
+    if (n > 3999) {
+        return fail("roman: n must be between 1 and 3999")
     }
     m = n
     r = ""

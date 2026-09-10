@@ -37,16 +37,20 @@ def to_bool(value):
 
 def text_len(value):
     if type(value) is not str:
-        raise RolyError(f"len expects a str, got {value!r}")
+        raise RolyError(f"builtin 'len' expects a str, got {value!r}")
     return len(value)
 
 
 def text_char(s, i):
     if type(s) is not str or type(i) is not int:
-        raise RolyError(f"char expects (str, int), got ({s!r}, {i!r})")
+        raise RolyError(f"builtin 'char' expects (str, int), got ({s!r}, {i!r})")
     if i < 0 or i >= len(s):
         raise RolyError(f"char: index {i} out of range for length {len(s)}")
     return s[i]
+
+
+def fail(message):
+    raise RolyError(message)
 
 
 def format_text(*values):
@@ -115,6 +119,7 @@ BUILTINS = {
     "len": text_len,
     "char": text_char,
     "format": format_text,
+    "fail": fail,
 }
 
 BUILTIN_ARITIES = {
