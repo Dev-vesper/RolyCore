@@ -1,0 +1,17 @@
+a = 27
+b = 36
+
+print(gcd(a, b))
+print(lcm(a, b))
+print(max(a, b) + abs(-5))
+print(sqrt(a * b))
+
+n = 123456789
+print(digitsum(n))
+print(reverse(n))
+print(count_digits(fact(12)))
+
+banner = "+" + repeat("-", 20) + "+"
+print(banner)
+print("|" + "  roly standard library  " + "|")
+print(banner)
