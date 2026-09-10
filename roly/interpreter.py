@@ -65,10 +65,16 @@ class ModuleEntry:
         self.imports = imports
 
 
-class ModuleBinding:
-    def __init__(self, entry, allowed):
+class ModuleAlias:
+    def __init__(self, entry, name):
         self.entry = entry
-        self.allowed = allowed
+        self.name = name
+
+
+class ModuleFunctionRef:
+    def __init__(self, entry, function):
+        self.entry = entry
+        self.function = function
 
 
 class Interpreter:
@@ -101,7 +107,12 @@ class Interpreter:
 
     def run(self, program):
         self.execute_program(program)
-        return self.globals
+        return {name: self.deref(value) for name, value in self.globals.items()}
+
+    def deref(self, value):
+        while isinstance(value, ModuleAlias):
+            value = value.entry.globals[value.name]
+        return value
 
     def execute_program(self, program):
         for statement in program.statements:
@@ -218,6 +229,10 @@ class Interpreter:
             raise RolyError(f"undefined function '{call.name}'")
         function = self.functions[call.name]
         args = [self.eval(arg) for arg in call.args]
+        if isinstance(function, ModuleFunctionRef):
+            return self.run_in_module(
+                function.entry, call.name, function.function, args
+            )
         return self.invoke_function(call.name, function, args)
 
     def invoke_function(self, name, function, args):
@@ -266,26 +281,36 @@ class Interpreter:
         return BUILTINS[call.name](*values)
 
     def execute_import(self, module_name, names):
-        binding = self.modules.get(module_name)
-        if binding is not None:
-            if names is None:
-                binding.allowed = None
-            else:
-                self.validate_members(binding.entry, module_name, names)
-                if binding.allowed is not None:
-                    binding.allowed.update(names)
-            return
-        path = (self.base_dir / f"{module_name}.roly").resolve()
-        entry = self.module_cache.get(path)
+        entry = self.modules.get(module_name)
         if entry is None:
-            if path in [p for _, p in self.loading]:
-                chain = [n for n, _ in self.loading] + [module_name]
-                raise RolyError(f"circular import: {' -> '.join(chain)}")
-            entry = self.load_module(module_name, path)
-        if names is not None:
-            self.validate_members(entry, module_name, names)
-        allowed = None if names is None else set(names)
-        self.modules[module_name] = ModuleBinding(entry, allowed)
+            path = (self.base_dir / f"{module_name}.roly").resolve()
+            entry = self.module_cache.get(path)
+            if entry is None:
+                if path in [p for _, p in self.loading]:
+                    chain = [n for n, _ in self.loading] + [module_name]
+                    raise RolyError(f"circular import: {' -> '.join(chain)}")
+                entry = self.load_module(module_name, path)
+            self.modules[module_name] = entry
+        if names is None:
+            return
+        self.validate_members(entry, module_name, names)
+        for name in names:
+            if name in entry.own_functions:
+                existing = self.functions.get(name)
+                if existing is not None and not isinstance(
+                    existing, ModuleFunctionRef
+                ):
+                    raise RolyError(f"function '{name}' is already defined")
+                self.functions[name] = self.module_function_ref(entry, name)
+            if name in entry.globals:
+                self.globals[name] = ModuleAlias(entry, name)
+
+    def module_function_ref(self, entry, name):
+        function = entry.own_functions[name]
+        while isinstance(function, ModuleFunctionRef):
+            entry = function.entry
+            function = function.function
+        return ModuleFunctionRef(entry, function)
 
     def validate_members(self, entry, module_name, names):
         for name in names:
@@ -348,21 +373,12 @@ class Interpreter:
         finally:
             self.loading.pop()
 
-    def module_binding(self, module_name, member_name):
-        binding = self.modules.get(module_name)
-        if binding is None:
-            raise RolyError(f"module '{module_name}' is not imported")
-        if binding.allowed is not None and member_name not in binding.allowed:
-            raise RolyError(
-                f"'{member_name}' was not imported from module '{module_name}'"
-            )
-        return binding
-
     def read_module_var(self, module_name, member_name):
-        binding = self.module_binding(module_name, member_name)
-        entry = binding.entry
+        entry = self.modules.get(module_name)
+        if entry is None:
+            raise RolyError(f"module '{module_name}' is not imported")
         if member_name in entry.globals:
-            return entry.globals[member_name]
+            return self.deref(entry.globals[member_name])
         if member_name in entry.own_functions:
             raise RolyError(
                 f"'{member_name}' is a function in module '{module_name}', "
@@ -371,8 +387,9 @@ class Interpreter:
         raise RolyError(f"module '{module_name}' has no member '{member_name}'")
 
     def call_module_function(self, module_name, member_name, arg_exprs):
-        binding = self.module_binding(module_name, member_name)
-        entry = binding.entry
+        entry = self.modules.get(module_name)
+        if entry is None:
+            raise RolyError(f"module '{module_name}' is not imported")
         function = entry.own_functions.get(member_name)
         if function is None:
             if member_name in entry.globals:
@@ -380,7 +397,13 @@ class Interpreter:
                     f"'{member_name}' is not a function in module '{module_name}'"
                 )
             raise RolyError(f"module '{module_name}' has no member '{member_name}'")
+        while isinstance(function, ModuleFunctionRef):
+            entry = function.entry
+            function = function.function
         args = [self.eval(arg) for arg in arg_exprs]
+        return self.run_in_module(entry, member_name, function, args)
+
+    def run_in_module(self, entry, name, function, args):
         saved = (self.globals, self.functions, self.modules, self.base_dir)
         boundary = self.module_boundary
         self.globals = entry.globals
@@ -389,7 +412,7 @@ class Interpreter:
         self.base_dir = entry.path.parent
         self.module_boundary = len(self.locals_stack)
         try:
-            return self.invoke_function(member_name, function, args)
+            return self.invoke_function(name, function, args)
         finally:
             self.globals, self.functions, self.modules, self.base_dir = saved
             self.module_boundary = boundary
@@ -447,7 +470,7 @@ class Interpreter:
             if name in scope:
                 return scope[name]
         if name in self.globals:
-            return self.globals[name]
+            return self.deref(self.globals[name])
         raise RolyError(f"undefined variable '{name}'")
 
     def assign(self, name, value):
