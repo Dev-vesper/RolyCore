@@ -137,8 +137,16 @@ class Lexer:
         return Token(KEYWORDS.get(text, T.IDENT), text, start_line, start_column)
 
     def skip_whitespace(self):
-        while self.pos < len(self.source) and self.source[self.pos] in WHITESPACE:
-            self.advance()
+        while self.pos < len(self.source):
+            char = self.source[self.pos]
+            if char in WHITESPACE:
+                self.advance()
+                continue
+            if char == "/" and self.source[self.pos : self.pos + 2] == "//":
+                while self.pos < len(self.source) and self.source[self.pos] != "\n":
+                    self.advance()
+                continue
+            return
 
     def advance(self):
         if self.source[self.pos] == "\n":
