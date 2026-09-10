@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Union
 
-Expr = Union["Num", "Str", "Bool", "Neg", "Var", "BinOp", "Call"]
+Expr = Union["Num", "Str", "Bool", "Neg", "Var", "BinOp", "Call", "ModuleVar", "ModuleCall"]
 Statement = Union[
     "Assign",
     "CompoundAssign",
@@ -12,6 +12,7 @@ Statement = Union[
     "Continue",
     "Return",
     "FnDef",
+    "Import",
     "Block",
 ]
 
@@ -111,6 +112,25 @@ class FnDef:
     name: str
     params: "list[tuple[str, type]]"
     body: "Block"
+
+
+@dataclass
+class Import:
+    module: str
+    names: "list[str] | None"
+
+
+@dataclass
+class ModuleVar:
+    module: str
+    name: str
+
+
+@dataclass
+class ModuleCall:
+    module: str
+    name: str
+    args: "list[Expr]"
 
 
 @dataclass

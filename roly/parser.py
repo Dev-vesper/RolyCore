@@ -9,6 +9,9 @@ from roly.ast import (
     Continue,
     FnDef,
     If,
+    Import,
+    ModuleCall,
+    ModuleVar,
     Neg,
     Num,
     Print,
@@ -122,6 +125,13 @@ class Parser:
                         self.current(),
                     )
                 statements.append(self.parse_function())
+            elif self.check(T.IMPORT):
+                if terminator is not T.EOF:
+                    raise ParseError(
+                        "imports are only allowed at top level",
+                        self.current(),
+                    )
+                statements.append(self.parse_import())
             else:
                 statements.append(self.parse_statement())
         return statements
@@ -241,6 +251,19 @@ class Parser:
         self.fn_depth -= 1
         return FnDef(name_token.value, params, body)
 
+    def parse_import(self):
+        self.match(T.IMPORT, "'import'")
+        name_token = self.match(T.IDENT, "a module name")
+        names = None
+        if self.check(T.LBRACE):
+            self.advance()
+            names = [self.match(T.IDENT, "a member name").value]
+            while self.check(T.COMMA):
+                self.advance()
+                names.append(self.match(T.IDENT, "a member name").value)
+            self.match(T.RBRACE, "'}' or ','")
+        return Import(name_token.value, names)
+
     def parse_parameter(self):
         name_token = self.match(T.IDENT, "a parameter name")
         self.match(T.COLON, "':'")
@@ -290,6 +313,9 @@ class Parser:
         return node
 
     def parse_call_tail(self, name):
+        return Call(name, self.parse_arguments())
+
+    def parse_arguments(self):
         self.match(T.LPAREN, "'('")
         args = []
         if not self.check(T.RPAREN):
@@ -298,7 +324,7 @@ class Parser:
                 self.advance()
                 args.append(self.parse_expression())
         self.match(T.RPAREN, "')' or ','")
-        return Call(name, args)
+        return args
 
     def parse_primary(self):
         token = self.current()
@@ -318,6 +344,14 @@ class Parser:
             self.advance()
             if self.check(T.LPAREN):
                 return self.parse_call_tail(token.value)
+            if self.check(T.DOT):
+                self.advance()
+                member = self.match(T.IDENT, "a member name after '.'")
+                if self.check(T.LPAREN):
+                    return ModuleCall(
+                        token.value, member.value, self.parse_arguments()
+                    )
+                return ModuleVar(token.value, member.value)
             return Var(token.value)
         if token.type in BUILTIN_NAMES:
             self.advance()

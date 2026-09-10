@@ -19,8 +19,10 @@ class T(Enum):
     BOOL_TYPE = auto()
     TRUE = auto()
     FALSE = auto()
+    IMPORT = auto()
     COLON = auto()
     COMMA = auto()
+    DOT = auto()
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
     MINUS_ASSIGN = auto()
@@ -65,6 +67,7 @@ KEYWORDS = {
     "bool": T.BOOL_TYPE,
     "TRUE": T.TRUE,
     "FALSE": T.FALSE,
+    "import": T.IMPORT,
 }
 
 TYPE_TOKENS = {

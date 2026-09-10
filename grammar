@@ -1,4 +1,6 @@
-program             : ( function_declaration | statement )* EOF ;
+program             : ( function_declaration | import_statement | statement )* EOF ;
+
+import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
@@ -34,8 +36,9 @@ expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '<' | '>' | '<=' | '>=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | unary | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | unary | '(' expression ')' ;
 unary               : '-' unary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
+module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
 arguments           : expression ( ',' expression )* ;

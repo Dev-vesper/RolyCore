@@ -25,6 +25,7 @@ ONE_CHAR_OPS = {
     "}": T.RBRACE,
     ":": T.COLON,
     ",": T.COMMA,
+    ".": T.DOT,
 }
 
 WHITESPACE = " \t\r\n"
