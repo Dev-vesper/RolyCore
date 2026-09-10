@@ -6,6 +6,11 @@ from roly.parser import ParseError, Parser
 def run_source(source, max_steps=DEFAULT_MAX_STEPS, out=None, base_dir=None, entry_path=None):
     tokens = Lexer(source).tokenize()
     program = Parser(tokens).parse()
-    return Interpreter(
-        max_steps=max_steps, out=out, base_dir=base_dir, entry_path=entry_path
-    ).run(program)
+    try:
+        return Interpreter(
+            max_steps=max_steps, out=out, base_dir=base_dir, entry_path=entry_path
+        ).run(program)
+    except RecursionError:
+        raise RolyError(
+            "call depth of 200 exceeded (possible runaway recursion)"
+        ) from None

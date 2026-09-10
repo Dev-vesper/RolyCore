@@ -8,6 +8,7 @@ from roly.ast import (
     Bool,
     Break,
     Call,
+    Chain,
     CompoundAssign,
     Continue,
     FnDef,
@@ -74,6 +75,10 @@ class ModuleFunctionRef:
     def __init__(self, entry, function):
         self.entry = entry
         self.function = function
+
+    @property
+    def params(self):
+        return self.function.params
 
 
 class Interpreter:
@@ -204,6 +209,17 @@ class Interpreter:
                     self.require_int("-", value)
                     values.append(-value)
                     continue
+                if item[0] == "chain":
+                    ops = item[1]
+                    operands = [values.pop() for _ in range(len(ops) + 1)]
+                    operands.reverse()
+                    for op, left, right in zip(ops, operands, operands[1:]):
+                        if not self.truthy_bool(self.apply_op(op, left, right)):
+                            values.append(False)
+                            break
+                    else:
+                        values.append(True)
+                    continue
                 right = values.pop()
                 left = values.pop()
                 values.append(self.apply_op(item[1], left, right))
@@ -211,6 +227,10 @@ class Interpreter:
                 work.append(("apply", item.op))
                 work.append(item.right)
                 work.append(item.left)
+            elif isinstance(item, Chain):
+                work.append(("chain", item.ops))
+                for operand in reversed(item.operands):
+                    work.append(operand)
             elif isinstance(item, Neg):
                 work.append(("negate",))
                 work.append(item.operand)
@@ -237,6 +257,7 @@ class Interpreter:
         if call.name not in self.functions:
             raise RolyError(f"undefined function '{call.name}'")
         function = self.functions[call.name]
+        self.check_arity(call.name, function, call.args)
         args = [self.eval(arg) for arg in call.args]
         if isinstance(function, ModuleFunctionRef):
             return self.run_in_module(
@@ -244,12 +265,15 @@ class Interpreter:
             )
         return self.invoke_function(call.name, function, args)
 
-    def invoke_function(self, name, function, args):
-        if len(args) != len(function.params):
+    def check_arity(self, name, function, arg_exprs):
+        if len(arg_exprs) != len(function.params):
+            expected = len(function.params)
             raise RolyError(
-                f"function '{name}' expects {len(function.params)} "
-                f"arguments, got {len(args)}"
+                f"function '{name}' expects {expected} "
+                f"argument{'s' if expected != 1 else ''}, got {len(arg_exprs)}"
             )
+
+    def invoke_function(self, name, function, args):
         for (param_name, param_type), value in zip(function.params, args):
             if type(value) is not param_type:
                 raise RolyError(
@@ -313,6 +337,8 @@ class Interpreter:
                     raise RolyError(f"function '{name}' is already defined")
                 self.functions[name] = self.module_function_ref(entry, function)
             if name in entry.globals:
+                if name in self.functions and self.own_function(entry, name) is None:
+                    raise RolyError(f"'{name}' is already a function name")
                 self.globals[name] = ModuleAlias(entry, name)
 
     def own_function(self, entry, name):
@@ -413,6 +439,7 @@ class Interpreter:
         while isinstance(function, ModuleFunctionRef):
             entry = function.entry
             function = function.function
+        self.check_arity(member_name, function, arg_exprs)
         args = [self.eval(arg) for arg in arg_exprs]
         return self.run_in_module(entry, member_name, function, args)
 
@@ -470,6 +497,11 @@ class Interpreter:
             return value != 0
         raise RolyError(f"condition must be a number, got {value!r}")
 
+    def truthy_bool(self, value):
+        if type(value) is bool:
+            return value
+        raise RolyError(f"comparison must produce a bool, got {value!r}")
+
     def lookup(self, name):
         if self.lib_depth > 0:
             frame = self.locals_stack[-1]
@@ -482,6 +514,10 @@ class Interpreter:
                 return frame[name]
         if name in self.globals:
             return self.deref(self.globals[name])
+        if name in self.builtin_names:
+            raise RolyError(f"'{name}' is a builtin, not a value")
+        if name in self.functions:
+            raise RolyError(f"'{name}' is a function, call it as {name}(...)")
         raise RolyError(f"undefined variable '{name}'")
 
     def assign(self, name, value):
