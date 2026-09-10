@@ -5,7 +5,7 @@ import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
 parameter           : IDENT ':' type ;
-type                : 'int' | 'str' | 'bool' ;
+type                : 'int' | 'str' | 'bool' | 'list' ;
 
 statement           : assignment
                     | compound_assignment
@@ -40,6 +40,6 @@ multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
 unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
-builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
+builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
 arguments           : expression ( ',' expression )* ;

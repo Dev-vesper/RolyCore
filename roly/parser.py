@@ -56,12 +56,14 @@ PARAM_TYPES = {
     T.INT_TYPE: int,
     T.STR_TYPE: str,
     T.BOOL_TYPE: bool,
+    T.LIST_TYPE: list,
 }
 
 BUILTIN_NAMES = {
     T.INT_TYPE: "int",
     T.STR_TYPE: "str",
     T.BOOL_TYPE: "bool",
+    T.LIST_TYPE: "list",
 }
 
 

@@ -17,6 +17,7 @@ class T(Enum):
     INT_TYPE = auto()
     STR_TYPE = auto()
     BOOL_TYPE = auto()
+    LIST_TYPE = auto()
     TRUE = auto()
     FALSE = auto()
     IMPORT = auto()
@@ -65,6 +66,7 @@ KEYWORDS = {
     "int": T.INT_TYPE,
     "str": T.STR_TYPE,
     "bool": T.BOOL_TYPE,
+    "list": T.LIST_TYPE,
     "TRUE": T.TRUE,
     "FALSE": T.FALSE,
     "import": T.IMPORT,
@@ -74,4 +76,5 @@ TYPE_TOKENS = {
     T.INT_TYPE: int,
     T.STR_TYPE: str,
     T.BOOL_TYPE: bool,
+    T.LIST_TYPE: list,
 }

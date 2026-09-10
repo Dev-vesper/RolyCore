@@ -25,7 +25,7 @@ from roly.ast import (
     Var,
     While,
 )
-from roly.builtins import BUILTINS, BUILTIN_ARITIES
+from roly.builtins import BUILTINS, BUILTIN_ARITIES, roly_equal
 from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
@@ -455,7 +455,7 @@ class Interpreter:
             self.globals, self.functions, self.modules, self.base_dir = saved
 
     def type_name(self, param_type):
-        return {int: "int", str: "str", bool: "bool"}[param_type]
+        return {int: "int", str: "str", bool: "bool", list: "list"}[param_type]
 
     def apply_op(self, op, left, right):
         if op == "+":
@@ -485,9 +485,9 @@ class Interpreter:
                 return left <= right
             return left >= right
         if op == "==":
-            return type(left) is type(right) and left == right
+            return roly_equal(left, right)
         if op == "!=":
-            return not (type(left) is type(right) and left == right)
+            return not roly_equal(left, right)
         raise RolyError(f"unknown operator '{op}'")
 
     def truthy(self, value):
