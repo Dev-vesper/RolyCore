@@ -247,6 +247,7 @@ footer {
 <nav>
     <a href="#values">Values</a>
     <a href="#variables">Variables</a>
+    <a href="#comments">Comments</a>
     <a href="#arithmetic">Arithmetic</a>
     <a href="#comparisons">Comparisons</a>
     <a href="#strings">Strings</a>
@@ -284,6 +285,17 @@ x -= 3
 x *= 2
 x /= 2</code></pre>
     <div class="note">Reading a variable before it is assigned is a runtime error: <code>undefined variable 'x'</code>. Division in <code>/=</code> floors, like all division.</div>
+</section>
+
+<section id="comments">
+    <h2>Comments</h2>
+    <p><code>//</code> starts a comment that runs to the end of the line. Everything from <code>//</code> onward is ignored, so the rest of the line is free for notes. <code>//</code> inside a string is part of the string.</p>
+    <pre><code>x = 1 + 2 * 3      <span class="tok-com">// computes the multiplication first</span>
+total = x * 2      <span class="tok-com">// total is 14</span>
+
+<span class="tok-com">// a whole-line comment</span>
+name = <span class="tok-str">"http://roly"</span>  <span class="tok-com">// the // here is string content</span></code></pre>
+    <div class="note">There are no block comments — a long note is several <code>//</code> lines.</div>
 </section>
 
 <section id="arithmetic">
@@ -412,7 +424,7 @@ x = add(2, 3)
     <p>Parameter types are <code>int</code>, <code>str</code>, and <code>bool</code>. They are checked at call time — each argument must match exactly. There is no <code>float</code> type; <code>a: float</code> is a parse error. No return type is declared.</p>
 
     <h3>Scope</h3>
-    <p>Each call gets its own local scope: parameters and newly assigned variables are local and disappear when the call ends. Global variables are readable from inside functions, and writing to an existing global updates the global. A parameter may shadow a global.</p>
+    <p>Each call gets its own local scope: parameters and newly assigned variables are local and disappear when the call ends. A function sees its own locals and the globals — nothing in between. One function cannot read or change the locals of the function that called it. Global variables are readable from inside functions, and writing to an existing global updates the global. A parameter may shadow a global.</p>
     <pre><code>g = 10
 <span class="tok-kw">fn</span> f (g: <span class="tok-kw">int</span>) { <span class="tok-kw">return</span> g }  <span class="tok-com">// parameter shadows the global</span>
 x = f(2)          <span class="tok-com">// x is 2, g stays 10</span></code></pre>
@@ -432,6 +444,7 @@ x = f(2)          <span class="tok-com">// x is 2, g stays 10</span></code></pre
     <ul>
         <li>argument count must match the parameter count exactly</li>
         <li>each argument's type must match its annotation exactly</li>
+        <li>parameter names must be unique, and follow the reserved-name rules — <code>fn f (gcd: int)</code> is an error</li>
         <li>redefining a function name is an error</li>
         <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code></li>
         <li><code>break</code> / <code>continue</code> inside a function body but outside a loop is a parse error</li>
@@ -593,6 +606,7 @@ d = counter.c        <span class="tok-com">// 2 — reads the live value</span><
     <ul>
         <li>a module runs once — importing it again does not re-run it</li>
         <li>the same module imported by several files is one copy with one state</li>
+        <li>a module may refer to itself by its own name — <code>testme.f()</code> works inside <code>testme.roly</code></li>
         <li>a module's own imports are private to it</li>
         <li>modules may not import each other in a cycle — <code>circular import</code></li>
         <li>a file cannot import the program that started the run</li>
@@ -650,9 +664,9 @@ block               : '{' statement* '}' ;
 expression          : comparison ;
 comparison          : additive ( ( '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ) additive )* ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
-multiplicative      : primary ( ( '*' | '/' ) primary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | unary | '(' expression ')' ;
-unary               : '-' unary ;
+multiplicative      : unary ( ( '*' | '/' ) unary )* ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
+unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
@@ -667,7 +681,7 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>Nesting depth (parentheses / blocks)</td><td>100 levels</td></tr>
         <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
         <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
-        <tr><td>Scope</td><td>globals plus one local scope per function call</td></tr>
+        <tr><td>Scope</td><td>globals plus one local scope per function call; functions see their own locals and the globals, never another function's locals</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
     </table>
