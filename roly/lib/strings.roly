@@ -133,10 +133,16 @@ fn ends_with(s: str, suffix: str) {
 }
 
 fn index_from(s: str, sub: str, start: int) {
-    if (len(sub) == 0) {
-        return start
+    if (start < 0) {
+        start = 0
     }
     ls = len(s)
+    if (len(sub) == 0) {
+        if (start <= ls) {
+            return start
+        }
+        return -1
+    }
     lf = len(sub)
     if (lf > ls) {
         return -1
