@@ -136,3 +136,21 @@ def test_double_slash_in_string_is_content():
     tokens = Lexer('x = "http://roly"').tokenize()
     assert tokens[2].type is T.STRING
     assert tokens[2].value == "http://roly"
+
+
+def test_lex_brackets():
+    from roly.tokens import T
+
+    tokens = Lexer("a[0]").tokenize()
+    assert tokens[1].type is T.LBRACKET
+    assert tokens[1].value == "["
+    assert tokens[3].type is T.RBRACKET
+    assert tokens[3].value == "]"
+
+
+def test_bracket_in_string_is_content():
+    from roly.tokens import T
+
+    tokens = Lexer('"a[0]"').tokenize()
+    assert tokens[0].type is T.STRING
+    assert tokens[0].value == "a[0]"

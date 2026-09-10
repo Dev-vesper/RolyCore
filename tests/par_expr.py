@@ -1,6 +1,8 @@
+import pytest
+
 from roly.ast import Assign, BinOp, Chain, Num, Var
 from roly.lexer import Lexer
-from roly.parser import Parser
+from roly.parser import ParseError, Parser
 
 
 def parse(source):
@@ -127,3 +129,59 @@ def test_comparison_single_stays_binop_chain_of_one():
 
 def test_comparison_not_chainable_from_additive_only():
     assert expr_of("a + b") == BinOp("+", Var("a"), Var("b"))
+
+
+def test_parse_subscript():
+    node = parse("x = a[0]").statements[0].value
+    assert node.base.name == "a"
+    assert node.index.value == 0
+
+
+def test_parse_subscript_with_expression_index():
+    node = parse("x = a[i + 1]").statements[0].value
+    assert node.index.op == "+"
+
+
+def test_parse_nested_subscript():
+    node = parse("x = a[0][1]").statements[0].value
+    assert node.base.base.name == "a"
+    assert node.base.index.value == 0
+    assert node.index.value == 1
+
+
+def test_parse_subscript_on_call_result():
+    node = parse("x = f()[0]").statements[0].value
+    assert node.base.name == "f"
+
+
+def test_parse_subscript_on_parenthesized():
+    node = parse("x = (a)[0]").statements[0].value
+    assert node.base.name == "a"
+
+
+def test_parse_negative_binds_around_subscript():
+    from roly.ast import Neg
+
+    node = parse("x = -a[0]").statements[0].value
+    assert isinstance(node, Neg)
+    assert node.operand.base.name == "a"
+
+
+def test_parse_subscript_missing_close_errors():
+    with pytest.raises(ParseError, match="expected ']'"):
+        parse("x = a[0")
+
+
+def test_parse_subscript_missing_index_errors():
+    with pytest.raises(ParseError):
+        parse("x = a[]")
+
+
+def test_parse_list_literal_still_rejected():
+    with pytest.raises(ParseError):
+        parse("x = [1]")
+
+
+def test_parse_statement_cannot_start_with_bracket():
+    with pytest.raises(ParseError):
+        parse("[0] = 1")
