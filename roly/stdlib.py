@@ -1,3 +1,4 @@
+import sys
 from functools import lru_cache
 from pathlib import Path
 
@@ -6,11 +7,20 @@ from roly.errors import RolyError
 from roly.lexer import Lexer
 from roly.parser import Parser
 
-LIB_DIR = Path(__file__).resolve().parent / "lib"
+
+def resolve_lib_dir():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / "lib"
+    return Path(__file__).resolve().parent / "lib"
+
+
+LIB_DIR = resolve_lib_dir()
 
 
 @lru_cache(maxsize=1)
 def lib_functions():
+    if not LIB_DIR.is_dir():
+        raise RolyError(f"cannot find the standard library directory '{LIB_DIR}'")
     functions = {}
     for path in sorted(LIB_DIR.glob("*.roly")):
         source = path.read_text(encoding="utf-8")
