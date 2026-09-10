@@ -1,12 +1,12 @@
-import testme
+import testme {users, setBlock, banner}
 import mathmyself
 
-print(testme.users)
-assigned = testme.setBlock(7)
+print(users)
+assigned = setBlock(7)
 print(testme.blocks)
 print(assigned)
 print(testme.users)
-print(testme.banner())
+print(banner())
 
 print(mathmyself.triple(14))
 print(mathmyself.average(10, 21))

@@ -190,7 +190,7 @@ def test_module_fn_reads_own_globals(tmp_path):
     assert env["x"] == 10
 
 
-def test_whitelist_allows_listed(tmp_path):
+def test_braces_keep_qualified_access(tmp_path):
     write_module(
         tmp_path, "testme", "users = 1 fn setBlock (n: int) { return n }"
     )
@@ -203,46 +203,153 @@ def test_whitelist_allows_listed(tmp_path):
     assert env["b"] == 4
 
 
-def test_whitelist_blocks_unlisted_member(tmp_path):
+def test_braces_do_not_restrict_unlisted_member(tmp_path):
     write_module(tmp_path, "testme", "a = 1 b = 2")
-    with pytest.raises(RolyError, match="was not imported"):
-        run_source("import testme {a} x = testme.b", base_dir=tmp_path)
+    env = run_source(
+        "import testme {a} x = testme.a y = testme.b", base_dir=tmp_path
+    )
+    assert env["x"] == 1
+    assert env["y"] == 2
 
 
-def test_whitelist_blocks_unlisted_function(tmp_path):
+def test_braces_do_not_restrict_unlisted_function(tmp_path):
     write_module(tmp_path, "testme", "fn f () { return 1 } fn g () { return 2 }")
-    with pytest.raises(RolyError, match="was not imported"):
-        run_source("import testme {f} x = testme.g()", base_dir=tmp_path)
+    env = run_source(
+        "import testme {f} x = testme.f() y = testme.g()", base_dir=tmp_path
+    )
+    assert env["x"] == 1
+    assert env["y"] == 2
 
 
-def test_whitelist_bare_name_still_undefined(tmp_path):
-    write_module(tmp_path, "testme", "users = 1")
-    with pytest.raises(RolyError, match="undefined variable 'users'"):
-        run_source("import testme {users} x = users", base_dir=tmp_path)
+def test_brace_function_called_without_prefix(tmp_path):
+    write_module(tmp_path, "testme", "fn add (a: int, b: int) { return a + b }")
+    env = run_source("import testme {add} x = add(2, 3)", base_dir=tmp_path)
+    assert env["x"] == 5
 
 
-def test_whitelist_nonexistent_member_errors_at_import(tmp_path):
+def test_brace_variable_read_without_prefix(tmp_path):
+    write_module(tmp_path, "testme", 'greeting = "hi"')
+    env = run_source("import testme {greeting} x = greeting", base_dir=tmp_path)
+    assert env["x"] == "hi"
+
+
+def test_brace_variable_read_is_live(tmp_path):
+    write_module(
+        tmp_path, "testme", "users = 0 fn set (n: int) { users = n return users }"
+    )
+    env = run_source(
+        "import testme {users, set}"
+        " a = users b = set(7) c = users d = testme.users",
+        base_dir=tmp_path,
+    )
+    assert env["a"] == 0
+    assert env["b"] == 7
+    assert env["c"] == 7
+    assert env["d"] == 7
+
+
+def test_assignment_to_brace_variable_rebinds_locally(tmp_path):
+    write_module(tmp_path, "testme", "users = 0")
+    env = run_source(
+        "import testme {users} users = 5 a = users b = testme.users",
+        base_dir=tmp_path,
+    )
+    assert env["a"] == 5
+    assert env["b"] == 0
+
+
+def test_brace_call_prints_visible(tmp_path):
+    write_module(tmp_path, "testme", 'fn say () { print("said") return 1 }')
+    printed = []
+    run_source(
+        "import testme {say} x = say()", base_dir=tmp_path, out=printed.append
+    )
+    assert printed == ["said"]
+
+
+def test_brace_call_cannot_see_caller_locals(tmp_path):
+    write_module(tmp_path, "testme", "fn leak () { return secret }")
+    with pytest.raises(RolyError, match="undefined variable 'secret'"):
+        run_source(
+            "import testme {leak}"
+            " fn wrap () { secret = 99 return leak() }"
+            " x = wrap()",
+            base_dir=tmp_path,
+        )
+
+
+def test_brace_function_arity_checked(tmp_path):
+    write_module(tmp_path, "testme", "fn f (a: int, b: int) { return a }")
+    with pytest.raises(RolyError, match="expects 2 arguments"):
+        run_source("import testme {f} x = f(1)", base_dir=tmp_path)
+
+
+def test_brace_function_arg_types_checked(tmp_path):
+    write_module(tmp_path, "testme", "fn f (a: int) { return a }")
+    with pytest.raises(RolyError, match="must be int"):
+        run_source('import testme {f} x = f("1")', base_dir=tmp_path)
+
+
+def test_brace_function_name_read_as_variable_errors(tmp_path):
+    write_module(tmp_path, "testme", "fn f () { return 1 }")
+    with pytest.raises(RolyError, match="undefined variable 'f'"):
+        run_source("import testme {f} x = f", base_dir=tmp_path)
+
+
+def test_brace_function_collides_with_user_fn(tmp_path):
+    write_module(tmp_path, "testme", "fn f () { return 1 }")
+    with pytest.raises(RolyError, match="already defined"):
+        run_source("fn f () { return 2 } import testme {f}", base_dir=tmp_path)
+
+
+def test_brace_variable_overwrites_existing_global(tmp_path):
+    write_module(tmp_path, "testme", "x = 9")
+    env = run_source("x = 1 import testme {x} a = x", base_dir=tmp_path)
+    assert env["a"] == 9
+
+
+def test_braces_nonexistent_member_errors_at_import(tmp_path):
     write_module(tmp_path, "testme", "a = 1")
     with pytest.raises(RolyError, match="has no member 'nope'"):
         run_source("import testme {nope}", base_dir=tmp_path)
 
 
-def test_reimport_extends_whitelist(tmp_path):
+def test_reimport_applies_more_aliases(tmp_path):
     write_module(tmp_path, "testme", "a = 1 b = 2")
     env = run_source(
-        "import testme {a} import testme {b} x = testme.a y = testme.b",
+        "import testme {a} import testme {b} x = a y = b",
         base_dir=tmp_path,
     )
     assert env["x"] == 1
     assert env["y"] == 2
 
 
-def test_plain_import_after_braces_opens_all(tmp_path):
+def test_plain_reimport_keeps_aliases(tmp_path):
     write_module(tmp_path, "testme", "a = 1 b = 2")
     env = run_source(
-        "import testme {a} import testme x = testme.b", base_dir=tmp_path
+        "import testme {a} import testme x = a y = testme.b", base_dir=tmp_path
     )
-    assert env["x"] == 2
+    assert env["x"] == 1
+    assert env["y"] == 2
+
+
+def test_module_brace_import_reachable_from_importer(tmp_path):
+    write_module(tmp_path, "inner", "fn dbl (n: int) { return n * 2 }")
+    write_module(
+        tmp_path, "outer", "import inner {dbl} fn go (n: int) { return dbl(n) }"
+    )
+    env = run_source(
+        "import outer {go} x = go(6) y = outer.go(5)", base_dir=tmp_path
+    )
+    assert env["x"] == 12
+    assert env["y"] == 10
+
+
+def test_brace_name_dual_variable_and_function(tmp_path):
+    write_module(tmp_path, "testme", "x = 5 fn x () { return 9 }")
+    env = run_source("import testme {x} a = x b = x()", base_dir=tmp_path)
+    assert env["a"] == 5
+    assert env["b"] == 9
 
 
 def test_reimport_does_not_reexecute(tmp_path):
