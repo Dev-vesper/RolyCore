@@ -351,8 +351,14 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
     <pre><code>nums = <span class="tok-fn">list</span>()          <span class="tok-com">// the empty list</span>
 nums = <span class="tok-fn">push</span>(nums, 10)  <span class="tok-com">// [10] — rebind, the old list is unchanged</span>
 nums = <span class="tok-fn">push</span>(nums, 20)  <span class="tok-com">// [10, 20]</span>
-top = <span class="tok-fn">get</span>(nums, 0)     <span class="tok-com">// 10 — indexes start at 0</span>
+top = nums[0]        <span class="tok-com">// 10 — indexes start at 0</span>
 nums = <span class="tok-fn">set</span>(nums, 0, 99) <span class="tok-com">// [99, 20] — a new list with one element replaced</span></code></pre>
+    <p>The subscript <code>[ ]</code> reads one element: <code>l[i]</code> is exactly <code>get(l, i)</code> and <code>s[i]</code> is exactly <code>char(s, i)</code> — same rules, same errors. Subscripts chain left to right, and attach to any value: a variable, a call result, a parenthesized expression:</p>
+    <pre><code>s = <span class="tok-str">"roly"</span>
+s[0]                 <span class="tok-com">// 'r'</span>
+s[len(s) - 1]        <span class="tok-com">// 'y' — the index is any expression</span>
+reverse_str(s)[0]     <span class="tok-com">// 'y' — the subscript applies to a call result</span>
+grid[0][1]           <span class="tok-com">// nested lists chain left to right</span></code></pre>
     <p>Lists are built with loops the same way strings are built with <code>+</code>, and <code>list("abc")</code> turns a string into its characters:</p>
     <pre><code>evens = <span class="tok-fn">list</span>()
 i = 0
@@ -365,7 +371,7 @@ i = 0
 
 letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>)   <span class="tok-com">// ['r', 'o', 'l', 'y']</span></code></pre>
     <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Python style: <code>[1, 2]</code>, <code>['a', 'b']</code>.</p>
-    <div class="note">There is no list literal and no <code>+</code> between lists — build with <code>push()</code> in a loop. <code>get()</code> is strict like <code>char()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. A list used directly as a condition is an error, like a string.</div>
+    <div class="note">There is no list literal and no <code>+</code> between lists — build with <code>push()</code> in a loop. The subscript is strict like <code>char()</code> and <code>get()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. Subscripts read only — assignment through them (<code>l[0] = x</code>) is a parse error. A list used directly as a condition is an error, like a string.</div>
 </section>
 
 <section id="control">
@@ -511,10 +517,10 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
         <tr><td>str(x)</td><td>int, str, bool, list</td><td>str — booleans give <code>"True"</code> / <code>"False"</code>; lists render Python-style</td></tr>
         <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
         <tr><td>len(s)</td><td>str, list</td><td>int — length of the string or list</td></tr>
-        <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based</td></tr>
+        <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based; <code>s[i]</code> is the same thing</td></tr>
         <tr><td>list() / list(s)</td><td>nothing, or a str</td><td>list — the empty list, or the string's characters in order</td></tr>
         <tr><td>push(l, x)</td><td>list, any value</td><td>list — a new list with x appended</td></tr>
-        <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error</td></tr>
+        <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error; <code>l[i]</code> is the same thing</td></tr>
         <tr><td>set(l, i, x)</td><td>list, int, any value</td><td>list — a new list with position i replaced</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
         <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
@@ -718,6 +724,7 @@ additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
 unary               : '-' unary | primary ;
+subscript           : primary ( '[' expression ']' )* ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
