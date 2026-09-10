@@ -56,12 +56,11 @@ class ReturnSignal(Exception):
 
 
 class ModuleEntry:
-    def __init__(self, name, path, globals, functions, own_functions, imports):
+    def __init__(self, name, path, globals, functions, imports):
         self.name = name
         self.path = path
         self.globals = globals
         self.functions = functions
-        self.own_functions = own_functions
         self.imports = imports
 
 
@@ -93,7 +92,6 @@ class Interpreter:
         self.modules = {}
         self.module_cache = {}
         self.loading = []
-        self.module_boundary = 0
         if entry_path is not None:
             entry = Path(entry_path).resolve()
             self.loading.append((entry.stem, entry))
@@ -127,6 +125,17 @@ class Interpreter:
                         f"function '{statement.name}' is reserved "
                         f"by the standard library"
                     )
+                for param_name, _ in statement.params:
+                    if param_name in self.builtin_names:
+                        raise RolyError(
+                            f"parameter '{param_name}' of '{statement.name}' "
+                            f"is a builtin and cannot be redefined"
+                        )
+                    if param_name in self.reserved:
+                        raise RolyError(
+                            f"parameter '{param_name}' of '{statement.name}' "
+                            f"is reserved by the standard library"
+                        )
                 if statement.name in self.functions:
                     raise RolyError(f"function '{statement.name}' already defined")
                 self.functions[statement.name] = statement
@@ -281,32 +290,38 @@ class Interpreter:
         return BUILTINS[call.name](*values)
 
     def execute_import(self, module_name, names):
+        if module_name in [n for n, _ in self.loading]:
+            chain = [n for n, _ in self.loading] + [module_name]
+            raise RolyError(f"circular import: {' -> '.join(chain)}")
         entry = self.modules.get(module_name)
         if entry is None:
             path = (self.base_dir / f"{module_name}.roly").resolve()
             entry = self.module_cache.get(path)
             if entry is None:
-                if path in [p for _, p in self.loading]:
-                    chain = [n for n, _ in self.loading] + [module_name]
-                    raise RolyError(f"circular import: {' -> '.join(chain)}")
                 entry = self.load_module(module_name, path)
             self.modules[module_name] = entry
         if names is None:
             return
         self.validate_members(entry, module_name, names)
         for name in names:
-            if name in entry.own_functions:
+            function = self.own_function(entry, name)
+            if function is not None:
                 existing = self.functions.get(name)
                 if existing is not None and not isinstance(
                     existing, ModuleFunctionRef
                 ):
                     raise RolyError(f"function '{name}' is already defined")
-                self.functions[name] = self.module_function_ref(entry, name)
+                self.functions[name] = self.module_function_ref(entry, function)
             if name in entry.globals:
                 self.globals[name] = ModuleAlias(entry, name)
 
-    def module_function_ref(self, entry, name):
-        function = entry.own_functions[name]
+    def own_function(self, entry, name):
+        function = entry.functions.get(name)
+        if function is not None and name not in self.reserved:
+            return function
+        return None
+
+    def module_function_ref(self, entry, function):
         while isinstance(function, ModuleFunctionRef):
             entry = function.entry
             function = function.function
@@ -314,7 +329,7 @@ class Interpreter:
 
     def validate_members(self, entry, module_name, names):
         for name in names:
-            if name not in entry.own_functions and name not in entry.globals:
+            if self.own_function(entry, name) is None and name not in entry.globals:
                 raise RolyError(f"module '{module_name}' has no member '{name}'")
 
     def load_module(self, module_name, path):
@@ -338,6 +353,14 @@ class Interpreter:
             module_globals = {}
             module_functions = dict(lib_functions())
             module_imports = {}
+            entry = ModuleEntry(
+                module_name,
+                path,
+                module_globals,
+                module_functions,
+                module_imports,
+            )
+            module_imports[module_name] = entry
             saved = (self.globals, self.functions, self.modules, self.base_dir, self.out)
             self.globals = module_globals
             self.functions = module_functions
@@ -357,17 +380,6 @@ class Interpreter:
                     self.base_dir,
                     self.out,
                 ) = saved
-            own_functions = {
-                n: f for n, f in module_functions.items() if n not in self.reserved
-            }
-            entry = ModuleEntry(
-                module_name,
-                path,
-                module_globals,
-                module_functions,
-                own_functions,
-                module_imports,
-            )
             self.module_cache[path] = entry
             return entry
         finally:
@@ -379,7 +391,7 @@ class Interpreter:
             raise RolyError(f"module '{module_name}' is not imported")
         if member_name in entry.globals:
             return self.deref(entry.globals[member_name])
-        if member_name in entry.own_functions:
+        if self.own_function(entry, member_name) is not None:
             raise RolyError(
                 f"'{member_name}' is a function in module '{module_name}', "
                 f"call it as {module_name}.{member_name}(...)"
@@ -387,10 +399,11 @@ class Interpreter:
         raise RolyError(f"module '{module_name}' has no member '{member_name}'")
 
     def call_module_function(self, module_name, member_name, arg_exprs):
+        self.count_step()
         entry = self.modules.get(module_name)
         if entry is None:
             raise RolyError(f"module '{module_name}' is not imported")
-        function = entry.own_functions.get(member_name)
+        function = self.own_function(entry, member_name)
         if function is None:
             if member_name in entry.globals:
                 raise RolyError(
@@ -405,17 +418,14 @@ class Interpreter:
 
     def run_in_module(self, entry, name, function, args):
         saved = (self.globals, self.functions, self.modules, self.base_dir)
-        boundary = self.module_boundary
         self.globals = entry.globals
         self.functions = entry.functions
         self.modules = entry.imports
         self.base_dir = entry.path.parent
-        self.module_boundary = len(self.locals_stack)
         try:
             return self.invoke_function(name, function, args)
         finally:
             self.globals, self.functions, self.modules, self.base_dir = saved
-            self.module_boundary = boundary
 
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool"}[param_type]
@@ -466,9 +476,10 @@ class Interpreter:
             if name in frame:
                 return frame[name]
             raise RolyError(f"undefined variable '{name}'")
-        for scope in reversed(self.locals_stack[self.module_boundary:]):
-            if name in scope:
-                return scope[name]
+        if self.locals_stack:
+            frame = self.locals_stack[-1]
+            if name in frame:
+                return frame[name]
         if name in self.globals:
             return self.deref(self.globals[name])
         raise RolyError(f"undefined variable '{name}'")
@@ -481,14 +492,15 @@ class Interpreter:
         if self.lib_depth > 0:
             self.locals_stack[-1][name] = value
             return
-        for scope in reversed(self.locals_stack[self.module_boundary:]):
-            if name in scope:
-                scope[name] = value
+        if self.locals_stack:
+            frame = self.locals_stack[-1]
+            if name in frame:
+                frame[name] = value
                 return
-        if name in self.globals or len(self.locals_stack) <= self.module_boundary:
-            self.globals[name] = value
-        else:
-            self.locals_stack[-1][name] = value
+            if name not in self.globals:
+                frame[name] = value
+                return
+        self.globals[name] = value
 
     def require_int(self, op, value):
         if type(value) is not int:
