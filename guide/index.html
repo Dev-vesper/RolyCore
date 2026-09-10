@@ -240,7 +240,7 @@ footer {
 
 <header>
     <h1>ROLY</h1>
-    <p>A tiny, stable programming language. Integer arithmetic, strings, loops, conditions, jumps — nothing else. This single page is the complete language guide.</p>
+    <p>A tiny, stable programming language. Integer arithmetic, strings, lists, loops, conditions, jumps — nothing else. This single page is the complete language guide.</p>
     <div class="meta">Language Reference — Single Page</div>
 </header>
 
@@ -251,6 +251,7 @@ footer {
     <a href="#arithmetic">Arithmetic</a>
     <a href="#comparisons">Comparisons</a>
     <a href="#strings">Strings</a>
+    <a href="#lists">Lists</a>
     <a href="#control">Control Flow</a>
     <a href="#jumps">break / continue</a>
     <a href="#functions">Functions</a>
@@ -264,11 +265,12 @@ footer {
 
 <section id="values">
     <h2>Values</h2>
-    <p>Roly has exactly three kinds of values:</p>
+    <p>Roly has exactly four kinds of values:</p>
     <ul>
         <li><b>Integers</b> — arbitrary size, written in decimal digits: <code>42</code>, <code>0</code>, <code>1234567</code></li>
         <li><b>Booleans</b> — written <code>TRUE</code> and <code>FALSE</code>, always in capital letters; also produced by comparisons</li>
         <li><b>Strings</b> — double-quoted, may contain any characters: <code>"hello world"</code></li>
+        <li><b>Lists</b> — ordered sequences of values, built and read through built-ins: <code>[1, 2, 3]</code></li>
     </ul>
     <div class="note">Booleans never mix with arithmetic. <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Types never convert into each other: <code>"1" == 1</code> is simply <code>False</code>.</div>
 </section>
@@ -341,6 +343,29 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
 "tab\there"
 "escaped \"quote\" and backslash \\"</code></pre>
     <p>Strings concatenate with <code>+</code>, compare with <code>==</code> and <code>!=</code>, and hold any Unicode content. They are not truthy: a string used directly as a condition is an error.</p>
+</section>
+
+<section id="lists">
+    <h2>Lists</h2>
+    <p>A list holds any number of values in order — integers, strings, booleans, even other lists. Lists are <b>immutable</b>: no operation changes an existing list. <code>push()</code> and <code>set()</code> return new lists, so the result must be assigned:</p>
+    <pre><code>nums = <span class="tok-fn">list</span>()          <span class="tok-com">// the empty list</span>
+nums = <span class="tok-fn">push</span>(nums, 10)  <span class="tok-com">// [10] — rebind, the old list is unchanged</span>
+nums = <span class="tok-fn">push</span>(nums, 20)  <span class="tok-com">// [10, 20]</span>
+top = <span class="tok-fn">get</span>(nums, 0)     <span class="tok-com">// 10 — indexes start at 0</span>
+nums = <span class="tok-fn">set</span>(nums, 0, 99) <span class="tok-com">// [99, 20] — a new list with one element replaced</span></code></pre>
+    <p>Lists are built with loops the same way strings are built with <code>+</code>, and <code>list("abc")</code> turns a string into its characters:</p>
+    <pre><code>evens = <span class="tok-fn">list</span>()
+i = 0
+<span class="tok-kw">while</span> (i &lt; 10) {
+    <span class="tok-kw">if</span> (i / 2 * 2 == i) {
+        evens = <span class="tok-fn">push</span>(evens, i)
+    }
+    i += 1
+}                          <span class="tok-com">// [0, 2, 4, 6, 8]</span>
+
+letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>)   <span class="tok-com">// ['r', 'o', 'l', 'y']</span></code></pre>
+    <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Python style: <code>[1, 2]</code>, <code>['a', 'b']</code>.</p>
+    <div class="note">There is no list literal and no <code>+</code> between lists — build with <code>push()</code> in a loop. <code>get()</code> is strict like <code>char()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. A list used directly as a condition is an error, like a string.</div>
 </section>
 
 <section id="control">
@@ -423,7 +448,7 @@ x = add(2, 3)
 <span class="tok-fn">print</span>(greet(<span class="tok-str">"roly"</span>))</code></pre>
 
     <h3>Types</h3>
-    <p>Parameter types are <code>int</code>, <code>str</code>, and <code>bool</code>. They are checked at call time — each argument must match exactly. There is no <code>float</code> type; <code>a: float</code> is a parse error. No return type is declared.</p>
+    <p>Parameter types are <code>int</code>, <code>str</code>, <code>bool</code>, and <code>list</code>. They are checked at call time — each argument must match exactly. There is no <code>float</code> type; <code>a: float</code> is a parse error. No return type is declared.</p>
 
     <h3>Scope</h3>
     <p>Each call gets its own local scope: parameters and newly assigned variables are local and disappear when the call ends. A function sees its own locals and the globals — nothing in between. One function cannot read or change the locals of the function that called it. Global variables are readable from inside functions, and writing to an existing global updates the global. A parameter may shadow a global.</p>
@@ -469,7 +494,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p>Seven built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>fail()</code> stops the program with a message.</p>
+    <p>Eleven built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 s = str(7)          <span class="tok-com">// "7"</span>
@@ -483,10 +508,14 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
     <table>
         <tr><th>Call</th><th>Accepts</th><th>Result</th></tr>
         <tr><td>int(x)</td><td>int, bool, str</td><td>int — bool gives 1/0; str must be an optionally signed decimal number</td></tr>
-        <tr><td>str(x)</td><td>int, str, bool</td><td>str — booleans give <code>"True"</code> / <code>"False"</code></td></tr>
+        <tr><td>str(x)</td><td>int, str, bool, list</td><td>str — booleans give <code>"True"</code> / <code>"False"</code>; lists render Python-style</td></tr>
         <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
-        <tr><td>len(s)</td><td>str</td><td>int — length of the string</td></tr>
+        <tr><td>len(s)</td><td>str, list</td><td>int — length of the string or list</td></tr>
         <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based</td></tr>
+        <tr><td>list() / list(s)</td><td>nothing, or a str</td><td>list — the empty list, or the string's characters in order</td></tr>
+        <tr><td>push(l, x)</td><td>list, any value</td><td>list — a new list with x appended</td></tr>
+        <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error</td></tr>
+        <tr><td>set(l, i, x)</td><td>list, int, any value</td><td>list — a new list with position i replaced</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
         <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
     </table>
@@ -561,6 +590,24 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>substr(s, start, end)</td><td>characters from start up to end, clamped to the string</td></tr>
         <tr><td>reverse_str(s) / is_palindrome_str(s)</td><td>reversed / reads the same both ways</td></tr>
     </table>
+
+    <h3>lists</h3>
+    <p>These are written in Roly itself, on top of the <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> built-ins. All of them return new lists — nothing is mutated.</p>
+    <table>
+        <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>reverse_list(l)</td><td>a new list with the elements in reverse order</td></tr>
+        <tr><td>join(l, sep)</td><td>the elements as a str, separated by sep</td></tr>
+        <tr><td>sum_list(l)</td><td>the sum of the elements — integers only</td></tr>
+        <tr><td>max_list(l) / min_list(l)</td><td>largest / smallest — the list must not be empty</td></tr>
+        <tr><td>sublist(l, start, end)</td><td>elements from start up to end, clamped like substr</td></tr>
+        <tr><td>remove_at(l, i)</td><td>a new list without the element at i</td></tr>
+        <tr><td>sort_list(l)</td><td>a new list sorted ascending — integers only</td></tr>
+    </table>
+    <pre><code>nums = <span class="tok-fn">list</span>()
+nums = <span class="tok-fn">push</span>(nums, 87)
+nums = <span class="tok-fn">push</span>(nums, 42)
+<span class="tok-fn">print</span>(join(sort_list(nums), <span class="tok-str">" "</span>))  <span class="tok-com">// 42 87</span>
+<span class="tok-fn">print</span>(format("sum={} max={}", sum_list(nums), max_list(nums)))  <span class="tok-com">// sum=129 max=87</span></code></pre>
     <pre><code>print(format("name={} len={}", upper(trim(" roly ")), len("roly")))
 <span class="tok-com">// name=ROLY len=4</span>
 eq = index_of("name=roly", "=")
@@ -637,7 +684,7 @@ import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
 parameter           : IDENT ':' type ;
-type                : 'int' | 'str' | 'bool' ;
+type                : 'int' | 'str' | 'bool' | 'list' ;
 
 statement           : assignment
                     | compound_assignment
@@ -672,7 +719,7 @@ multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
 unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
-builtin_call        : ( 'int' | 'str' | 'bool' ) '(' arguments? ')' ;
+builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
 arguments           : expression ( ',' expression )* ;</div>
 </section>
@@ -686,7 +733,7 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
         <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions see their own locals and the globals, never another function's locals</td></tr>
-        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, import</td></tr>
+        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
