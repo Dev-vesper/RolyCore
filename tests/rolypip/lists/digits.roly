@@ -1,0 +1,11 @@
+digits = list("9127")
+nums = list()
+i = 0
+while (i < len(digits)) {
+    nums = push(nums, int(digits[i]))
+    i += 1
+}
+
+sorted_nums = sort_list(nums)
+print(format("digits={} sorted={}", join(digits, ""), join(sorted_nums, "")))
+print(format("first={} last={} middle={}", sorted_nums[0], sorted_nums[len(sorted_nums) - 1], sorted_nums[len(sorted_nums) / 2]))
