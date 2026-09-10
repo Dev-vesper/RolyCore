@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from roly.interpreter import RolyError
 from roly.lexer import LexError
@@ -40,11 +41,16 @@ def main(argv: list[str] | None = None) -> int:
             except OSError:
                 pass
             return 1
+        source_path = Path(args.file).resolve()
     else:
         source = args.code
+        source_path = None
 
     try:
-        run_source(source)
+        if source_path is not None:
+            run_source(source, base_dir=source_path.parent, entry_path=source_path)
+        else:
+            run_source(source)
     except (LexError, ParseError, RolyError) as error:
         try:
             print(f"error: {error}", file=sys.stderr)

@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 from roly.ast import (
     Assign,
@@ -11,6 +12,9 @@ from roly.ast import (
     Continue,
     FnDef,
     If,
+    Import,
+    ModuleCall,
+    ModuleVar,
     Neg,
     Num,
     Print,
@@ -22,6 +26,8 @@ from roly.ast import (
 )
 from roly.builtins import BUILTINS, BUILTIN_ARITIES
 from roly.errors import RolyError
+from roly.lexer import LexError, Lexer
+from roly.parser import ParseError, Parser
 from roly.stdlib import lib_functions
 
 DEFAULT_MAX_STEPS = 10_000_000
@@ -30,6 +36,10 @@ MAX_CALL_DEPTH = 200
 
 def _stdout_print(value):
     print(value)
+
+
+def _silent_out(value):
+    pass
 
 
 class BreakSignal(Exception):
@@ -45,8 +55,24 @@ class ReturnSignal(Exception):
         self.value = value
 
 
+class ModuleEntry:
+    def __init__(self, name, path, globals, functions, own_functions, imports):
+        self.name = name
+        self.path = path
+        self.globals = globals
+        self.functions = functions
+        self.own_functions = own_functions
+        self.imports = imports
+
+
+class ModuleBinding:
+    def __init__(self, entry, allowed):
+        self.entry = entry
+        self.allowed = allowed
+
+
 class Interpreter:
-    def __init__(self, max_steps=DEFAULT_MAX_STEPS, out=None):
+    def __init__(self, max_steps=DEFAULT_MAX_STEPS, out=None, base_dir=None, entry_path=None):
         self.max_steps = max_steps
         self.steps = 0
         self.globals = {}
@@ -57,6 +83,14 @@ class Interpreter:
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
         self.lib_depth = 0
+        self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd()
+        self.modules = {}
+        self.module_cache = {}
+        self.loading = []
+        self.module_boundary = 0
+        if entry_path is not None:
+            entry = Path(entry_path).resolve()
+            self.loading.append((entry.stem, entry))
         sys.setrecursionlimit(10_000)
 
     @property
@@ -66,6 +100,10 @@ class Interpreter:
         return self.globals
 
     def run(self, program):
+        self.execute_program(program)
+        return self.globals
+
+    def execute_program(self, program):
         for statement in program.statements:
             if isinstance(statement, FnDef):
                 if statement.name in self.builtin_names:
@@ -82,7 +120,6 @@ class Interpreter:
                     raise RolyError(f"function '{statement.name}' already defined")
                 self.functions[statement.name] = statement
         self.exec_statements(program.statements)
-        return self.globals
 
     def exec_statements(self, statements):
         for statement in statements:
@@ -123,6 +160,8 @@ class Interpreter:
             raise ReturnSignal(self.eval(statement.value))
         elif isinstance(statement, FnDef):
             pass
+        elif isinstance(statement, Import):
+            self.execute_import(statement.module, statement.names)
         elif isinstance(statement, While):
             while self.truthy(self.eval(statement.condition)):
                 try:
@@ -161,6 +200,12 @@ class Interpreter:
                 values.append(self.lookup(item.name))
             elif isinstance(item, Call):
                 values.append(self.call_function(item))
+            elif isinstance(item, ModuleVar):
+                values.append(self.read_module_var(item.module, item.name))
+            elif isinstance(item, ModuleCall):
+                values.append(
+                    self.call_module_function(item.module, item.name, item.args)
+                )
             else:
                 raise RolyError(f"cannot evaluate {item!r}")
         return values[-1]
@@ -172,16 +217,19 @@ class Interpreter:
         if call.name not in self.functions:
             raise RolyError(f"undefined function '{call.name}'")
         function = self.functions[call.name]
-        if len(call.args) != len(function.params):
-            raise RolyError(
-                f"function '{call.name}' expects {len(function.params)} "
-                f"arguments, got {len(call.args)}"
-            )
         args = [self.eval(arg) for arg in call.args]
-        for (name, param_type), value in zip(function.params, args):
+        return self.invoke_function(call.name, function, args)
+
+    def invoke_function(self, name, function, args):
+        if len(args) != len(function.params):
+            raise RolyError(
+                f"function '{name}' expects {len(function.params)} "
+                f"arguments, got {len(args)}"
+            )
+        for (param_name, param_type), value in zip(function.params, args):
             if type(value) is not param_type:
                 raise RolyError(
-                    f"argument '{name}' of '{call.name}' must be "
+                    f"argument '{param_name}' of '{name}' must be "
                     f"{self.type_name(param_type)}, got {value!r}"
                 )
         if self.call_depth >= MAX_CALL_DEPTH:
@@ -190,8 +238,8 @@ class Interpreter:
                 f"(possible runaway recursion)"
             )
 
-        frame = dict(zip([name for name, _ in function.params], args))
-        is_lib = function.name in self.reserved
+        frame = dict(zip([n for n, _ in function.params], args))
+        is_lib = name in self.reserved
         self.locals_stack.append(frame)
         self.call_depth += 1
         if is_lib:
@@ -205,7 +253,7 @@ class Interpreter:
                 self.lib_depth -= 1
             self.call_depth -= 1
             self.locals_stack.pop()
-        raise RolyError(f"function '{call.name}' did not return a value")
+        raise RolyError(f"function '{name}' did not return a value")
 
     def call_builtin(self, call):
         arity = BUILTIN_ARITIES.get(call.name)
@@ -216,6 +264,135 @@ class Interpreter:
             )
         values = [self.eval(arg) for arg in call.args]
         return BUILTINS[call.name](*values)
+
+    def execute_import(self, module_name, names):
+        binding = self.modules.get(module_name)
+        if binding is not None:
+            if names is None:
+                binding.allowed = None
+            else:
+                self.validate_members(binding.entry, module_name, names)
+                if binding.allowed is not None:
+                    binding.allowed.update(names)
+            return
+        path = (self.base_dir / f"{module_name}.roly").resolve()
+        entry = self.module_cache.get(path)
+        if entry is None:
+            if path in [p for _, p in self.loading]:
+                chain = [n for n, _ in self.loading] + [module_name]
+                raise RolyError(f"circular import: {' -> '.join(chain)}")
+            entry = self.load_module(module_name, path)
+        if names is not None:
+            self.validate_members(entry, module_name, names)
+        allowed = None if names is None else set(names)
+        self.modules[module_name] = ModuleBinding(entry, allowed)
+
+    def validate_members(self, entry, module_name, names):
+        for name in names:
+            if name not in entry.own_functions and name not in entry.globals:
+                raise RolyError(f"module '{module_name}' has no member '{name}'")
+
+    def load_module(self, module_name, path):
+        if not path.is_file():
+            raise RolyError(
+                f"module '{module_name}' not found (looked for {path})"
+            )
+        self.loading.append((module_name, path))
+        try:
+            try:
+                source = path.read_text(encoding="utf-8")
+            except OSError as error:
+                raise RolyError(
+                    f"cannot read module '{module_name}': {error.strerror}"
+                )
+            try:
+                tokens = Lexer(source).tokenize()
+                program = Parser(tokens).parse()
+            except (LexError, ParseError) as error:
+                raise RolyError(f"error in module '{module_name}': {error}")
+            module_globals = {}
+            module_functions = dict(lib_functions())
+            module_imports = {}
+            saved = (self.globals, self.functions, self.modules, self.base_dir, self.out)
+            self.globals = module_globals
+            self.functions = module_functions
+            self.modules = module_imports
+            self.base_dir = path.parent
+            self.out = _silent_out
+            try:
+                try:
+                    self.execute_program(program)
+                except RolyError as error:
+                    raise RolyError(f"error in module '{module_name}': {error}")
+            finally:
+                (
+                    self.globals,
+                    self.functions,
+                    self.modules,
+                    self.base_dir,
+                    self.out,
+                ) = saved
+            own_functions = {
+                n: f for n, f in module_functions.items() if n not in self.reserved
+            }
+            entry = ModuleEntry(
+                module_name,
+                path,
+                module_globals,
+                module_functions,
+                own_functions,
+                module_imports,
+            )
+            self.module_cache[path] = entry
+            return entry
+        finally:
+            self.loading.pop()
+
+    def module_binding(self, module_name, member_name):
+        binding = self.modules.get(module_name)
+        if binding is None:
+            raise RolyError(f"module '{module_name}' is not imported")
+        if binding.allowed is not None and member_name not in binding.allowed:
+            raise RolyError(
+                f"'{member_name}' was not imported from module '{module_name}'"
+            )
+        return binding
+
+    def read_module_var(self, module_name, member_name):
+        binding = self.module_binding(module_name, member_name)
+        entry = binding.entry
+        if member_name in entry.globals:
+            return entry.globals[member_name]
+        if member_name in entry.own_functions:
+            raise RolyError(
+                f"'{member_name}' is a function in module '{module_name}', "
+                f"call it as {module_name}.{member_name}(...)"
+            )
+        raise RolyError(f"module '{module_name}' has no member '{member_name}'")
+
+    def call_module_function(self, module_name, member_name, arg_exprs):
+        binding = self.module_binding(module_name, member_name)
+        entry = binding.entry
+        function = entry.own_functions.get(member_name)
+        if function is None:
+            if member_name in entry.globals:
+                raise RolyError(
+                    f"'{member_name}' is not a function in module '{module_name}'"
+                )
+            raise RolyError(f"module '{module_name}' has no member '{member_name}'")
+        args = [self.eval(arg) for arg in arg_exprs]
+        saved = (self.globals, self.functions, self.modules, self.base_dir)
+        boundary = self.module_boundary
+        self.globals = entry.globals
+        self.functions = entry.functions
+        self.modules = entry.imports
+        self.base_dir = entry.path.parent
+        self.module_boundary = len(self.locals_stack)
+        try:
+            return self.invoke_function(member_name, function, args)
+        finally:
+            self.globals, self.functions, self.modules, self.base_dir = saved
+            self.module_boundary = boundary
 
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool"}[param_type]
@@ -266,7 +443,7 @@ class Interpreter:
             if name in frame:
                 return frame[name]
             raise RolyError(f"undefined variable '{name}'")
-        for scope in reversed(self.locals_stack):
+        for scope in reversed(self.locals_stack[self.module_boundary:]):
             if name in scope:
                 return scope[name]
         if name in self.globals:
@@ -281,11 +458,11 @@ class Interpreter:
         if self.lib_depth > 0:
             self.locals_stack[-1][name] = value
             return
-        for scope in reversed(self.locals_stack):
+        for scope in reversed(self.locals_stack[self.module_boundary:]):
             if name in scope:
                 scope[name] = value
                 return
-        if name in self.globals or not self.locals_stack:
+        if name in self.globals or len(self.locals_stack) <= self.module_boundary:
             self.globals[name] = value
         else:
             self.locals_stack[-1][name] = value
