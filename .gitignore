@@ -22,6 +22,7 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+*.spec
 
 # Editors
 .idea/

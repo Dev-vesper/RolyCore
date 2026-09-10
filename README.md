@@ -42,6 +42,17 @@ After execution, the CLI prints only what the program prints with `print(...)` â
 
 The suite executes the real Roly programs in `syntax/` as part of the tests, so those files must stay in place.
 
+## Building the standalone executable
+
+The engine can be packaged into a single executable with the standard library kept beside it as files:
+
+```bash
+.venv/bin/pip install pyinstaller
+.venv/bin/python build.py
+```
+
+The build produces `dist/roly.exe` and a `dist/lib` folder. The `lib` folder must stay next to the executable â€” the engine looks there for the standard library when running. An executable built on Linux runs on Linux; build on Windows for a Windows executable.
+
 ## Notes
 
 - Any Python 3.13+ interpreter works; no third-party packages are needed to run the language itself.
