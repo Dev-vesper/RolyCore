@@ -20,6 +20,13 @@ EXPECTED_ENV = {
     "print.roly": {"strings": "hello world", "i": 11},
     "odd_seek.roly": {"n": 20},
     "fn_math.roly": {"x": 6, "y": 12},
+    "lib_std.roly": {
+        "x": 6,
+        "y": 12,
+        "z": 256,
+        "s": "==========",
+        "big": 3628800,
+    },
 }
 
 EXPECTED_PRINTS = {
@@ -27,6 +34,7 @@ EXPECTED_PRINTS = {
     "print.roly": ["hello world", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     "odd_seek.roly": [3, 5, 7, 9, 11, 13, 15, 17, 19],
     "fn_math.roly": [6, 12],
+    "lib_std.roly": [6, 12, 256, "==========", 3628800, 27],
 }
 
 

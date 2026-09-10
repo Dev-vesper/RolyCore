@@ -58,16 +58,16 @@ def test_call_in_print():
 
 def test_recursive_factorial():
     env = run_source(
-        "fn fact (n: int) { if (n <= 1) { return 1 } return n * fact(n - 1) }"
-        " x = fact(10)"
+        "fn myfact (n: int) { if (n <= 1) { return 1 } return n * myfact(n - 1) }"
+        " x = myfact(10)"
     )
     assert env["x"] == 3628800
 
 
 def test_recursive_fibonacci():
     env = run_source(
-        "fn fib (n: int) { if (n < 2) { return n } return fib(n - 1) + fib(n - 2) }"
-        " x = fib(15)"
+        "fn myfib (n: int) { if (n < 2) { return n } return myfib(n - 1) + myfib(n - 2) }"
+        " x = myfib(15)"
     )
     assert env["x"] == 610
 
@@ -179,8 +179,8 @@ def test_return_overrides_continue():
 
 def test_multiple_returns_in_branches():
     env = run_source(
-        "fn sign (n: int) { if (n > 0) { return 1 } if (n < 0) { return 0 - 1 } return 0 }"
-        " a = sign(5) b = sign(0 - 3) c = sign(0)"
+        "fn mysign (n: int) { if (n > 0) { return 1 } if (n < 0) { return 0 - 1 } return 0 }"
+        " a = mysign(5) b = mysign(0 - 3) c = mysign(0)"
     )
     assert env["a"] == 1
     assert env["b"] == -1

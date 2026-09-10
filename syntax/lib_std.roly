@@ -1,0 +1,12 @@
+x = gcd(48, 18)
+y = lcm(4, 6)
+z = pow(2, 8)
+s = repeat("=", 10)
+big = fact(10)
+
+print(x)
+print(y)
+print(z)
+print(s)
+print(big)
+print(digitsum(big))

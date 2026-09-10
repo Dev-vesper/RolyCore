@@ -1,4 +1,4 @@
-fn gcd (a: int, b: int) {
+fn my_gcd (a: int, b: int) {
     while (b != 0) {
         r = a - a / b * b
         a = b
@@ -7,11 +7,11 @@ fn gcd (a: int, b: int) {
     return a
 }
 
-fn lcm (a: int, b: int) {
-    return a / gcd(a, b) * b
+fn my_lcm (a: int, b: int) {
+    return a / my_gcd(a, b) * b
 }
 
-x = gcd(48, 18)
-y = lcm(4, 6)
+x = my_gcd(48, 18)
+y = my_lcm(4, 6)
 print(x)
 print(y)
