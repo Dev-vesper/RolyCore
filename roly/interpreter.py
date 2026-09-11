@@ -95,6 +95,8 @@ class Interpreter:
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
         self.lib_depth = 0
+        self.module_frames = []
+        self.module_context = None
         self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd()
         self.modules = {}
         self.module_cache = {}
@@ -216,17 +218,6 @@ class Interpreter:
                     base = values.pop()
                     values.append(self.subscript(base, index))
                     continue
-                if item[0] == "chain":
-                    ops = item[1]
-                    operands = [values.pop() for _ in range(len(ops) + 1)]
-                    operands.reverse()
-                    for op, left, right in zip(ops, operands, operands[1:]):
-                        if not self.truthy_bool(self.apply_op(op, left, right)):
-                            values.append(False)
-                            break
-                    else:
-                        values.append(True)
-                    continue
                 if item[0] == "listlit":
                     count = item[1]
                     items = [values.pop() for _ in range(count)]
@@ -241,9 +232,7 @@ class Interpreter:
                 work.append(item.right)
                 work.append(item.left)
             elif isinstance(item, Chain):
-                work.append(("chain", item.ops))
-                for operand in reversed(item.operands):
-                    work.append(operand)
+                values.append(self.eval_chain(item))
             elif isinstance(item, Neg):
                 work.append(("negate",))
                 work.append(item.operand)
@@ -270,6 +259,15 @@ class Interpreter:
             else:
                 raise RolyError(f"cannot evaluate {item!r}")
         return values[-1]
+
+    def eval_chain(self, chain):
+        left = self.eval(chain.operands[0])
+        for op, operand in zip(chain.ops, chain.operands[1:]):
+            right = self.eval(operand)
+            if not self.truthy_bool(self.apply_op(op, left, right)):
+                return False
+            left = right
+        return True
 
     def call_function(self, call):
         self.count_step()
@@ -309,7 +307,9 @@ class Interpreter:
 
         frame = dict(zip([n for n, _ in function.params], args))
         is_lib = name in self.reserved
+        module_fn = self.module_context is not None and not is_lib
         self.locals_stack.append(frame)
+        self.module_frames.append(module_fn)
         self.call_depth += 1
         if is_lib:
             self.lib_depth += 1
@@ -322,6 +322,7 @@ class Interpreter:
                 self.lib_depth -= 1
             self.call_depth -= 1
             self.locals_stack.pop()
+            self.module_frames.pop()
         raise RolyError(f"function '{name}' did not return a value")
 
     def call_builtin(self, call):
@@ -408,12 +409,20 @@ class Interpreter:
                 module_imports,
             )
             module_imports[module_name] = entry
-            saved = (self.globals, self.functions, self.modules, self.base_dir, self.out)
+            saved = (
+                self.globals,
+                self.functions,
+                self.modules,
+                self.base_dir,
+                self.out,
+                self.module_context,
+            )
             self.globals = module_globals
             self.functions = module_functions
             self.modules = module_imports
             self.base_dir = path.parent
             self.out = _silent_out
+            self.module_context = entry
             try:
                 try:
                     self.execute_program(program)
@@ -426,6 +435,7 @@ class Interpreter:
                     self.modules,
                     self.base_dir,
                     self.out,
+                    self.module_context,
                 ) = saved
             self.module_cache[path] = entry
             return entry
@@ -465,15 +475,28 @@ class Interpreter:
         return self.run_in_module(entry, member_name, function, args)
 
     def run_in_module(self, entry, name, function, args):
-        saved = (self.globals, self.functions, self.modules, self.base_dir)
+        saved = (
+            self.globals,
+            self.functions,
+            self.modules,
+            self.base_dir,
+            self.module_context,
+        )
         self.globals = entry.globals
         self.functions = entry.functions
         self.modules = entry.imports
         self.base_dir = entry.path.parent
+        self.module_context = entry
         try:
             return self.invoke_function(name, function, args)
         finally:
-            self.globals, self.functions, self.modules, self.base_dir = saved
+            (
+                self.globals,
+                self.functions,
+                self.modules,
+                self.base_dir,
+                self.module_context,
+            ) = saved
 
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool", list: "list"}[param_type]
@@ -559,7 +582,7 @@ class Interpreter:
             if name in frame:
                 frame[name] = value
                 return
-            if name not in self.globals:
+            if not self.module_frames[-1] or name not in self.globals:
                 frame[name] = value
                 return
         self.globals[name] = value

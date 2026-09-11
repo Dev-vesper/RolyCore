@@ -114,10 +114,24 @@ def test_writing_new_local_when_global_absent():
     assert "b" not in env
 
 
-def test_writing_existing_global_from_function():
+def test_function_cannot_write_existing_global():
     env = run_source("a = 1 fn bump () { a = a + 1 return a } x = bump() y = a")
-    assert env["a"] == 2
-    assert env["y"] == 2
+    assert env["a"] == 1
+    assert env["x"] == 2
+    assert env["y"] == 1
+
+
+def test_function_cannot_write_global_with_compound_assign():
+    env = run_source("a = 1 fn bump () { a += 1 return a } x = bump()")
+    assert env["a"] == 1
+    assert env["x"] == 2
+
+
+def test_local_write_stable_across_calls():
+    env = run_source("fn f () { t = 99 return t } a = f() t = 5 b = f()")
+    assert env["t"] == 5
+    assert env["a"] == 99
+    assert env["b"] == 99
 
 
 def test_writing_new_local_in_function():

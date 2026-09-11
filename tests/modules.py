@@ -190,6 +190,33 @@ def test_module_fn_reads_own_globals(tmp_path):
     assert env["x"] == 10
 
 
+def test_module_fn_scratch_stays_local(tmp_path):
+    write_module(
+        tmp_path, "testme", "fn work (n: int) { scratch = n * 2 return scratch }"
+    )
+    env = run_source("import testme x = testme.work(3)", base_dir=tmp_path)
+    assert env["x"] == 6
+    with pytest.raises(RolyError, match="no member 'scratch'"):
+        run_source("import testme x = testme.scratch", base_dir=tmp_path)
+
+
+def test_module_fn_write_through_and_user_fn_local_in_one_program(tmp_path):
+    write_module(
+        tmp_path, "testme", "c = 0 fn bump () { c += 1 return c }"
+    )
+    env = run_source(
+        "import testme"
+        " t = 5"
+        " fn f () { t = 99 return t }"
+        " a = f() b = testme.bump() y = t z = testme.c",
+        base_dir=tmp_path,
+    )
+    assert env["t"] == 5
+    assert env["a"] == 99
+    assert env["b"] == 1
+    assert env["z"] == 1
+
+
 def test_braces_keep_qualified_access(tmp_path):
     write_module(
         tmp_path, "testme", "users = 1 fn setBlock (n: int) { return n }"

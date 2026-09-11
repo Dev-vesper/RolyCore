@@ -86,12 +86,39 @@ def test_chained_comparison_with_variables():
 
 def test_chained_comparison_first_false_pair_wins():
     printed = []
-    run_source(
+    env = run_source(
         'fn boom () { print("boom") return 1 }'
         " x = 1 < 0 < boom()",
         out=printed.append,
     )
+    assert printed == []
+    assert env["x"] is False
+
+
+def test_chained_comparison_skips_operands_after_false_pair():
+    assert run_source("x = 1 == 2 == (1 / 0)")["x"] is False
+
+
+def test_chained_comparison_evaluates_operands_until_false_pair():
+    printed = []
+    env = run_source(
+        'fn boom () { print("boom") return 3 }'
+        " x = 1 < 2 < boom()",
+        out=printed.append,
+    )
     assert printed == ["boom"]
+    assert env["x"] is True
+
+
+def test_chained_comparison_short_circuit_left_to_right():
+    printed = []
+    env = run_source(
+        'fn mark (v: int) { print(v) return v }'
+        " x = mark(1) < mark(0) < mark(9)",
+        out=printed.append,
+    )
+    assert printed == [1, 0]
+    assert env["x"] is False
 
 
 def test_chained_comparison_type_error_still_raised():
