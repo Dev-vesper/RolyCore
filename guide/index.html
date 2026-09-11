@@ -555,9 +555,8 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><th>Function</th><th>Result</th></tr>
         <tr><td>abs(n) / sign(n)</td><td>absolute value / -1, 0, or 1</td></tr>
         <tr><td>min(a, b) / max(a, b)</td><td>smaller / larger of two integers</td></tr>
-        <tr><td>clamp(n, lo, hi)</td><td>n held inside [lo, hi]</td></tr>
+        <tr><td>clamp(n, lo, hi)</td><td>n held inside [lo, hi] — lo above hi is an error</td></tr>
         <tr><td>mod(n, d)</td><td>floored remainder — always satisfies n == (n / d) * d + mod(n, d)</td></tr>
-        <tr><td>pow(b, e)</td><td>b multiplied by itself e times — e must not be below 0</td></tr>
         <tr><td>gcd(a, b) / lcm(a, b)</td><td>greatest common divisor / least common multiple</td></tr>
         <tr><td>isqrt(n)</td><td>integer square root, floored — n must not be below 0</td></tr>
     </table>
@@ -565,7 +564,6 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
     <h3>format</h3>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
-        <tr><td>repeat(s, n)</td><td>the string s concatenated n times</td></tr>
         <tr><td>to_base(n, base)</td><td>n in base 2&ndash;16, lowercase digits, sign kept — base outside 2&ndash;16 is an error</td></tr>
         <tr><td>binary(n) / hex(n)</td><td>shorthands for to_base in base 2 and 16</td></tr>
         <tr><td>pad(n, w)</td><td>zero-padded to width w, like printf %05d</td></tr>

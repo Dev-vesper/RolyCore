@@ -30,6 +30,9 @@ fn max(a: int, b: int) {
 }
 
 fn clamp(n: int, lo: int, hi: int) {
+    if (lo > hi) {
+        return fail("clamp: lo must not exceed hi")
+    }
     if (n < lo) {
         return lo
     }
@@ -41,19 +44,6 @@ fn clamp(n: int, lo: int, hi: int) {
 
 fn mod(n: int, d: int) {
     return n - n / d * d
-}
-
-fn pow(b: int, e: int) {
-    if (e < 0) {
-        return fail("pow: exponent must be non-negative")
-    }
-    r = 1
-    i = 0
-    while (i < e) {
-        r *= b
-        i += 1
-    }
-    return r
 }
 
 fn gcd(a: int, b: int) {

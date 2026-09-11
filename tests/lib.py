@@ -8,9 +8,9 @@ from roly.utils.runner import run_source
 def test_lib_provides_functions():
     names = set(lib_functions())
     for name in [
-        "abs", "sign", "min", "max", "clamp", "mod", "pow", "gcd", "lcm",
+        "abs", "sign", "min", "max", "clamp", "mod", "gcd", "lcm",
         "isqrt",
-        "repeat", "digit_char", "to_base", "binary", "hex", "pad", "group",
+        "digit_char", "to_base", "binary", "hex", "pad", "group",
         "roman",
         "digit_count", "digit_sum", "digital_root", "reverse_digits",
         "is_palindrome",
@@ -19,6 +19,8 @@ def test_lib_provides_functions():
         "collatz_steps",
     ]:
         assert name in names, name
+    assert "pow" not in names
+    assert "repeat" not in names
 
 
 def test_lib_abs():
@@ -46,6 +48,11 @@ def test_lib_clamp():
     assert run_source("x = clamp(42, 0, 100)")["x"] == 42
 
 
+def test_lib_clamp_contradictory_bounds_error():
+    with pytest.raises(RolyError, match="clamp: lo must not exceed hi"):
+        run_source("x = clamp(5, 10, 0)")
+
+
 def test_lib_mod_positive():
     assert run_source("x = mod(7, 3)")["x"] == 1
     assert run_source("x = mod(6, 3)")["x"] == 0
@@ -69,16 +76,26 @@ def test_lib_mod_zero_divisor_errors():
         run_source("x = mod(5, 0)")
 
 
-def test_lib_pow():
-    assert run_source("x = pow(2, 10)")["x"] == 1024
-    assert run_source("x = pow(3, 0)")["x"] == 1
-    assert run_source("x = pow(-2, 3)")["x"] == -8
-    with pytest.raises(RolyError, match="non-negative"):
-        run_source("x = pow(2, -1)")
-
-
 def test_lib_pow_big():
-    assert run_source("x = pow(2, 100)")["x"] == 2**100
+    env = run_source("fn pow (b: int, e: int) { r = 1 i = 0 while (i < e) { r *= b i += 1 } return r } x = pow(2, 100)")
+    assert env["x"] == 2**100
+
+
+def test_pow_and_repeat_are_not_lib_functions():
+    with pytest.raises(RolyError, match="undefined function 'pow'"):
+        run_source("x = pow(2, 10)")
+    with pytest.raises(RolyError, match="undefined function 'repeat'"):
+        run_source('x = repeat("a", 2)')
+
+
+def test_pow_and_repeat_names_are_free():
+    env = run_source(
+        'fn repeat (s: str, n: int) { r = "" i = 0 while (i < n) { r = r + s i += 1 } return r }'
+        ' x = repeat("ab", 3)'
+    )
+    assert env["x"] == "ababab"
+    env = run_source("pow = 5 repeat = 6 x = pow + repeat")
+    assert env["x"] == 11
 
 
 def test_lib_gcd():
@@ -103,17 +120,18 @@ def test_lib_isqrt():
         run_source("x = isqrt(-4)")
 
 
-def test_lib_repeat():
-    assert run_source('x = repeat("ab", 3)')["x"] == "ababab"
-    assert run_source('x = repeat("-", 0)')["x"] == ""
-    assert run_source('x = repeat("x", 1)')["x"] == "x"
-
-
 def test_lib_digit_char():
     assert run_source('x = digit_char(0)')["x"] == "0"
     assert run_source('x = digit_char(9)')["x"] == "9"
     assert run_source('x = digit_char(10)')["x"] == "a"
     assert run_source('x = digit_char(15)')["x"] == "f"
+
+
+def test_lib_digit_char_out_of_range_errors():
+    with pytest.raises(RolyError, match="digit_char: d must be between 0 and 15"):
+        run_source("x = digit_char(-1)")
+    with pytest.raises(RolyError, match="digit_char: d must be between 0 and 15"):
+        run_source("x = digit_char(16)")
 
 
 def test_lib_to_base():
@@ -268,8 +286,8 @@ def test_lib_functions_call_each_other():
 
 
 def test_lib_function_in_user_expression():
-    assert run_source("x = gcd(48, 18) + pow(2, 5)")["x"] == 38
-    assert run_source('x = "[" + repeat("=", 4) + "]"')["x"] == "[====]"
+    assert run_source("x = gcd(48, 18) + isqrt(25)")["x"] == 11
+    assert run_source('x = "[" + binary(3) + "]"')["x"] == "[11]"
 
 
 def test_lib_function_in_condition():
@@ -286,10 +304,10 @@ def test_lib_function_as_user_fn_argument():
 
 def test_user_fn_can_call_lib():
     env = run_source(
-        "fn hyp_sq (a: int, b: int) { return pow(a, 2) + pow(b, 2) }"
+        "fn hyp_sq (a: int, b: int) { return isqrt(a * a + b * b) }"
         " x = hyp_sq(3, 4)"
     )
-    assert env["x"] == 25
+    assert env["x"] == 5
 
 
 def test_user_fn_redefining_lib_name_errors():
@@ -323,7 +341,7 @@ def test_lib_arity_checked():
 
 
 def test_lib_builtin_and_lib_together():
-    env = run_source('x = int(repeat("1", 3)) + factorial(3)')
+    env = run_source('x = int(binary(7)) + factorial(3)')
     assert env["x"] == 117
 
 
@@ -332,7 +350,7 @@ def test_lib_does_not_touch_user_globals():
         "r = 1 i = 2 s = 3 t = 4 a = 5 b = 6 g = 7 c = 8 d = 9 m = 10 "
         "x = 11 y = 12 n = 13 e = 14 lo = 15 hi = 16 w = 17 first = 18 "
         "chunk = 19 target = 20 base = 21 "
-        "v1 = pow(2, 5) v2 = isqrt(17) v3 = gcd(12, 8) v4 = lcm(3, 4) "
+        "v1 = binary(5) v2 = isqrt(17) v3 = gcd(12, 8) v4 = lcm(3, 4) "
         "v5 = factorial(5) v6 = fibonacci(9) v7 = is_prime(11) v8 = abs(-9) "
         "v9 = sign(-2) v10 = max(1, 2) v11 = min(1, 2) v12 = clamp(5, 0, 3) "
         "v13 = digit_sum(99) v14 = digit_count(500) "
@@ -362,8 +380,8 @@ def test_lib_does_not_touch_user_locals():
 
 
 def test_lib_result_can_assign_to_user_variable():
-    env = run_source('s = repeat("=", 3) print(digit_sum(99))')
-    assert env["s"] == "==="
+    env = run_source('s = binary(5) print(digit_sum(99))')
+    assert env["s"] == "101"
 
 
 def test_lib_fail_builtin_raises():

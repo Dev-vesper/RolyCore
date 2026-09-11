@@ -69,6 +69,8 @@ def text_char(s, i):
 
 
 def fail(message):
+    if type(message) is not str:
+        raise RolyError(f"builtin 'fail' expects a str, got {message!r}")
     raise RolyError(message)
 
 

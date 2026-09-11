@@ -1,6 +1,16 @@
+fn rep(s: str, n: int) {
+    r = ""
+    i = 0
+    while (i < n) {
+        r = r + s
+        i += 1
+    }
+    return r
+}
+
 x = gcd(48, 18)
 y = lcm(4, 6)
-s = repeat("=", 10)
+s = rep("=", 10)
 big = factorial(10)
 
 print(x)

@@ -1,14 +1,10 @@
-fn repeat(s: str, n: int) {
-    r = ""
-    i = 0
-    while (i < n) {
-        r = r + s
-        i += 1
-    }
-    return r
-}
-
 fn digit_char(d: int) {
+    if (d < 0) {
+        return fail("digit_char: d must be between 0 and 15")
+    }
+    if (d > 15) {
+        return fail("digit_char: d must be between 0 and 15")
+    }
     if (d < 10) {
         return str(d)
     }

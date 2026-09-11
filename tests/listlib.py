@@ -57,6 +57,23 @@ def test_max_min_empty_list_errors():
         run_source("x = min_list(list())")
 
 
+def test_single_element_list_type_checked():
+    with pytest.raises(RolyError, match="requires integer operands"):
+        run_source('x = sort_list(["a"])')
+    with pytest.raises(RolyError, match="requires integer operands"):
+        run_source("x = max_list([TRUE])")
+    with pytest.raises(RolyError, match="requires integer operands"):
+        run_source('x = min_list(["zz"])')
+    with pytest.raises(RolyError, match="requires integer operands"):
+        run_source("x = sort_list([[1]])")
+
+
+def test_single_element_int_list_still_works():
+    assert run_source("x = sort_list([3])")["x"] == [3]
+    assert run_source("x = max_list([7])")["x"] == 7
+    assert run_source("x = min_list([2])")["x"] == 2
+
+
 def test_sublist_clamps_like_substr():
     env = run_source(f"{nums()} x = sublist(n, 1, 4)")
     assert env["x"] == [2, 8, 3]

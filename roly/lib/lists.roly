@@ -35,7 +35,7 @@ fn max_list(l: list) {
     if (len(l) == 0) {
         return fail("max_list: list must not be empty")
     }
-    m = get(l, 0)
+    m = get(l, 0) + 0
     i = 1
     while (i < len(l)) {
         if (get(l, i) > m) {
@@ -50,7 +50,7 @@ fn min_list(l: list) {
     if (len(l) == 0) {
         return fail("min_list: list must not be empty")
     }
-    m = get(l, 0)
+    m = get(l, 0) + 0
     i = 1
     while (i < len(l)) {
         if (get(l, i) < m) {
@@ -101,7 +101,7 @@ fn sort_list(l: list) {
     r = list()
     i = 0
     while (i < len(l)) {
-        x = get(l, i)
+        x = get(l, i) + 0
         pos = len(r)
         while (pos > 0) {
             if (get(r, pos - 1) <= x) {
