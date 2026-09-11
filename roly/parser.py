@@ -286,8 +286,8 @@ class Parser:
         type_token = self.current()
         if type_token.type not in PARAM_TYPES:
             raise ParseError(
-                f"unknown type '{self.describe(type_token)}' "
-                f"(expected int, str, or bool)",
+                f"unknown type {self.describe(type_token)} "
+                f"(expected int, str, bool, or list)",
                 type_token,
             )
         self.advance()
@@ -413,7 +413,7 @@ class Parser:
             self.match(T.RPAREN, "')'")
             return node
         raise ParseError(
-            f"expected a number, a string, a boolean, an identifier, or '(', "
-            f"got {self.describe(token)}",
+            f"expected a number, a string, a boolean, an identifier, "
+            f"a list, '-', or '(', got {self.describe(token)}",
             token,
         )

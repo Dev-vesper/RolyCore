@@ -28,6 +28,15 @@ def test_missing_expression_after_assign():
         parse("x =")
 
 
+def test_atom_error_message_lists_every_start():
+    with pytest.raises(
+        ParseError,
+        match="expected a number, a string, a boolean, an identifier, "
+        "a list, '-', or '\\(', got '\\)'",
+    ):
+        parse("x = )")
+
+
 def test_missing_expression_after_compound_assign():
     with pytest.raises(ParseError):
         parse("x +=")

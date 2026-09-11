@@ -83,6 +83,19 @@ def test_float_type_rejected():
         parse("fn f (a: float) { return a }")
 
 
+def test_unknown_type_message_single_quoted_and_lists():
+    with pytest.raises(
+        ParseError,
+        match=r"unknown type 'float' \(expected int, str, bool, or list\)",
+    ):
+        parse("fn f (a: float) { return a }")
+
+
+def test_unknown_type_on_keyword_token():
+    with pytest.raises(ParseError, match=r"unknown type 'print'"):
+        parse("fn f (a: print) { return a }")
+
+
 def test_untyped_param_rejected():
     with pytest.raises(ParseError):
         parse("fn f (a) { return a }")

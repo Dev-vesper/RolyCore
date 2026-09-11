@@ -727,10 +727,10 @@ comparison          : additive ( comparison_op additive )+ ;
 comparison_op       : '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
+primary             : atom ( '[' expression ']' )* ;
+atom                : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
 list_literal        : '[' ( expression ( ',' expression )* )? ']' ;
 unary               : '-' unary | primary ;
-subscript           : primary ( '[' expression ']' )* ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
@@ -746,7 +746,7 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
         <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions see their own locals and the globals, never another function's locals</td></tr>
-        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, import</td></tr>
+        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, TRUE, FALSE, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
