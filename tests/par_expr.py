@@ -1,6 +1,6 @@
 import pytest
 
-from roly.ast import Assign, BinOp, Chain, Num, Var
+from roly.ast import Assign, BinOp, Call, Chain, ListLit, Neg, Num, Var
 from roly.lexer import Lexer
 from roly.parser import ParseError, Parser
 
@@ -177,9 +177,52 @@ def test_parse_subscript_missing_index_errors():
         parse("x = a[]")
 
 
-def test_parse_list_literal_still_rejected():
+def test_parse_list_literal():
+    node = parse("x = [1, 2]").statements[0].value
+    assert node == ListLit([Num(1), Num(2)])
+
+
+def test_parse_empty_list_literal():
+    node = parse("x = []").statements[0].value
+    assert node == ListLit([])
+
+
+def test_parse_single_item_list_literal():
+    node = parse("x = [1]").statements[0].value
+    assert node == ListLit([Num(1)])
+
+
+def test_parse_list_literal_items_are_expressions():
+    node = parse("x = [1 + 2, f(), -3]").statements[0].value
+    assert node.items[0] == BinOp("+", Num(1), Num(2))
+    assert node.items[1] == Call("f", [])
+    assert isinstance(node.items[2], Neg)
+
+
+def test_parse_nested_list_literal():
+    node = parse("x = [[1], [2, 3]]").statements[0].value
+    assert node == ListLit([ListLit([Num(1)]), ListLit([Num(2), Num(3)])])
+
+
+def test_parse_list_literal_trailing_comma_rejected():
+    with pytest.raises(ParseError, match="expected a number"):
+        parse("x = [1, 2,]")
+
+
+def test_parse_list_literal_missing_close_rejected():
+    with pytest.raises(ParseError, match="expected ']'"):
+        parse("x = [1, 2")
+
+
+def test_parse_list_literal_missing_item_rejected():
     with pytest.raises(ParseError):
-        parse("x = [1]")
+        parse("x = [1,]")
+
+
+def test_parse_subscript_on_list_literal():
+    node = parse("x = [1, 2][1]").statements[0].value
+    assert node.base == ListLit([Num(1), Num(2)])
+    assert node.index == Num(1)
 
 
 def test_parse_statement_cannot_start_with_bracket():
