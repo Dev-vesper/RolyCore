@@ -97,3 +97,19 @@ def test_statements_still_split_on_lines():
 
 def test_closing_bracket_can_land_on_next_line():
     assert expr_of("(1 +\n2\n)") == BinOp("+", Num(1), Num(2))
+
+
+def test_assign_operator_on_next_line_is_parse_error():
+    with pytest.raises(ParseError, match="must follow 'x' on the same line"):
+        parse("x\n= 5")
+
+
+def test_compound_assign_operator_on_next_line_is_parse_error():
+    with pytest.raises(ParseError, match="must follow 'x' on the same line"):
+        parse("x = 1\nx\n+= 5")
+
+
+def test_assignment_on_its_own_lines_still_works():
+    assert parse("x = 5\ny = x") == Program(
+        [Assign("x", Num(5)), Assign("y", Var("x"))]
+    )

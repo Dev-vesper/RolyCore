@@ -333,7 +333,7 @@ name = <span class="tok-str">"http://roly"</span>  <span class="tok-com">// the 
     </table>
     <div class="note">Division always floors toward negative infinity. Division by zero is a runtime error. Negative values can be written directly with a unary minus: <code>-5</code>, <code>-x</code>, <code>--3</code>. Negating a boolean or string is a runtime error.</div>
     <div class="note">Both operands of <code>+</code> must be the same type: <code>"a" + 1</code> is a runtime error — there is no implicit conversion, use <code>str()</code> or <code>int()</code> first. There is no string repetition: <code>"ab" * 2</code> is an error; build strings with <code>+</code> in a loop. There are no float numbers — <code>1.5</code> is a parse error — and no hex or binary literals; the library's <code>binary()</code> and <code>hex()</code> render integers instead.</div>
-    <div class="note">An expression must stay on one line: an operator that starts on a new line is a parse error, so <code>x = 5</code> followed by <code>-2</code> on the next line does not parse as <code>x = 5 - 2</code>. To split a long expression, open a bracket first — inside <code>( )</code> and <code>[ ]</code> newlines are allowed: <code>x = (1 +</code> ⏎ <code>2)</code> and <code>l = [1,</code> ⏎ <code>2]</code> both parse.</div>
+    <div class="note">A statement's pieces must stay on one line: an operator that starts on a new line is a parse error, and so is an assignment operator separated from its name — <code>x = 5</code> followed by <code>-2</code> on the next line does not parse as <code>x = 5 - 2</code>, and <code>x</code> followed by <code>= 5</code> on the next line does not parse as an assignment to <code>x</code>. To split a long expression, open a bracket first — inside <code>( )</code> and <code>[ ]</code> newlines are allowed: <code>x = (1 +</code> ⏎ <code>2)</code> and <code>l = [1,</code> ⏎ <code>2]</code> both parse.</div>
 </section>
 
 <section id="comparisons">
@@ -497,7 +497,7 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
 }</code></pre>
 
     <h3>Blocks</h3>
-    <p>A bare braced block is itself a statement. Statements do not need separators — no semicolons, no special line structure. Newlines are plain whitespace.</p>
+    <p>A bare braced block is itself a statement. Statements do not need separators — no semicolons, no special line structure. Newlines separate statements freely; they just cannot appear inside one — see the one-line rule under <a href="#arithmetic">Arithmetic</a>.</p>
     <pre><code>x = 1 y = 2
 
 {

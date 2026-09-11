@@ -181,6 +181,11 @@ class Parser:
 
     def parse_assignment(self):
         name_token = self.advance()
+        if self.new_line():
+            raise ParseError(
+                f"'=' must follow '{name_token.value}' on the same line",
+                self.current(),
+            )
         token_type = self.current().type
         if token_type is T.ASSIGN:
             self.advance()
