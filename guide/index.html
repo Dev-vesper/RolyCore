@@ -359,7 +359,12 @@ s[0]                 <span class="tok-com">// 'r'</span>
 s[len(s) - 1]        <span class="tok-com">// 'y' — the index is any expression</span>
 reverse_str(s)[0]     <span class="tok-com">// 'y' — the subscript applies to a call result</span>
 grid[0][1]           <span class="tok-com">// nested lists chain left to right</span></code></pre>
-    <p>Lists are built with loops the same way strings are built with <code>+</code>, and <code>list("abc")</code> turns a string into its characters:</p>
+    <p>A list is written directly with brackets — any values, in any mix, including other lists:</p>
+    <pre><code>empty = []                        <span class="tok-com">// the empty list</span>
+nums = [<span class="tok-num">1</span>, <span class="tok-num">2</span>, <span class="tok-num">3</span>]              <span class="tok-com">// [1, 2, 3]</span>
+mixed = [<span class="tok-num">1</span>, <span class="tok-str">"a"</span>, TRUE, [<span class="tok-num">2</span>]]     <span class="tok-com">// any values, nested too</span>
+first = nums[<span class="tok-num">0</span>]                 <span class="tok-com">// 1 — the literal works everywhere a value does</span></code></pre>
+    <p>Lists are also built with loops the same way strings are built with <code>+</code>, and <code>list("abc")</code> turns a string into its characters:</p>
     <pre><code>evens = <span class="tok-fn">list</span>()
 i = 0
 <span class="tok-kw">while</span> (i &lt; 10) {
@@ -371,7 +376,7 @@ i = 0
 
 letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>)   <span class="tok-com">// ['r', 'o', 'l', 'y']</span></code></pre>
     <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Python style: <code>[1, 2]</code>, <code>['a', 'b']</code>.</p>
-    <div class="note">There is no list literal and no <code>+</code> between lists — build with <code>push()</code> in a loop. The subscript is strict like <code>char()</code> and <code>get()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. Subscripts read only — assignment through them (<code>l[0] = x</code>) is a parse error. A list used directly as a condition is an error, like a string.</div>
+    <div class="note">List literals have no trailing comma — <code>[1, 2,]</code> is a parse error — and there is no <code>+</code> between lists. The subscript is strict like <code>char()</code> and <code>get()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. Subscripts read only — assignment through them (<code>l[0] = x</code>) is a parse error. A list used directly as a condition is an error, like a string.</div>
 </section>
 
 <section id="control">
@@ -722,7 +727,8 @@ comparison          : additive ( comparison_op additive )+ ;
 comparison_op       : '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
-primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | '(' expression ')' ;
+primary             : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
+list_literal        : '[' ( expression ( ',' expression )* )? ']' ;
 unary               : '-' unary | primary ;
 subscript           : primary ( '[' expression ']' )* ;
 call                : IDENT '(' arguments? ')' ;
