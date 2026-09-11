@@ -1,0 +1,11 @@
+import mod_bank
+
+fn shout (n: int) {
+    print(n * 2)
+    return 0
+}
+
+paid = mod_bank.deposit(50)
+shout(paid)
+mod_bank.deposit(25)
+print(mod_bank.balance)

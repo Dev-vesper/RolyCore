@@ -16,7 +16,10 @@ statement           : assignment
                     | continue_statement
                     | return_statement
                     | block
+                    | expression_statement
                     ;
+
+expression_statement : call | module_call ;
 
 assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
@@ -44,4 +47,7 @@ unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
+module_call         : IDENT '.' IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;
+
+(* A NEWLINE inside an expression is only allowed while ( ) or [ ] are open. *)

@@ -28,6 +28,7 @@ EXPECTED_ENV = {
     },
     "mod_bank.roly": {"balance": 100},
     "mod_use.roly": {"paid": 150, "took": 120},
+    "call_stmt.roly": {"paid": 150},
 }
 
 EXPECTED_PRINTS = {
@@ -51,6 +52,7 @@ EXPECTED_PRINTS = {
         997,
     ],
     "mod_use.roly": [100, 150, 120, 120],
+    "call_stmt.roly": [300, 175],
 }
 
 

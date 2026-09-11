@@ -14,6 +14,7 @@ Statement = Union[
     "FnDef",
     "Import",
     "Block",
+    "ExprStmt",
 ]
 
 
@@ -106,6 +107,11 @@ class While:
 @dataclass
 class Block:
     statements: "list[Statement]"
+
+
+@dataclass
+class ExprStmt:
+    value: Expr
 
 
 @dataclass

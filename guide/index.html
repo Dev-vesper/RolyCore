@@ -333,6 +333,7 @@ name = <span class="tok-str">"http://roly"</span>  <span class="tok-com">// the 
     </table>
     <div class="note">Division always floors toward negative infinity. Division by zero is a runtime error. Negative values can be written directly with a unary minus: <code>-5</code>, <code>-x</code>, <code>--3</code>. Negating a boolean or string is a runtime error.</div>
     <div class="note">Both operands of <code>+</code> must be the same type: <code>"a" + 1</code> is a runtime error — there is no implicit conversion, use <code>str()</code> or <code>int()</code> first. There is no string repetition: <code>"ab" * 2</code> is an error; build strings with <code>+</code> in a loop. There are no float numbers — <code>1.5</code> is a parse error — and no hex or binary literals; the library's <code>binary()</code> and <code>hex()</code> render integers instead.</div>
+    <div class="note">An expression must stay on one line: an operator that starts on a new line is a parse error, so <code>x = 5</code> followed by <code>-2</code> on the next line does not parse as <code>x = 5 - 2</code>. To split a long expression, open a bracket first — inside <code>( )</code> and <code>[ ]</code> newlines are allowed: <code>x = (1 +</code> ⏎ <code>2)</code> and <code>l = [1,</code> ⏎ <code>2]</code> both parse.</div>
 </section>
 
 <section id="comparisons">
@@ -503,7 +504,7 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
     x += 1
     y += 2
 }</code></pre>
-    <div class="note">There are no expression statements: every statement assigns, prints, branches, loops, jumps, declares, or imports. A bare call like <code>f(1)</code> on its own is a parse error — bind it to a variable or print it. There is also no <code>for</code> loop; iteration is a <code>while</code> with a counter, shown under <a href="#lists">Lists</a>.</div>
+    <div class="note">Only calls are expression statements: <code>f(1)</code> or <code>mod.tick()</code> on its own is a statement — the call runs for its side effects and its return value is discarded. Anything else on its own is a parse error: <code>1 + 1</code>, a bare variable <code>x</code>, <code>l[0]</code>, <code>f()[0]</code> must be assigned, printed, or returned. There is also no <code>for</code> loop; iteration is a <code>while</code> with a counter, shown under <a href="#lists">Lists</a>.</div>
 </section>
 
 <section id="jumps">
@@ -802,7 +803,10 @@ statement           : assignment
                     | continue_statement
                     | return_statement
                     | block
+                    | expression_statement
                     ;
+
+expression_statement : call | module_call ;
 
 assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
@@ -830,7 +834,10 @@ unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
-arguments           : expression ( ',' expression )* ;</div>
+module_call         : IDENT '.' IDENT '(' arguments? ')' ;
+arguments           : expression ( ',' expression )* ;
+
+(* A NEWLINE inside an expression is only allowed while ( ) or [ ] are open. *)</div>
 </section>
 
 <section id="limits">
@@ -844,7 +851,7 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>No floats</td><td><code>1.5</code> is a parse error — integers only, arbitrary size</td></tr>
         <tr><td>No logical operators</td><td>no and / or / not — conditions combine by nesting and flags, see <a href="#comparisons">Comparisons</a></td></tr>
         <tr><td>No negative indexes</td><td>element access (<code>l[i]</code>, <code>get</code>, <code>char</code>) is strict — out of range errors; range functions (<code>substr</code>, <code>sublist</code>) clamp</td></tr>
-        <tr><td>Statements</td><td>no expression statements — every statement does something; a bare call is a parse error</td></tr>
+        <tr><td>Statements</td><td>only calls may stand alone as statements; every other expression must be assigned, printed, or returned — and expressions cannot continue onto the next line</td></tr>
         <tr><td>Reserved names</td><td>15 keywords + 11 built-ins + 31 library functions cannot be variable, function, or parameter names</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, TRUE, FALSE, import</td></tr>

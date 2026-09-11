@@ -126,7 +126,7 @@ def test_error_position_after_newline():
     with pytest.raises(ParseError) as excinfo:
         parse("x = 1\ny")
     assert excinfo.value.token.line == 2
-    assert excinfo.value.token.column == 2
+    assert excinfo.value.token.column == 1
 
 
 def test_error_message_mentions_location():

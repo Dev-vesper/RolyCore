@@ -11,6 +11,7 @@ from roly.ast import (
     Chain,
     CompoundAssign,
     Continue,
+    ExprStmt,
     FnDef,
     If,
     Import,
@@ -181,6 +182,8 @@ class Interpreter:
             self.exec_statements(statement.statements)
         elif isinstance(statement, Print):
             self.out(self.eval(statement.value))
+        elif isinstance(statement, ExprStmt):
+            self.eval(statement.value)
         elif isinstance(statement, Break):
             raise BreakSignal()
         elif isinstance(statement, Continue):

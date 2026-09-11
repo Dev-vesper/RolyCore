@@ -112,8 +112,9 @@ def test_whitespace_free_expression():
     assert expr_of("1+2*3") == BinOp("+", Num(1), BinOp("*", Num(2), Num(3)))
 
 
-def test_multiline_expression():
-    assert expr_of("1 +\n2") == BinOp("+", Num(1), Num(2))
+def test_multiline_expression_is_parse_error():
+    with pytest.raises(ParseError, match="cannot continue on the next line"):
+        expr_of("1 +\n2")
 
 
 def test_assignment_node_shape():
