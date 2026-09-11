@@ -44,14 +44,34 @@ The suite executes the real Roly programs in `syntax/` as part of the tests, so 
 
 ## Building the standalone executable
 
-The engine can be packaged into a single executable with the standard library kept beside it as files:
+The engine can be packaged into a single executable with the standard library kept beside it as plain files. Executables are platform-native: build on the operating system you want to run it on.
+
+**Linux / macOS**
 
 ```bash
-.venv/bin/pip install pyinstaller
-.venv/bin/python build.py
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install pyinstaller
+python3 build.py
 ```
 
-The build produces `dist/roly.exe` on Windows and `dist/roly` on Linux and macOS, next to a `dist/lib` folder. The `lib` folder must stay next to the executable — the engine looks there for the standard library when running. Executables are platform-native, so build on the target operating system.
+**Windows**
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install pyinstaller
+python build.py
+```
+
+The build writes the executable and the library folder to `dist/`:
+
+| Platform | Executable | Library |
+| --- | --- | --- |
+| Linux / macOS | `dist/roly` | `dist/lib` |
+| Windows | `dist\roly.exe` | `dist\lib` |
+
+The `lib` folder must stay next to the executable — the engine loads the standard library from there at startup, and a missing folder is a clean error rather than a crash. Pass `--clean` (for example `python3 build.py --clean`) to remove `dist/` before building.
 
 ## Notes
 
