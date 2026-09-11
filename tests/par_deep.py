@@ -79,3 +79,33 @@ def test_mixed_nesting_within_limit():
     n = 30
     source = "x = 1 " + "if (x) { " * n + "x = " + "(" * n + "x + 1" + ")" * n + "} " * n
     assert run_source(source)["x"] == 2
+
+
+def test_deep_unary_minus_raises_parse_error():
+    with pytest.raises(ParseError, match="nesting"):
+        parse("x = " + "-" * 150 + "1")
+
+
+def test_very_deep_unary_minus_raises_quickly():
+    with pytest.raises(ParseError):
+        parse("x = " + "-" * 5000 + "1")
+
+
+def test_unary_minus_within_limit_parses_and_runs():
+    assert run_source("x = " + "-" * 90 + "1")["x"] == 1
+
+
+def test_unary_minus_error_has_position():
+    with pytest.raises(ParseError) as excinfo:
+        parse("x = " + "-" * 101 + "1")
+    assert excinfo.value.token.line == 1
+
+
+def test_unary_minus_mixed_with_parens_within_limit():
+    source = "x = " + "-(" * 45 + "1" + ")" * 45
+    assert run_source(source)["x"] == -1
+
+
+def test_sibling_negations_do_not_accumulate_depth():
+    source = "x = " + "-(-(-1)) + " * 100 + "0"
+    assert run_source(source)["x"] == -100

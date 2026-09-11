@@ -393,7 +393,10 @@ class Parser:
             )
         if token.type is T.MINUS:
             self.advance()
-            return Neg(self.parse_primary())
+            self.enter()
+            node = Neg(self.parse_primary())
+            self.leave()
+            return node
         if token.type is T.LBRACKET:
             self.advance()
             items = []

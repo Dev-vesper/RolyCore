@@ -123,6 +123,32 @@ def test_str_bool_matches_print_output():
     assert printed == ["True", "False"]
 
 
+def test_str_of_huge_int_beyond_python_default_cap():
+    env = run_source("x = str(pow(2, 20000)) y = len(x)")
+    assert env["y"] == 6021
+
+
+def test_print_of_huge_int():
+    printed = []
+    run_source("print(pow(2, 20000))", out=printed.append)
+    assert printed == [2 ** 20000]
+
+
+def test_format_with_huge_int():
+    env = run_source('x = format("{}", pow(2, 5000))')
+    assert len(env["x"]) == 1506
+
+
+def test_fail_two_args_errors():
+    with pytest.raises(RolyError, match="builtin 'fail' expects 1 argument, got 2"):
+        run_source('x = fail("a", "b")')
+
+
+def test_fail_zero_args_errors():
+    with pytest.raises(RolyError, match="builtin 'fail' expects 1 argument, got 0"):
+        run_source("x = fail()")
+
+
 def test_bool_identity():
     assert run_source("x = bool(TRUE)")["x"] is True
     assert run_source("x = bool(FALSE)")["x"] is False

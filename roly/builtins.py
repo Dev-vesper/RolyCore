@@ -1,4 +1,8 @@
+import sys
+
 from roly.errors import RolyError
+
+sys.set_int_max_str_digits(0)
 
 DIGITS = "0123456789"
 
@@ -192,4 +196,5 @@ BUILTIN_ARITIES = {
     "push": 2,
     "get": 2,
     "set": 3,
+    "fail": 1,
 }
