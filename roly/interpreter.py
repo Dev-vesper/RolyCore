@@ -14,6 +14,7 @@ from roly.ast import (
     FnDef,
     If,
     Import,
+    ListLit,
     ModuleCall,
     ModuleVar,
     Neg,
@@ -226,6 +227,12 @@ class Interpreter:
                     else:
                         values.append(True)
                     continue
+                if item[0] == "listlit":
+                    count = item[1]
+                    items = [values.pop() for _ in range(count)]
+                    items.reverse()
+                    values.append(items)
+                    continue
                 right = values.pop()
                 left = values.pop()
                 values.append(self.apply_op(item[1], left, right))
@@ -244,6 +251,10 @@ class Interpreter:
                 work.append(("subscript",))
                 work.append(item.index)
                 work.append(item.base)
+            elif isinstance(item, ListLit):
+                work.append(("listlit", len(item.items)))
+                for element in reversed(item.items):
+                    work.append(element)
             elif isinstance(item, (Num, Str, Bool)):
                 values.append(item.value)
             elif isinstance(item, Var):

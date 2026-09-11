@@ -11,6 +11,7 @@ from roly.ast import (
     FnDef,
     If,
     Import,
+    ListLit,
     ModuleCall,
     ModuleVar,
     Neg,
@@ -393,6 +394,16 @@ class Parser:
         if token.type is T.MINUS:
             self.advance()
             return Neg(self.parse_primary())
+        if token.type is T.LBRACKET:
+            self.advance()
+            items = []
+            if not self.check(T.RBRACKET):
+                items.append(self.parse_expression())
+                while self.check(T.COMMA):
+                    self.advance()
+                    items.append(self.parse_expression())
+            self.match(T.RBRACKET, "']'")
+            return ListLit(items)
         if token.type is T.LPAREN:
             self.advance()
             node = self.parse_expression()
