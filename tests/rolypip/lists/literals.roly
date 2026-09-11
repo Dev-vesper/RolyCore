@@ -1,0 +1,12 @@
+temps = [12, 18, 25, 7, 30]
+print(format("all={} count={} sum={}", temps, len(temps), sum_list(temps)))
+print(format("sorted={} max={} min={}", sort_list(temps), max_list(temps), min_list(temps)))
+
+grid = [[1, 2, 3], [4, 5, 6]]
+print(grid[1][2])
+
+mixed = [1, "two", TRUE]
+print(format("{} {} {}", mixed[0], mixed[1], mixed[2]))
+
+words = ["roly", "lang"]
+print(join(words, " + "))
