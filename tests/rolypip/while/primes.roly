@@ -2,15 +2,15 @@ n = 2
 count = 0
 while (n < 30) {
     d = 2
-    is_prime = TRUE
+    prime = TRUE
     while (d * d <= n) {
         if (n / d * d == n) {
-            is_prime = FALSE
+            prime = FALSE
             break
         }
         d += 1
     }
-    if (is_prime) {
+    if (prime) {
         print(n)
         count += 1
     }
