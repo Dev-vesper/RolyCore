@@ -245,6 +245,7 @@ footer {
 </header>
 
 <nav>
+    <a href="#running">Running</a>
     <a href="#values">Values</a>
     <a href="#variables">Variables</a>
     <a href="#comments">Comments</a>
@@ -263,6 +264,18 @@ footer {
     <a href="#limits">Limits</a>
 </nav>
 
+<section id="running">
+    <h2>Running Roly</h2>
+    <p>Two commands drive the engine. <code>run</code> executes a file, <code>exec</code> executes inline code:</p>
+    <pre><code>roly run program.roly
+roly exec 'x = 1 + 2 print(x)'</code></pre>
+    <p>Standard output shows only what <code>print</code> emits. Nothing else is printed — there is no dump of variables after the run, so a program that ends without printing produces no output.</p>
+    <p>Every failure is a single clean error line on standard error, and the exit code is 1. Lexing and parsing errors carry the position; runtime errors name the problem:</p>
+    <pre><code>error: line 1, column 5: expected a statement, got '.'
+error: division by zero</code></pre>
+    <div class="note">The standard library loads automatically — no flag, no import. Modules are looked up next to the file that imports them. The engine also ships as a standalone executable (<code>roly</code> / <code>roly.exe</code>); its <code>lib/</code> folder must stay next to it.</div>
+</section>
+
 <section id="values">
     <h2>Values</h2>
     <p>Roly has exactly four kinds of values:</p>
@@ -272,7 +285,7 @@ footer {
         <li><b>Strings</b> — double-quoted, may contain any characters: <code>"hello world"</code></li>
         <li><b>Lists</b> — ordered sequences of values, built and read through built-ins: <code>[1, 2, 3]</code></li>
     </ul>
-    <div class="note">Booleans never mix with arithmetic. <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Types never convert into each other: <code>"1" == 1</code> is simply <code>False</code>.</div>
+    <div class="note">Booleans never mix with arithmetic. <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Types never convert into each other: <code>"1" == 1</code> and <code>TRUE == 1</code> are simply <code>False</code>.</div>
 </section>
 
 <section id="variables">
@@ -287,6 +300,10 @@ x -= 3
 x *= 2
 x /= 2</code></pre>
     <div class="note">Reading a variable before it is assigned is a runtime error: <code>undefined variable 'x'</code>. Division in <code>/=</code> floors, like all division.</div>
+    <p>Assigning again is always allowed — variables are freely reassignable, and a variable may hold a different type later. There is no declaration keyword: the first assignment creates the variable.</p>
+    <pre><code>x = 5
+x = <span class="tok-str">"five"</span>      <span class="tok-com">// fine — the same name now holds a string</span></code></pre>
+    <div class="note">Some names are taken: the 15 keywords, the 11 built-in function names (<code>len = 5</code> is an error), and the 31 standard library names (<code>gcd = 5</code> likewise). Everything else is yours.</div>
 </section>
 
 <section id="comments">
@@ -315,6 +332,7 @@ name = <span class="tok-str">"http://roly"</span>  <span class="tok-com">// the 
         <tr><td>/</td><td>integer floor division</td><td><code>(0 - 7) / 2</code> is <code>-4</code></td></tr>
     </table>
     <div class="note">Division always floors toward negative infinity. Division by zero is a runtime error. Negative values can be written directly with a unary minus: <code>-5</code>, <code>-x</code>, <code>--3</code>. Negating a boolean or string is a runtime error.</div>
+    <div class="note">Both operands of <code>+</code> must be the same type: <code>"a" + 1</code> is a runtime error — there is no implicit conversion, use <code>str()</code> or <code>int()</code> first. There is no string repetition: <code>"ab" * 2</code> is an error; build strings with <code>+</code> in a loop. There are no float numbers — <code>1.5</code> is a parse error — and no hex or binary literals; the library's <code>binary()</code> and <code>hex()</code> render integers instead.</div>
 </section>
 
 <section id="comparisons">
@@ -333,6 +351,40 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
         <tr><td>&lt; &gt; &lt;= &gt;=</td><td>ordering — integers only</td></tr>
     </table>
     <div class="note">Ordering comparisons on strings or booleans are runtime errors. Equality across different types is <code>False</code>, never an error: <code>1 == "1"</code> is <code>False</code>. A chain stops at the first false pair — later pairs are not evaluated.</div>
+
+    <h3>Logical operators</h3>
+    <p>There are no <code>and</code>, <code>or</code>, or <code>not</code> operators — and no <code>!</code>, <code>&amp;&amp;</code>, or <code>||</code> characters. Conditions are combined structurally instead. An <b>and</b> is one condition inside the other; an <b>or</b> is a flag set by each case; a <b>not</b> is an <code>else</code> branch or an explicit comparison with <code>FALSE</code>:</p>
+    <pre><code><span class="tok-com">// and — both must hold</span>
+n = <span class="tok-num">4</span>
+<span class="tok-kw">if</span> (n &gt; 0) {
+    <span class="tok-kw">if</span> (n / 2 * 2 == n) {
+        <span class="tok-fn">print</span>(<span class="tok-str">"positive and even"</span>)
+    }
+}
+
+<span class="tok-com">// or — either may hold</span>
+s = <span class="tok-str">"yes"</span>
+hit = FALSE
+<span class="tok-kw">if</span> (s == <span class="tok-str">"y"</span>) { hit = TRUE }
+<span class="tok-kw">if</span> (s == <span class="tok-str">"yes"</span>) { hit = TRUE }
+<span class="tok-kw">if</span> (hit) { <span class="tok-fn">print</span>(<span class="tok-str">"agreed"</span>) }
+
+<span class="tok-com">// not — the condition did not hold</span>
+ok = 1 == 2
+<span class="tok-kw">if</span> (ok == FALSE) { <span class="tok-fn">print</span>(<span class="tok-str">"not ok"</span>) }</code></pre>
+    <p>A <code>while</code> that needs two conditions carries the second one as a <code>break</code> inside the body:</p>
+    <pre><code>items = [<span class="tok-num">4</span>, <span class="tok-num">7</span>, <span class="tok-num">9</span>, <span class="tok-num">2</span>]
+target = <span class="tok-num">9</span>
+i = 0
+found = -1
+<span class="tok-kw">while</span> (i &lt; len(items)) {
+    <span class="tok-kw">if</span> (items[i] == target) {
+        found = i
+        <span class="tok-kw">break</span>
+    }
+    i += 1
+}                     <span class="tok-com">// found is the position, or -1 if absent</span></code></pre>
+    <div class="note">A boolean stored in a variable or returned by a function works directly as a condition: <code>if (is_even(n)) { ... }</code>. Booleans cannot be combined with arithmetic — <code>a + b</code> on booleans is a runtime error — so nesting and flags are the only way to join conditions.</div>
 </section>
 
 <section id="strings">
@@ -343,6 +395,7 @@ a + 1 &lt; b * 2      <span class="tok-com">// arithmetic first</span>
 "tab\there"
 "escaped \"quote\" and backslash \\"</code></pre>
     <p>Strings concatenate with <code>+</code>, compare with <code>==</code> and <code>!=</code>, and hold any Unicode content. They are not truthy: a string used directly as a condition is an error.</p>
+    <div class="note">An unknown escape like <code>"\q"</code> and an unterminated quote are lexing errors, reported at the string's start. There is no single-quote form — <code>'a'</code> is not a string.</div>
 </section>
 
 <section id="lists">
@@ -353,7 +406,7 @@ nums = <span class="tok-fn">push</span>(nums, 10)  <span class="tok-com">// [10]
 nums = <span class="tok-fn">push</span>(nums, 20)  <span class="tok-com">// [10, 20]</span>
 top = nums[0]        <span class="tok-com">// 10 — indexes start at 0</span>
 nums = <span class="tok-fn">set</span>(nums, 0, 99) <span class="tok-com">// [99, 20] — a new list with one element replaced</span></code></pre>
-    <p>The subscript <code>[ ]</code> reads one element: <code>l[i]</code> is exactly <code>get(l, i)</code> and <code>s[i]</code> is exactly <code>char(s, i)</code> — same rules, same errors. Subscripts chain left to right, and attach to any value: a variable, a call result, a parenthesized expression:</p>
+    <p>The subscript <code>[ ]</code> reads one element: <code>l[i]</code> is exactly <code>get(l, i)</code> and <code>s[i]</code> is exactly <code>char(s, i)</code> — same rules, same errors. Subscripts chain left to right, and attach to any value: a variable, a call result, a module member, a parenthesized expression:</p>
     <pre><code>s = <span class="tok-str">"roly"</span>
 s[0]                 <span class="tok-com">// 'r'</span>
 s[len(s) - 1]        <span class="tok-com">// 'y' — the index is any expression</span>
@@ -376,6 +429,40 @@ i = 0
 
 letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>)   <span class="tok-com">// ['r', 'o', 'l', 'y']</span></code></pre>
     <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Python style: <code>[1, 2]</code>, <code>['a', 'b']</code>.</p>
+
+    <h3>Working with lists</h3>
+    <p>"Changing" a list always means building a new one and rebinding the variable — that is the whole model. The toolkit:</p>
+    <pre><code>l = <span class="tok-fn">push</span>(l, x)          <span class="tok-com">// append at the end</span>
+l = <span class="tok-fn">set</span>(l, i, x)          <span class="tok-com">// replace the element at position i</span>
+l = remove_at(l, i)    <span class="tok-com">// drop the element at position i — library</span>
+l = sort_list(l)       <span class="tok-com">// new list, sorted ascending — library, integers only</span></code></pre>
+    <p>Iterating is a <code>while</code> with a counter — there is no <code>for</code> loop in the language:</p>
+    <pre><code>l = [<span class="tok-num">10</span>, <span class="tok-num">20</span>, <span class="tok-num">30</span>]
+i = 0
+total = 0
+<span class="tok-kw">while</span> (i &lt; len(l)) {
+    total += l[i]
+    i += 1
+}                      <span class="tok-com">// total is 60</span></code></pre>
+    <p>Inserting into the middle has no library function — build the new list with a loop:</p>
+    <pre><code>l = [<span class="tok-num">1</span>, <span class="tok-num">3</span>]
+at = <span class="tok-num">1</span>
+r = []
+i = 0
+<span class="tok-kw">while</span> (i &lt; len(l)) {
+    <span class="tok-kw">if</span> (i == at) {
+        r = <span class="tok-fn">push</span>(r, <span class="tok-num">99</span>)
+    }
+    r = <span class="tok-fn">push</span>(r, l[i])
+    i += 1
+}                      <span class="tok-com">// r is [1, 99, 3]</span></code></pre>
+    <p>A function can never modify your list — it returns a new one, and the caller rebinds:</p>
+    <pre><code><span class="tok-kw">fn</span> append_nine (l: <span class="tok-kw">list</span>) {
+    <span class="tok-kw">return</span> <span class="tok-fn">push</span>(l, <span class="tok-num">9</span>)
+}
+l = [<span class="tok-num">1</span>, <span class="tok-num">2</span>]
+l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone would change nothing</span></code></pre>
+    <div class="note">No aliasing is ever observable: after <code>b = a</code>, rebinding <code>b</code> with <code>push</code> leaves <code>a</code> untouched — lists behave like plain values. Nested lists build grids: <code>grid = [[1, 2], [3, 4]]</code>, read with <code>grid[1][0]</code>.</div>
     <div class="note">List literals have no trailing comma — <code>[1, 2,]</code> is a parse error — and there is no <code>+</code> between lists. The subscript is strict like <code>char()</code> and <code>get()</code>: an index outside <code>0..len-1</code> is a runtime error; there are no negative indexes. Subscripts read only — assignment through them (<code>l[0] = x</code>) is a parse error. A list used directly as a condition is an error, like a string.</div>
 </section>
 
@@ -416,6 +503,7 @@ letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>) 
     x += 1
     y += 2
 }</code></pre>
+    <div class="note">There are no expression statements: every statement assigns, prints, branches, loops, jumps, declares, or imports. A bare call like <code>f(1)</code> on its own is a parse error — bind it to a variable or print it. There is also no <code>for</code> loop; iteration is a <code>while</code> with a counter, shown under <a href="#lists">Lists</a>.</div>
 </section>
 
 <section id="jumps">
@@ -473,7 +561,7 @@ y = h()           <span class="tok-com">// y is 99, t stays 5 — assignments ar
     <div class="note">Module functions are the one exception: an assignment inside a module function updates that module's own globals — that is how modules keep state. See <a href="#modules">Modules</a>.</div>
 
     <h3>Calls and recursion</h3>
-    <p>A call is an expression — <code>f(a, b)</code> — usable anywhere a value is. Functions are pre-registered before execution, so recursion and mutual recursion work, and a function may be called before its definition appears. Recursion depth is limited to 200 calls.</p>
+    <p>A call is an expression — <code>f(a, b)</code> — usable anywhere a value is. Functions are pre-registered before execution, so recursion and mutual recursion work, and a function may be called before its definition appears. Recursion depth is limited to 200 calls. Arguments evaluate left to right, and the argument count is checked before any argument runs — a call with the wrong arity fails before its side effects happen.</p>
     <pre><code><span class="tok-kw">fn</span> fact (n: <span class="tok-kw">int</span>) {
     <span class="tok-kw">if</span> (n &lt;= 1) { <span class="tok-kw">return</span> 1 }
     <span class="tok-kw">return</span> n * fact(n - 1)
@@ -505,7 +593,10 @@ i = 3
 <span class="tok-kw">while</span> (i &gt; 0) {
     <span class="tok-fn">print</span>(i)
     i -= 1
-}</code></pre>
+}
+
+<span class="tok-fn">print</span>([<span class="tok-num">1</span>, <span class="tok-str">"a"</span>])   <span class="tok-com">// [1, 'a'] — lists render Python-style</span></code></pre>
+    <div class="note"><code>print</code> is a statement, not a function: <code>x = print(1)</code> is a parse error, and <code>print</code> cannot be used as a name.</div>
 </section>
 
 <section id="builtins">
@@ -536,6 +627,7 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
         <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
     </table>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
+    <div class="note">Built-in names cannot be redefined — <code>len = 5</code> and <code>fn len (...)</code> are errors. The four conversion names are keywords in call position: <code>x = int</code> without parentheses is a parse error. <code>bool()</code> rejects lists — a list is never a condition.</div>
 
     <h3>format placeholders</h3>
     <p><code>{}</code> takes the next argument in order; <code>{0}</code>, <code>{1}</code> pick a position and may repeat. <code>{{</code> and <code>}}</code> produce literal braces. Mixing <code>{}</code> and <code>{n}</code> in one format string is an error, as is a placeholder without a matching argument.</p>
@@ -595,6 +687,7 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
     <p>These are written in Roly itself, on top of the <code>len()</code> and <code>char()</code> built-ins.</p>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>char_upper(c) / char_lower(c)</td><td>one character case-converted; non-letters come back unchanged</td></tr>
         <tr><td>upper(s) / lower(s)</td><td>ASCII letter case converted</td></tr>
         <tr><td>trim(s)</td><td>spaces removed from both ends</td></tr>
         <tr><td>starts_with(s, p) / ends_with(s, p)</td><td>border tests</td></tr>
@@ -612,7 +705,7 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>reverse_list(l)</td><td>a new list with the elements in reverse order</td></tr>
         <tr><td>join(l, sep)</td><td>the elements as a str, separated by sep</td></tr>
         <tr><td>sum_list(l)</td><td>the sum of the elements — integers only</td></tr>
-        <tr><td>max_list(l) / min_list(l)</td><td>largest / smallest — the list must not be empty</td></tr>
+        <tr><td>max_list(l) / min_list(l)</td><td>largest / smallest — integers only, the list must not be empty</td></tr>
         <tr><td>sublist(l, start, end)</td><td>elements from start up to end, clamped like substr</td></tr>
         <tr><td>remove_at(l, i)</td><td>a new list without the element at i</td></tr>
         <tr><td>sort_list(l)</td><td>a new list sorted ascending — integers only</td></tr>
@@ -748,6 +841,11 @@ arguments           : expression ( ',' expression )* ;</div>
         <tr><td>Nesting depth (parentheses / blocks)</td><td>100 levels</td></tr>
         <tr><td>Call depth (recursion)</td><td>200 calls</td></tr>
         <tr><td>Loop jumps</td><td>innermost loop only; return overrides them</td></tr>
+        <tr><td>No floats</td><td><code>1.5</code> is a parse error — integers only, arbitrary size</td></tr>
+        <tr><td>No logical operators</td><td>no and / or / not — conditions combine by nesting and flags, see <a href="#comparisons">Comparisons</a></td></tr>
+        <tr><td>No negative indexes</td><td>element access (<code>l[i]</code>, <code>get</code>, <code>char</code>) is strict — out of range errors; range functions (<code>substr</code>, <code>sublist</code>) clamp</td></tr>
+        <tr><td>Statements</td><td>no expression statements — every statement does something; a bare call is a parse error</td></tr>
+        <tr><td>Reserved names</td><td>15 keywords + 11 built-ins + 31 library functions cannot be variable, function, or parameter names</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, TRUE, FALSE, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
