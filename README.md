@@ -80,3 +80,7 @@ The `lib` folder must stay next to the executable — the engine loads the stand
 - There is a step limit (10,000,000 executed statements and function calls) protecting against infinite loops like `while (1) { }`.
 - Nesting of parentheses and blocks is limited to 100 levels; deeper programs fail with a clean parse error instead of a Python traceback.
 - Integer division floors toward negative infinity: `7 / 2` is `3`.
+
+## Internals
+
+For a deep dive into the engine — architecture, module layout, design decisions, and the full evolution history — read [internals.md](internals.md).
