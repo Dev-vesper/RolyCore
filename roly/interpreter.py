@@ -14,7 +14,8 @@ from roly.runtime import (
     ModuleFunctionRef,
     ReturnSignal,
 )
-from roly.stdlib import NativeFn, lib_functions
+from roly import stdlib
+from roly.stdlib import NativeFn
 
 DEFAULT_MAX_STEPS = 10_000_000
 MAX_CALL_DEPTH = 200
@@ -34,12 +35,10 @@ class Interpreter:
         self.steps = 0
         self.globals = {}
         self.locals_stack = []
-        self.functions = dict(lib_functions())
-        self.reserved = set(self.functions)
+        self.functions = {}
         self.builtin_names = set(BUILTINS)
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
-        self.lib_depth = 0
         self.module_frames = []
         self.module_context = None
         self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd()
@@ -81,21 +80,11 @@ class Interpreter:
                         f"'{statement.name}' is a builtin "
                         f"and cannot be redefined"
                     )
-                if statement.name in self.reserved:
-                    raise RolyError(
-                        f"function '{statement.name}' is reserved "
-                        f"by the standard library"
-                    )
                 for param_name, _ in statement.params:
                     if param_name in self.builtin_names:
                         raise RolyError(
                             f"parameter '{param_name}' of '{statement.name}' "
                             f"is a builtin and cannot be redefined"
-                        )
-                    if param_name in self.reserved:
-                        raise RolyError(
-                            f"parameter '{param_name}' of '{statement.name}' "
-                            f"is reserved by the standard library"
                         )
                 if statement.name in self.functions:
                     raise RolyError(f"function '{statement.name}' already defined")
@@ -160,36 +149,35 @@ class Interpreter:
             )
 
         frame = dict(zip([n for n, _ in function.params], args))
-        is_lib = name in self.reserved
-        module_fn = self.module_context is not None and not is_lib
+        module_fn = self.module_context is not None
         self.locals_stack.append(frame)
         self.module_frames.append(module_fn)
         self.call_depth += 1
-        if is_lib:
-            self.lib_depth += 1
         try:
             self.compiled_body(function)(self)
         except ReturnSignal as signal:
             return signal.value
         finally:
-            if is_lib:
-                self.lib_depth -= 1
             self.call_depth -= 1
             self.locals_stack.pop()
             self.module_frames.pop()
         raise RolyError(f"function '{name}' did not return a value")
 
-    def execute_import(self, module_name, names):
+    def execute_import(self, module_name, names, from_lib=False):
         if module_name in [n for n, _ in self.loading]:
             chain = [n for n, _ in self.loading] + [module_name]
             raise RolyError(f"circular import: {' -> '.join(chain)}")
         entry = self.modules.get(module_name)
+        if entry is not None and entry.from_lib != from_lib:
+            raise RolyError(f"'{module_name}' is already imported")
         if entry is None:
-            path = (self.base_dir / f"{module_name}.roly").resolve()
+            path = self.resolve_import_path(module_name, from_lib)
             entry = self.module_cache.get(path)
             if entry is None:
-                entry = self.load_module(module_name, path)
+                entry = self.load_module(module_name, path, from_lib)
             self.modules[module_name] = entry
+            if from_lib:
+                self.inject_native_fns(entry, module_name)
         if names is None:
             return
         self.validate_members(entry, module_name, names)
@@ -207,11 +195,24 @@ class Interpreter:
                     raise RolyError(f"'{name}' is already a function name")
                 self.globals[name] = ModuleAlias(entry, name)
 
+    def resolve_import_path(self, module_name, from_lib):
+        if from_lib:
+            if not stdlib.LIB_DIR.is_dir():
+                raise RolyError(
+                    f"cannot find the standard library "
+                    f"directory '{stdlib.LIB_DIR}'"
+                )
+            return (stdlib.LIB_DIR / f"{module_name}.roly").resolve()
+        return (self.base_dir / f"{module_name}.roly").resolve()
+
+    def inject_native_fns(self, entry, module_name):
+        for name, function in stdlib.NATIVE_MODULE_FNS.get(module_name, {}).items():
+            if name in entry.functions:
+                raise RolyError(f"library function '{name}' is defined twice")
+            entry.functions[name] = function
+
     def own_function(self, entry, name):
-        function = entry.functions.get(name)
-        if function is not None and name not in self.reserved:
-            return function
-        return None
+        return entry.functions.get(name)
 
     def module_function_ref(self, entry, function):
         while isinstance(function, ModuleFunctionRef):
@@ -224,10 +225,11 @@ class Interpreter:
             if self.own_function(entry, name) is None and name not in entry.globals:
                 raise RolyError(f"module '{module_name}' has no member '{name}'")
 
-    def load_module(self, module_name, path):
+    def load_module(self, module_name, path, from_lib=False):
+        kind = "library" if from_lib else "module"
         if not path.is_file():
             raise RolyError(
-                f"module '{module_name}' not found (looked for {path})"
+                f"{kind} '{module_name}' not found (looked for {path})"
             )
         self.loading.append((module_name, path))
         try:
@@ -235,15 +237,15 @@ class Interpreter:
                 source = path.read_text(encoding="utf-8")
             except OSError as error:
                 raise RolyError(
-                    f"cannot read module '{module_name}': {error.strerror}"
+                    f"cannot read {kind} '{module_name}': {error.strerror}"
                 )
             try:
                 tokens = Lexer(source).tokenize()
                 program = Parser(tokens).parse()
             except (LexError, ParseError) as error:
-                raise RolyError(f"error in module '{module_name}': {error}")
+                raise RolyError(f"error in {kind} '{module_name}': {error}")
             module_globals = {}
-            module_functions = dict(lib_functions())
+            module_functions = {}
             module_imports = {}
             entry = ModuleEntry(
                 module_name,
@@ -251,6 +253,7 @@ class Interpreter:
                 module_globals,
                 module_functions,
                 module_imports,
+                from_lib,
             )
             module_imports[module_name] = entry
             saved = (
@@ -271,7 +274,7 @@ class Interpreter:
                 try:
                     self.execute_program(program)
                 except RolyError as error:
-                    raise RolyError(f"error in module '{module_name}': {error}")
+                    raise RolyError(f"error in {kind} '{module_name}': {error}")
             finally:
                 (
                     self.globals,
@@ -358,11 +361,6 @@ class Interpreter:
         return list_get(base, index)
 
     def lookup(self, name):
-        if self.lib_depth > 0:
-            frame = self.locals_stack[-1]
-            if name in frame:
-                return frame[name]
-            raise RolyError(f"undefined variable '{name}'")
         if self.locals_stack:
             frame = self.locals_stack[-1]
             if name in frame:
@@ -378,11 +376,6 @@ class Interpreter:
     def assign(self, name, value):
         if name in self.builtin_names:
             raise RolyError(f"'{name}' is a builtin and cannot be redefined")
-        if name in self.reserved:
-            raise RolyError(f"name '{name}' is reserved by the standard library")
-        if self.lib_depth > 0:
-            self.locals_stack[-1][name] = value
-            return
         if self.locals_stack:
             frame = self.locals_stack[-1]
             if name in frame:

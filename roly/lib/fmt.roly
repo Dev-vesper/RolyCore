@@ -1,3 +1,6 @@
+!import math {mod}
+!import digits {digit_count}
+
 fn digit_char(d: int) {
     if (d < 0) {
         return fail("digit_char: d must be between 0 and 15")

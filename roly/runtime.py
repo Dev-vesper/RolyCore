@@ -12,12 +12,13 @@ class ReturnSignal(Exception):
 
 
 class ModuleEntry:
-    def __init__(self, name, path, globals, functions, imports):
+    def __init__(self, name, path, globals, functions, imports, from_lib=False):
         self.name = name
         self.path = path
         self.globals = globals
         self.functions = functions
         self.imports = imports
+        self.from_lib = from_lib
 
 
 class ModuleAlias:
