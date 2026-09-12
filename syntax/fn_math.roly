@@ -7,9 +7,15 @@ fn my_gcd (a: int, b: int) {
     return a
 }
 
+fn banner (text: str) {
+    print("=" + text + "=")
+}
+
 fn my_lcm (a: int, b: int) {
     return a / my_gcd(a, b) * b
 }
+
+banner("roly")
 
 x = my_gcd(48, 18)
 y = my_lcm(4, 6)

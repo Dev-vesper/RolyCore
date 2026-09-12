@@ -497,7 +497,7 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
 }</code></pre>
 
     <h3>Blocks</h3>
-    <p>A bare braced block is itself a statement. Statements do not need separators — no semicolons, no special line structure. Newlines separate statements freely; they just cannot appear inside one — see the one-line rule under <a href="#arithmetic">Arithmetic</a>.</p>
+    <p>A bare braced block is itself a statement. Statements do not need separators — no semicolons, no special line structure. Newlines separate statements freely; they just cannot appear inside one — see the one-line rule under <a href="#arithmetic">Arithmetic</a>. A block must contain at least one statement: <code>{ }</code>, <code>while (TRUE) { }</code>, or an empty function body is a parse error.</p>
     <pre><code>x = 1 y = 2
 
 {
@@ -570,7 +570,7 @@ y = h()           <span class="tok-com">// y is 99, t stays 5 — assignments ar
 <span class="tok-fn">print</span>(fact(<span class="tok-num">10</span>))   <span class="tok-com">// 3628800</span></code></pre>
 
     <h3>return</h3>
-    <p><code>return</code> ends the call immediately with a value. Inside a loop, <code>return</code> overrides <code>break</code> and <code>continue</code> — it terminates the whole call. Multiple returns in different branches are fine. Every function must return on every path that is used — calling a function that falls off the end of its body is a runtime error. <code>return</code> outside a function is a parse error, just like <code>break</code> outside a loop.</p>
+    <p><code>return</code> ends the call immediately with a value. Inside a loop, <code>return</code> overrides <code>break</code> and <code>continue</code> — it terminates the whole call. Multiple returns in different branches are fine. A function does not have to return — calling it as a statement line (<code>hello("world")</code>) simply runs its body. But a function that falls off the end produces no value, so using its result in an expression (<code>x = hello("world")</code>) is a runtime error. <code>return</code> outside a function is a parse error, just like <code>break</code> outside a loop.</p>
 
     <h3>Rules</h3>
     <ul>
@@ -825,7 +825,7 @@ break_statement     : 'break' ;
 continue_statement  : 'continue' ;
 return_statement    : 'return' expression ;
 
-block               : '{' statement* '}' ;
+block               : '{' statement+ '}' ;
 
 expression          : comparison ;
 comparison          : additive ( comparison_op additive )+ ;
