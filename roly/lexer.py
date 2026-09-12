@@ -1,3 +1,5 @@
+import sys
+
 from roly.tokens import KEYWORDS, T, Token
 
 TWO_CHAR_OPS = {
@@ -136,7 +138,7 @@ class Lexer:
                 break
             self.advance()
         text = self.source[start : self.pos]
-        return Token(KEYWORDS.get(text, T.IDENT), text, start_line, start_column)
+        return Token(KEYWORDS.get(text, T.IDENT), sys.intern(text), start_line, start_column)
 
     def skip_whitespace(self):
         while self.pos < len(self.source):

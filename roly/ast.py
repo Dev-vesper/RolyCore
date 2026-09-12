@@ -18,64 +18,64 @@ Statement = Union[
 ]
 
 
-@dataclass
+@dataclass(slots=True)
 class Num:
     value: int
 
 
-@dataclass
+@dataclass(slots=True)
 class Str:
     value: str
 
 
-@dataclass
+@dataclass(slots=True)
 class Bool:
     value: bool
 
 
-@dataclass
+@dataclass(slots=True)
 class Neg:
     operand: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class Var:
     name: str
 
 
-@dataclass
+@dataclass(slots=True)
 class BinOp:
     op: str
     left: Expr
     right: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class Chain:
     operands: "list[Expr]"
     ops: "list[str]"
 
 
-@dataclass
+@dataclass(slots=True)
 class Call:
     name: str
     args: "list[Expr]"
 
 
-@dataclass
+@dataclass(slots=True)
 class Assign:
     name: str
     value: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class CompoundAssign:
     name: str
     op: str
     value: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class If:
     condition: Expr
     then_block: "Block"
@@ -83,79 +83,79 @@ class If:
     elifs: "list[tuple[Expr, 'Block']] | None" = None
 
 
-@dataclass
+@dataclass(slots=True)
 class Print:
     value: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class Break:
     pass
 
 
-@dataclass
+@dataclass(slots=True)
 class Continue:
     pass
 
 
-@dataclass
+@dataclass(slots=True)
 class While:
     condition: Expr
     body: "Block"
 
 
-@dataclass
+@dataclass(slots=True)
 class Block:
     statements: "list[Statement]"
 
 
-@dataclass
+@dataclass(slots=True)
 class ExprStmt:
     value: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class Return:
     value: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class FnDef:
     name: str
     params: "list[tuple[str, type]]"
     body: "Block"
 
 
-@dataclass
+@dataclass(slots=True)
 class Import:
     module: str
     names: "list[str] | None"
 
 
-@dataclass
+@dataclass(slots=True)
 class ModuleVar:
     module: str
     name: str
 
 
-@dataclass
+@dataclass(slots=True)
 class ModuleCall:
     module: str
     name: str
     args: "list[Expr]"
 
 
-@dataclass
+@dataclass(slots=True)
 class Subscript:
     base: Expr
     index: Expr
 
 
-@dataclass
+@dataclass(slots=True)
 class ListLit:
     items: "list[Expr]"
 
 
-@dataclass
+@dataclass(slots=True)
 class Program:
     statements: "list[Statement]"

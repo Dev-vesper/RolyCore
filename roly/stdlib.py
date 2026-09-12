@@ -1,3 +1,4 @@
+import gc
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -36,4 +37,6 @@ def lib_functions():
                     f"library function '{statement.name}' is defined twice"
                 )
             functions[statement.name] = statement
+    gc.collect()
+    gc.freeze()
     return functions

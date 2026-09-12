@@ -1,3 +1,4 @@
+import gc
 import sys
 from pathlib import Path
 
@@ -114,7 +115,13 @@ class Interpreter:
         return self.globals
 
     def run(self, program):
-        self.execute_program(program)
+        gc_enabled = gc.isenabled()
+        gc.disable()
+        try:
+            self.execute_program(program)
+        finally:
+            if gc_enabled:
+                gc.enable()
         return {name: self.deref(value) for name, value in self.globals.items()}
 
     def deref(self, value):
