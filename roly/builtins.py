@@ -30,6 +30,13 @@ def to_str(value):
         return value
     if type(value) is bool:
         return "True" if value else "False"
+    if type(value) is list:
+        parts = [
+            '"' + item.replace('"', '\\"') + '"' if type(item) is str
+            else to_str(item)
+            for item in value
+        ]
+        return "[" + ", ".join(parts) + "]"
     return str(value)
 
 

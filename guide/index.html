@@ -430,7 +430,7 @@ i = 0
 }                          <span class="tok-com">// [0, 2, 4, 6, 8]</span>
 
 letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>)   <span class="tok-com">// ['r', 'o', 'l', 'y']</span></code></pre>
-    <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Python style: <code>[1, 2]</code>, <code>['a', 'b']</code>.</p>
+    <p>Two lists compare with <code>==</code> structurally: same length and same elements in the same order, with elements compared under the same strict-type rule as everywhere else. Lists print and convert with <code>str()</code> in the Roly style: <code>[1, 2]</code>, <code>["a", "b"]</code> — string elements keep their double quotes.</p>
 
     <h3>Working with lists</h3>
     <p>"Changing" a list always means building a new one and rebinding the variable — that is the whole model. The toolkit:</p>
@@ -627,7 +627,7 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
     <table>
         <tr><th>Call</th><th>Accepts</th><th>Result</th></tr>
         <tr><td>int(x)</td><td>int, bool, str</td><td>int — bool gives 1/0; str must be an optionally signed decimal number</td></tr>
-        <tr><td>str(x)</td><td>int, str, bool, list</td><td>str — booleans give <code>"True"</code> / <code>"False"</code>; lists render Python-style</td></tr>
+        <tr><td>str(x)</td><td>int, str, bool, list</td><td>str — booleans give <code>"True"</code> / <code>"False"</code>; lists render Roly-style with double-quoted strings</td></tr>
         <tr><td>bool(x)</td><td>int, str, bool</td><td>bool — int: nonzero; str: non-empty</td></tr>
         <tr><td>len(s)</td><td>str, list</td><td>int — length of the string or list</td></tr>
         <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based; <code>s[i]</code> is the same thing</td></tr>

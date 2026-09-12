@@ -26,7 +26,7 @@ from roly.ast import (
     Var,
     While,
 )
-from roly.builtins import roly_equal
+from roly.builtins import roly_equal, to_str
 from roly.errors import RolyError
 from roly.runtime import (
     BreakSignal,
@@ -313,7 +313,7 @@ def compile_statement(statement, interp):
 
         def f_print(I):
             I.count_step()
-            I.out(value(I))
+            I.out(to_str(value(I)))
 
         return f_print
     if isinstance(statement, ExprStmt):
