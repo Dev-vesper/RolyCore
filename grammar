@@ -33,7 +33,7 @@ break_statement     : 'break' ;
 continue_statement  : 'continue' ;
 return_statement    : 'return' expression ;
 
-block               : '{' statement* '}' ;
+block               : '{' statement+ '}' ;
 
 expression          : comparison ;
 comparison          : additive ( comparison_op additive )+ ;

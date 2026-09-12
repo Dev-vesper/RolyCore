@@ -344,6 +344,8 @@ class Parser:
     def parse_block(self):
         self.enter()
         self.match(T.LBRACE, "'{'")
+        if self.check(T.RBRACE):
+            raise ParseError("a block cannot be empty", self.current())
         statements = self.parse_statements(T.RBRACE)
         self.match(T.RBRACE, "'}'")
         self.leave()
