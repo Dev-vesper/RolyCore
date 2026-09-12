@@ -162,8 +162,65 @@ def test_library_invariants():
     )
 
 
+def test_subscript_invariants():
+    invariant(
+        'l = [10, 20, 30]\ns = "hello"\n'
+        "print(l[0] + l[2])\n"
+        'print(s[1] == char(s, 1))\n'
+        "print(l[1] == get(l, 1))\n"
+        "print(set(l, 0, 99)[0] == 99)\n"
+        "print(set(l, 1, get(l, 1)) == l)\n"
+        "print(push(l, 40)[3] == 40)\n"
+        "print([[1, 2], [3]][0][1])",
+        "40\nTrue\nTrue\nTrue\nTrue\nTrue\n2",
+    )
+    invariant(
+        '!import strings {reverse_str}\n'
+        'print(reverse_str("hello")[0] == "o")\nprint("hello"[4] == "o")',
+        "True\nTrue",
+    )
+    invariant(
+        "!import lists {sublist, remove_at}\n"
+        "l = [10, 20, 30]\n"
+        "print(sublist(l, 1, 3) == [20, 30])\n"
+        "print(remove_at(l, 0) == [20, 30])\n"
+        "print(remove_at(l, 1) == [10, 30])",
+        "True\nTrue\nTrue",
+    )
+
+
+def test_format_invariants():
+    invariant(
+        'print(format("{1} {0}", "a", "b"))\nprint(format("{{}}"))\n'
+        'print(format("a{}b{}c", 1, 2))',
+        "b a\n{}\na1b2c",
+    )
+
+
+def test_module_invariants(tmp_path):
+    (tmp_path / "box.roly").write_text(
+        "counter = 0\nfn bump () { counter += 1 return counter }\n",
+        encoding="utf-8",
+    )
+    source = (
+        "import box\n"
+        "x = box.bump()\n"
+        "y = box.bump()\n"
+        "print(x == 1) print(y == 2) print(box.counter == 2)\n"
+        "import box\n"
+        "print(box.counter == 2)\n"
+    )
+    lines = []
+    run_source(
+        source, out=lines.append, base_dir=tmp_path,
+        entry_path=tmp_path / "main.roly",
+    )
+    assert lines == ["True", "True", "True", "True"]
+
+
 def test_rendering_invariants():
     invariant('print([1, "a", [2, "b"], TRUE])', '[1, "a", [2, "b"], True]')
+    invariant('print([[]]) print([["x"]])', '[[]]\n[["x"]]')
     invariant('print(str(5)) print(str(TRUE)) print(-3)', "5\nTrue\n-3")
     invariant('print(format("{}", 42)) print(format("{} {}", 1, "x"))', "42\n1 x")
     invariant('print(format("{}", [1, "a"]))', '[1, "a"]')
