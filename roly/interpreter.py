@@ -385,6 +385,8 @@ class Interpreter:
             if not self.module_frames[-1] or name not in self.globals:
                 frame[name] = value
                 return
+        if name in self.functions:
+            raise RolyError(f"'{name}' is already a function name")
         self.globals[name] = value
 
     def count_step(self):

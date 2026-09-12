@@ -589,7 +589,7 @@ y = h()           <span class="tok-com">// y is 99, t stays 5 — assignments ar
         <li>each argument's type must match its annotation exactly</li>
         <li>parameter names must be unique, and cannot be keywords or built-in names — <code>fn f (len: int)</code> is an error</li>
         <li>redefining a function name is an error</li>
-        <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code></li>
+        <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code>; a variable cannot take a function's name in either order — <code>fn f () { ... } f = 5</code> and <code>f = 5 fn f () { ... }</code> are both errors</li>
         <li><code>break</code> / <code>continue</code> inside a function body but outside a loop is a parse error</li>
     </ul>
 </section>

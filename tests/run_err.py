@@ -32,6 +32,21 @@ def test_undefined_function():
     raises("undefined function 'g'", "x = g(1)")
 
 
+def test_variable_cannot_shadow_function():
+    raises(
+        "'f' is already a function name",
+        "fn f () { return 1 } f = 5",
+    )
+    raises(
+        "'f' is already a function name",
+        "f = 5 fn f () { return 1 }",
+    )
+    raises(
+        "'sum_list' is already a function name",
+        "!import lists {sum_list} sum_list = 5",
+    )
+
+
 def test_division_by_zero():
     raises("division by zero", "x = 5 / 0")
     raises("division by zero", "z = 0 y = 5 / z")
