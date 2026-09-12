@@ -165,14 +165,14 @@ class Interpreter:
         return MISSING
 
     def execute_import(self, module_name, names, from_lib=False):
-        if module_name in [n for n, _ in self.loading]:
-            chain = [n for n, _ in self.loading] + [module_name]
-            raise RolyError(f"circular import: {' -> '.join(chain)}")
         entry = self.modules.get(module_name)
         if entry is not None and entry.from_lib != from_lib:
             raise RolyError(f"'{module_name}' is already imported")
+        path = self.resolve_import_path(module_name, from_lib)
+        if path in [p for _, p in self.loading]:
+            chain = [n for n, _ in self.loading] + [module_name]
+            raise RolyError(f"circular import: {' -> '.join(chain)}")
         if entry is None:
-            path = self.resolve_import_path(module_name, from_lib)
             entry = self.module_cache.get(path)
             if entry is None:
                 entry = self.load_module(module_name, path, from_lib)
