@@ -31,6 +31,7 @@ ONE_CHAR_OPS = {
     ":": T.COLON,
     ",": T.COMMA,
     ".": T.DOT,
+    ";": T.SEMI,
 }
 
 WHITESPACE = " \t\r\n"
@@ -89,6 +90,12 @@ class Lexer:
             self.advance()
             self.advance()
             return Token(TWO_CHAR_OPS[pair], pair, start_line, start_column)
+
+        if self.source[self.pos : self.pos + 3] == "...":
+            self.advance()
+            self.advance()
+            self.advance()
+            return Token(T.ELLIPSIS, "...", start_line, start_column)
 
         if char in ONE_CHAR_OPS:
             self.advance()

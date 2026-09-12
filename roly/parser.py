@@ -167,6 +167,12 @@ class Parser:
                 statements.append(self.parse_import(from_lib=True))
             else:
                 statements.append(self.parse_statement())
+            if self.check(T.SEMI):
+                self.advance()
+                if self.check(terminator):
+                    raise ParseError(
+                        "a statement must follow ';'", self.current()
+                    )
         return statements
 
     def parse_statement(self):
@@ -344,6 +350,11 @@ class Parser:
     def parse_block(self):
         self.enter()
         self.match(T.LBRACE, "'{'")
+        if self.check(T.ELLIPSIS):
+            self.advance()
+            self.match(T.RBRACE, "'}' after '...'")
+            self.leave()
+            return Block([])
         if self.check(T.RBRACE):
             raise ParseError("a block cannot be empty", self.current())
         statements = self.parse_statements(T.RBRACE)

@@ -25,6 +25,8 @@ class T(Enum):
     COLON = auto()
     COMMA = auto()
     DOT = auto()
+    SEMI = auto()
+    ELLIPSIS = auto()
     ASSIGN = auto()
     PLUS_ASSIGN = auto()
     MINUS_ASSIGN = auto()
