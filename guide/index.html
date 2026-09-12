@@ -273,7 +273,7 @@ roly exec 'x = 1 + 2 print(x)'</code></pre>
     <p>Every failure is a single clean error line on standard error, and the exit code is 1. Lexing and parsing errors carry the position; runtime errors name the problem:</p>
     <pre><code>error: line 1, column 5: expected a statement, got '.'
 error: division by zero</code></pre>
-    <div class="note">The standard library loads automatically — no flag, no import. Modules are looked up next to the file that imports them. The engine also ships as a standalone executable (<code>roly</code> / <code>roly.exe</code>); its <code>lib/</code> folder must stay next to it.</div>
+    <div class="note">Standard library modules are imported with <code>!import</code>; your own modules are looked up next to the file that imports them. The engine also ships as a standalone executable (<code>roly</code> / <code>roly.exe</code>); its <code>lib/</code> folder must stay next to it.</div>
 </section>
 
 <section id="values">
@@ -303,7 +303,7 @@ x /= 2</code></pre>
     <p>Assigning again is always allowed — variables are freely reassignable, and a variable may hold a different type later. There is no declaration keyword: the first assignment creates the variable.</p>
     <pre><code>x = 5
 x = <span class="tok-str">"five"</span>      <span class="tok-com">// fine — the same name now holds a string</span></code></pre>
-    <div class="note">Some names are taken: the 15 keywords, the 11 built-in function names (<code>len = 5</code> is an error), and the 40 standard library names (<code>gcd = 5</code> likewise). Everything else is yours.</div>
+    <div class="note">Some names are taken: the 15 keywords and the 11 built-in function names (<code>len = 5</code> is an error). Standard library names are yours until you import them — after <code>!import math {gcd}</code> the name <code>gcd</code> means that function and cannot be redefined.</div>
 </section>
 
 <section id="comments">
@@ -576,7 +576,7 @@ y = h()           <span class="tok-com">// y is 99, t stays 5 — assignments ar
     <ul>
         <li>argument count must match the parameter count exactly</li>
         <li>each argument's type must match its annotation exactly</li>
-        <li>parameter names must be unique, and follow the reserved-name rules — <code>fn f (gcd: int)</code> is an error</li>
+        <li>parameter names must be unique, and cannot be keywords or built-in names — <code>fn f (len: int)</code> is an error</li>
         <li>redefining a function name is an error</li>
         <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code></li>
         <li><code>break</code> / <code>continue</code> inside a function body but outside a loop is a parse error</li>
@@ -641,7 +641,12 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
 
 <section id="stdlib">
     <h2>Standard Library</h2>
-    <p>Functions in <code>roly/lib/</code> are loaded automatically before your program runs — no import, they are simply there. Their names are reserved: redefining one as a function or using one as a variable name is an error.</p>
+    <p>The standard library lives in <code>roly/lib/</code> as five modules: <code>math</code>, <code>fmt</code>, <code>digits</code>, <code>strings</code>, and <code>lists</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
+    <pre><code><span class="tok-kw">!import</span> math {gcd, mod}
+<span class="tok-kw">!import</span> fmt
+
+print(gcd(48, 18))         <span class="tok-com">// 6 — the names came in with the braces</span>
+print(fmt.group(1234567))  <span class="tok-com">// 1,234,567 — qualified works with or without braces</span></code></pre>
 
     <h3>math</h3>
     <table>
@@ -655,9 +660,10 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>is_prime(n)</td><td>TRUE when n is prime</td></tr>
     </table>
 
-    <h3>format</h3>
+    <h3>fmt</h3>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>digit_char(d)</td><td>one base digit as a string — d must be between 0 and 15</td></tr>
         <tr><td>to_base(n, base)</td><td>n in base 2&ndash;16, lowercase digits, sign kept — base outside 2&ndash;16 is an error</td></tr>
         <tr><td>binary(n) / hex(n)</td><td>shorthands for to_base in base 2 and 16</td></tr>
         <tr><td>pad(n, w)</td><td>zero-padded to width w, like printf %05d</td></tr>
@@ -699,17 +705,21 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>remove_at(l, i)</td><td>a new list without the element at i</td></tr>
         <tr><td>sort_list(l)</td><td>a new list sorted ascending — integers only</td></tr>
     </table>
-    <pre><code>nums = <span class="tok-fn">list</span>()
+    <pre><code><span class="tok-kw">!import</span> lists {sort_list, join, sum_list, max_list}
+nums = <span class="tok-fn">list</span>()
 nums = <span class="tok-fn">push</span>(nums, 87)
 nums = <span class="tok-fn">push</span>(nums, 42)
 <span class="tok-fn">print</span>(join(sort_list(nums), <span class="tok-str">" "</span>))  <span class="tok-com">// 42 87</span>
 <span class="tok-fn">print</span>(format("sum={} max={}", sum_list(nums), max_list(nums)))  <span class="tok-com">// sum=129 max=87</span></code></pre>
-    <pre><code>print(format("name={} len={}", upper(trim(" roly ")), len("roly")))
+    <pre><code><span class="tok-kw">!import</span> strings {upper, trim, index_of, substr}
+print(format("name={} len={}", upper(trim(" roly ")), len("roly")))
 <span class="tok-com">// name=ROLY len=4</span>
 eq = index_of("name=roly", "=")
 print(substr("name=roly", eq + 1, len("name=roly")))  <span class="tok-com">// roly</span></code></pre>
 
-    <pre><code>print(gcd(48, 18))         <span class="tok-com">// 6</span>
+    <pre><code><span class="tok-kw">!import</span> math {gcd, mod}
+<span class="tok-kw">!import</span> fmt {group, hex, roman}
+print(gcd(48, 18))         <span class="tok-com">// 6</span>
 print(mod(-7, 3))          <span class="tok-com">// 2, floored like the division itself</span>
 print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
@@ -724,6 +734,20 @@ print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
 
 x = testme.users
 y = testme.setBlock(7)</code></pre>
+
+    <h3>Library modules</h3>
+    <p><code>!import</code> — with the exclamation mark — imports from the standard library that ships with Roly instead of from your directory. Everything else behaves exactly the same: qualified access, braces, running once, cycle checks.</p>
+    <pre><code><span class="tok-kw">!import</span> math {gcd}
+<span class="tok-kw">!import</span> strings
+
+print(gcd(48, 18))          <span class="tok-com">// 6</span>
+print(strings.upper("hi"))  <span class="tok-com">// HI</span></code></pre>
+    <ul>
+        <li><code>import math</code> looks only next to your file; <code>!import math</code> looks only in the library — neither falls back to the other</li>
+        <li>a name may come from one source only — <code>import math</code> and <code>!import math</code> in one program is an error</li>
+        <li><code>!</code> is allowed only right before <code>import</code>, on the same line, at the top level</li>
+        <li><code>sort_list</code>, <code>join</code>, and <code>reverse_list</code> are members of the <code>lists</code> module, written natively for speed — <code>!import lists {sort_list}</code> brings them in</li>
+    </ul>
 
     <h3>Bringing names in</h3>
     <p>With or without braces, every member stays reachable through the module's name — braces never restrict access. What braces do is bring the listed names in directly, so you can use them without writing the module name.</p>
@@ -761,9 +785,9 @@ d = counter.c        <span class="tok-com">// 2 — reads the live value</span><
     <h3>Rules</h3>
     <ul>
         <li><code>import</code> is only allowed at the top level of a file</li>
-        <li>a module sees its own globals and the standard library — never yours</li>
+        <li>a module sees its own globals and the modules it imports — never yours</li>
         <li>module functions cannot see the locals of the function calling them</li>
-        <li>library and built-in names are not module members — <code>testme.gcd</code> does not work</li>
+        <li>built-in names are not module members — <code>testme.len</code> does not work; a module can pass on names it imported with braces — if <code>testme</code> does <code>!import math {gcd}</code>, then <code>testme.gcd</code> works</li>
         <li>member names follow identifier rules — keywords cannot be members</li>
         <li>a brace name replaces a variable with the same name; a brace function colliding with one of your functions is an error</li>
         <li><code>import</code> is a keyword; it cannot be used as a variable or function name</li>
@@ -775,7 +799,7 @@ d = counter.c        <span class="tok-com">// 2 — reads the live value</span><
     <p>The complete formal grammar of the language:</p>
     <div class="rule">program             : ( function_declaration | import_statement | statement )* EOF ;
 
-import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
+import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
@@ -840,10 +864,10 @@ arguments           : expression ( ',' expression )* ;
         <tr><td>No logical operators</td><td>no and / or / not — conditions combine by nesting and flags, see <a href="#comparisons">Comparisons</a></td></tr>
         <tr><td>No negative indexes</td><td>element access (<code>l[i]</code>, <code>get</code>, <code>char</code>) is strict — out of range errors; range functions (<code>substr</code>, <code>sublist</code>) clamp</td></tr>
         <tr><td>Statements</td><td>only calls may stand alone as statements; every other expression must be assigned, printed, or returned — and expressions cannot continue onto the next line</td></tr>
-        <tr><td>Reserved names</td><td>15 keywords + 11 built-ins + 31 library functions cannot be variable, function, or parameter names</td></tr>
+        <tr><td>Reserved names</td><td>15 keywords + 11 built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, TRUE, FALSE, import</td></tr>
-        <tr><td>Modules</td><td>loaded once per file, next to the importing file; circular imports are an error</td></tr>
+        <tr><td>Modules</td><td>loaded once per file, next to the importing file — or from the standard library with <code>!import</code>; circular imports are an error</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
 </section>
