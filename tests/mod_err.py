@@ -29,9 +29,21 @@ def test_import_parse_errors():
         "x = testme.print", "x = testme.while", "x = testme.fn",
         "testme.users = 5", "testme.users += 1",
         "x = a.b.c", "x = f(1).y", "x = testme.",
+        "!import", "!import 5",
+        "!import testme {}", "!import testme {users,}",
+        "if (TRUE) { !import testme }",
+        "fn f (n: int) { !import testme return n }",
+        "while (TRUE) { !import testme }",
+        "x = !TRUE", "! x = 5", "!\nimport testme",
     ]:
         with pytest.raises(ParseError):
             parse(source)
+
+
+def test_import_and_lib_import_name_clash(tmp_path):
+    write_module(tmp_path, "math", "fn double (n: int) { return n * 2 }")
+    raises("'math' is already imported", "import math !import math", tmp_path)
+    raises("'math' is already imported", "!import math import math", tmp_path)
 
 
 def test_missing_module_errors(tmp_path):
@@ -43,7 +55,7 @@ def test_module_load_errors_wrapped(tmp_path):
     raises("error in module 'testme'", "import testme", tmp_path)
     write_module(tmp_path, "testme", "x = 1 / 0")
     raises("error in module 'testme'", "import testme", tmp_path)
-    write_module(tmp_path, "testme", "fn gcd (a: int, b: int) { return a }")
+    write_module(tmp_path, "testme", "fn len (a: int) { return a }")
     raises("error in module 'testme'", "import testme", tmp_path)
 
 

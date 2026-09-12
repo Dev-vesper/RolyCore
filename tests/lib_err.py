@@ -11,30 +11,30 @@ def raises(match, source, **kwargs):
 
 
 def test_lib_guards_error():
-    raises("isqrt: n must be non-negative", "x = isqrt(-1)")
-    raises("roman: n must be between 1 and 3999", "x = roman(0)")
-    raises("roman: n must be between 1 and 3999", "x = roman(4000)")
-    raises("between 2 and 16", "x = to_base(5, 1)")
-    raises("between 2 and 16", "x = to_base(5, 17)")
-    raises("digit_char: d must be between 0 and 15", "x = digit_char(-1)")
-    raises("digit_char: d must be between 0 and 15", "x = digit_char(16)")
-    raises("clamp: lo must not exceed hi", "x = clamp(5, 10, 0)")
-    raises("division by zero", "x = mod(5, 0)")
+    raises("isqrt: n must be non-negative", "!import math {isqrt} x = isqrt(-1)")
+    raises("roman: n must be between 1 and 3999", "!import fmt {roman} x = roman(0)")
+    raises("roman: n must be between 1 and 3999", "!import fmt {roman} x = roman(4000)")
+    raises("between 2 and 16", "!import fmt {to_base} x = to_base(5, 1)")
+    raises("between 2 and 16", "!import fmt {to_base} x = to_base(5, 17)")
+    raises("digit_char: d must be between 0 and 15", "!import fmt {digit_char} x = digit_char(-1)")
+    raises("digit_char: d must be between 0 and 15", "!import fmt {digit_char} x = digit_char(16)")
+    raises("clamp: lo must not exceed hi", "!import math {clamp} x = clamp(5, 10, 0)")
+    raises("division by zero", "!import math {mod} x = mod(5, 0)")
 
 
 def test_lib_argument_types_checked():
-    raises("must be int", 'x = abs("-5")')
-    raises("must be str", "x = upper(42)")
-    raises("must be int", 'x = substr("hi", "0", 1)')
-    raises("must be int", 'x = remove_at(list(), "0")')
-    raises("must be str", "x = join(list(), 5)")
-    raises("must be list", "x = reverse_list(5)")
+    raises("must be int", '!import math {abs} x = abs("-5")')
+    raises("must be str", "!import strings {upper} x = upper(42)")
+    raises("must be int", '!import strings {substr} x = substr("hi", "0", 1)')
+    raises("must be int", '!import lists {remove_at} x = remove_at(list(), "0")')
+    raises("must be str", "!import lists {join} x = join(list(), 5)")
+    raises("must be list", "!import lists {reverse_list} x = reverse_list(5)")
 
 
 def test_lib_arity_checked():
-    raises("expects 2 arguments", "x = max(1)")
-    raises("expects 2 arguments", 'x = starts_with("hi")')
-    raises("expects 2 arguments", "x = join(list())")
+    raises("expects 2 arguments", "!import math {max} x = max(1)")
+    raises("expects 2 arguments", '!import strings {starts_with} x = starts_with("hi")')
+    raises("expects 2 arguments", "!import lists {join} x = join(list())")
 
 
 def test_deleted_names_are_not_lib_functions():
@@ -45,19 +45,19 @@ def test_deleted_names_are_not_lib_functions():
 
 
 def test_list_lib_guards_error():
-    raises("max_list", "x = max_list(list())")
-    raises("min_list", "x = min_list(list())")
-    raises("remove_at", "x = remove_at(list(), 0)")
-    raises("remove_at", "x = remove_at(push(list(), 1), 1)")
-    raises("remove_at", "x = remove_at(push(list(), 1), -1)")
+    raises("max_list", "!import lists {max_list} x = max_list(list())")
+    raises("min_list", "!import lists {min_list} x = min_list(list())")
+    raises("remove_at", "!import lists {remove_at} x = remove_at(list(), 0)")
+    raises("remove_at", "!import lists {remove_at} x = remove_at(push(list(), 1), 1)")
+    raises("remove_at", "!import lists {remove_at} x = remove_at(push(list(), 1), -1)")
 
 
 def test_list_lib_element_types_checked():
-    raises("requires integer operands", 'x = sum_list(list("ab"))')
-    raises("requires integer operands", 'x = sort_list(["a"])')
-    raises("requires integer operands", "x = max_list([TRUE])")
-    raises("requires integer operands", 'x = min_list(["zz"])')
-    raises("requires integer operands", "x = sort_list([[1]])")
+    raises("requires integer operands", '!import lists {sum_list} x = sum_list(list("ab"))')
+    raises("requires integer operands", '!import lists {sort_list} x = sort_list(["a"])')
+    raises("requires integer operands", "!import lists {max_list} x = max_list([TRUE])")
+    raises("requires integer operands", '!import lists {min_list} x = min_list(["zz"])')
+    raises("requires integer operands", "!import lists {sort_list} x = sort_list([[1]])")
 
 
 def test_string_builtin_errors():
@@ -130,35 +130,25 @@ def test_builtin_names_reserved():
     raises("builtin", "char = 5")
 
 
-def test_lib_names_reserved():
-    raises("reserved by the standard library", "gcd = 5")
-    raises("reserved by the standard library", "x = 1 x += 1 lcm = 2")
-    raises("reserved by the standard library", "fn gcd (a: int, b: int) { return a }")
+def test_unimported_lib_functions_error():
+    raises("undefined function 'gcd'", "x = gcd(4, 6)")
+    raises("undefined variable 'gcd'", "x = gcd")
+    raises("undefined function 'upper'", 'print(upper("hi"))')
+
+
+def test_lib_import_errors():
+    raises("library 'nope' not found", "!import nope")
+    raises("has no member 'nope'", "!import math {nope}")
     raises(
-        "reserved by the standard library",
-        "fn f (n: int) { max = 5 return n } x = f(1)",
-    )
-    raises("reserved by the standard library", "sort_list = 5")
-    raises("reserved by the standard library", "upper = 5")
-    raises("reserved by the standard library", "fn trim (a: str) { return a }")
-    raises(
-        "reserved by the standard library",
-        "fn reverse_list (l: list) { return l }",
+        "already defined",
+        "fn gcd (a: int, b: int) { return a } !import math {gcd}",
     )
 
 
 def test_parameter_names_checked():
-    raises("parameter 'gcd' of 'f' is reserved", "fn f (gcd: int) { return gcd }")
     raises("parameter 'len' of 'f' is a builtin", "fn f (len: int) { return len }")
 
 
 def test_missing_lib_dir_errors(monkeypatch, tmp_path):
     monkeypatch.setattr(stdlib, "LIB_DIR", tmp_path / "nowhere")
-    stdlib.lib_functions.cache_clear()
-    try:
-        with pytest.raises(
-            RolyError, match="cannot find the standard library directory"
-        ):
-            stdlib.lib_functions()
-    finally:
-        stdlib.lib_functions.cache_clear()
+    raises("cannot find the standard library directory", "!import math")

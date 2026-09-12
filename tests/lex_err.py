@@ -6,7 +6,7 @@ from roly.lexer import LexError, Lexer
 @pytest.mark.parametrize(
     "source",
     [
-        "@", "!", "$", "%", "&", "5 # 3", "x = 5;",
+        "@", "$", "%", "&", "5 # 3", "x = 5;",
         "x = ²", "١٢", "1٢3", "变量 = 5", "café = 1", "x\u00a0= 5",
     ],
 )
