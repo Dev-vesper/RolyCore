@@ -1,5 +1,4 @@
 !import math {mod}
-!import digits {digit_count}
 
 fn digit_char(d: int) {
     if (d < 0) {
@@ -71,7 +70,7 @@ fn pad(n: int, w: int) {
         m = -m
         target = w - 1
     }
-    c = digit_count(m)
+    c = len(str(m))
     while (c < target) {
         s = s + "0"
         c += 1
