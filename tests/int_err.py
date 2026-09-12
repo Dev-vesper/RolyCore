@@ -78,8 +78,11 @@ def test_interpreter_env_isolated_between_runs():
 
 
 def test_unknown_operator_raises():
-    with pytest.raises(RolyError):
-        Interpreter().apply_op("%", 1, 2)
+    from roly.ast import BinOp, Num
+    from roly.compiler import compile_expression
+
+    with pytest.raises(RolyError, match="unknown operator"):
+        compile_expression(BinOp("%", Num(1), Num(2)))
 
 
 def test_fresh_interpreter_empty_env():

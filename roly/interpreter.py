@@ -2,37 +2,18 @@ import gc
 import sys
 from pathlib import Path
 
-from roly.ast import (
-    Assign,
-    BinOp,
-    Block,
-    Bool,
-    Break,
-    Call,
-    Chain,
-    CompoundAssign,
-    Continue,
-    ExprStmt,
-    FnDef,
-    If,
-    Import,
-    ListLit,
-    ModuleCall,
-    ModuleVar,
-    Neg,
-    Num,
-    Print,
-    Program,
-    Return,
-    Str,
-    Subscript,
-    Var,
-    While,
-)
-from roly.builtins import BUILTINS, BUILTIN_ARITIES, list_get, roly_equal, text_char
+from roly.ast import FnDef
+from roly.builtins import BUILTINS, BUILTIN_ARITIES, list_get, text_char
+from roly.compiler import compile_statement
 from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
+from roly.runtime import (
+    ModuleAlias,
+    ModuleEntry,
+    ModuleFunctionRef,
+    ReturnSignal,
+)
 from roly.stdlib import NativeFn, lib_functions
 
 DEFAULT_MAX_STEPS = 10_000_000
@@ -45,44 +26,6 @@ def _stdout_print(value):
 
 def _silent_out(value):
     pass
-
-
-class BreakSignal(Exception):
-    pass
-
-
-class ContinueSignal(Exception):
-    pass
-
-
-class ReturnSignal(Exception):
-    def __init__(self, value):
-        self.value = value
-
-
-class ModuleEntry:
-    def __init__(self, name, path, globals, functions, imports):
-        self.name = name
-        self.path = path
-        self.globals = globals
-        self.functions = functions
-        self.imports = imports
-
-
-class ModuleAlias:
-    def __init__(self, entry, name):
-        self.entry = entry
-        self.name = name
-
-
-class ModuleFunctionRef:
-    def __init__(self, entry, function):
-        self.entry = entry
-        self.function = function
-
-    @property
-    def params(self):
-        return self.function.params
 
 
 class Interpreter:
@@ -103,6 +46,7 @@ class Interpreter:
         self.modules = {}
         self.module_cache = {}
         self.loading = []
+        self.fn_compiled = {}
         if entry_path is not None:
             entry = Path(entry_path).resolve()
             self.loading.append((entry.stem, entry))
@@ -156,151 +100,49 @@ class Interpreter:
                 if statement.name in self.functions:
                     raise RolyError(f"function '{statement.name}' already defined")
                 self.functions[statement.name] = statement
-        self.exec_statements(program.statements)
+        for statement in program.statements:
+            compile_statement(statement, self)(self)
 
-    def exec_statements(self, statements):
-        for statement in statements:
-            self.exec_statement(statement)
+    def compiled_body(self, function):
+        cached = self.fn_compiled.get(id(function))
+        if cached is not None and cached[0] is function:
+            return cached[1]
+        body = compile_statement(function.body, self)
+        self.fn_compiled[id(function)] = (function, body)
+        return body
 
-    def exec_statement(self, statement):
+    def call_compiled(self, name, arg_fns):
         self.count_step()
-        if isinstance(statement, Assign):
-            self.assign(statement.name, self.eval(statement.value))
-        elif isinstance(statement, CompoundAssign):
-            current = self.lookup(statement.name)
-            operand = self.eval(statement.value)
-            self.assign(
-                statement.name, self.apply_op(statement.op, current, operand)
-            )
-        elif isinstance(statement, If):
-            if self.truthy(self.eval(statement.condition)):
-                self.exec_statement(statement.then_block)
-            else:
-                matched = False
-                if statement.elifs is not None:
-                    for condition, block in statement.elifs:
-                        if self.truthy(self.eval(condition)):
-                            self.exec_statement(block)
-                            matched = True
-                            break
-                if not matched and statement.else_block is not None:
-                    self.exec_statement(statement.else_block)
-        elif isinstance(statement, Block):
-            self.exec_statements(statement.statements)
-        elif isinstance(statement, Print):
-            self.out(self.eval(statement.value))
-        elif isinstance(statement, ExprStmt):
-            self.eval(statement.value)
-        elif isinstance(statement, Break):
-            raise BreakSignal()
-        elif isinstance(statement, Continue):
-            raise ContinueSignal()
-        elif isinstance(statement, Return):
-            raise ReturnSignal(self.eval(statement.value))
-        elif isinstance(statement, FnDef):
-            pass
-        elif isinstance(statement, Import):
-            self.execute_import(statement.module, statement.names)
-        elif isinstance(statement, While):
-            while self.truthy(self.eval(statement.condition)):
-                try:
-                    self.exec_statement(statement.body)
-                except BreakSignal:
-                    break
-                except ContinueSignal:
-                    continue
-        else:
-            raise RolyError(f"cannot execute {statement!r}")
-
-    def eval(self, expr):
-        work = [expr]
-        values = []
-        while work:
-            item = work.pop()
-            if isinstance(item, tuple):
-                if item[0] == "negate":
-                    value = values.pop()
-                    self.require_int("-", value)
-                    values.append(-value)
-                    continue
-                if item[0] == "subscript":
-                    index = values.pop()
-                    base = values.pop()
-                    values.append(self.subscript(base, index))
-                    continue
-                if item[0] == "listlit":
-                    count = item[1]
-                    items = [values.pop() for _ in range(count)]
-                    items.reverse()
-                    values.append(items)
-                    continue
-                right = values.pop()
-                left = values.pop()
-                values.append(self.apply_op(item[1], left, right))
-            elif isinstance(item, BinOp):
-                work.append(("apply", item.op))
-                work.append(item.right)
-                work.append(item.left)
-            elif isinstance(item, Chain):
-                values.append(self.eval_chain(item))
-            elif isinstance(item, Neg):
-                work.append(("negate",))
-                work.append(item.operand)
-            elif isinstance(item, Subscript):
-                work.append(("subscript",))
-                work.append(item.index)
-                work.append(item.base)
-            elif isinstance(item, ListLit):
-                work.append(("listlit", len(item.items)))
-                for element in reversed(item.items):
-                    work.append(element)
-            elif isinstance(item, (Num, Str, Bool)):
-                values.append(item.value)
-            elif isinstance(item, Var):
-                values.append(self.lookup(item.name))
-            elif isinstance(item, Call):
-                values.append(self.call_function(item))
-            elif isinstance(item, ModuleVar):
-                values.append(self.read_module_var(item.module, item.name))
-            elif isinstance(item, ModuleCall):
-                values.append(
-                    self.call_module_function(item.module, item.name, item.args)
-                )
-            else:
-                raise RolyError(f"cannot evaluate {item!r}")
-        return values[-1]
-
-    def eval_chain(self, chain):
-        left = self.eval(chain.operands[0])
-        for op, operand in zip(chain.ops, chain.operands[1:]):
-            right = self.eval(operand)
-            if not self.truthy_bool(self.apply_op(op, left, right)):
-                return False
-            left = right
-        return True
-
-    def call_function(self, call):
-        self.count_step()
-        if call.name in BUILTINS:
-            return self.call_builtin(call)
-        if call.name not in self.functions:
-            raise RolyError(f"undefined function '{call.name}'")
-        function = self.functions[call.name]
-        self.check_arity(call.name, function, call.args)
-        args = [self.eval(arg) for arg in call.args]
+        if name in BUILTINS:
+            return self.call_builtin_compiled(name, arg_fns)
+        if name not in self.functions:
+            raise RolyError(f"undefined function '{name}'")
+        function = self.functions[name]
+        self.check_arity(name, function, arg_fns)
+        args = [arg_fn(self) for arg_fn in arg_fns]
         if isinstance(function, ModuleFunctionRef):
             return self.run_in_module(
-                function.entry, call.name, function.function, args
+                function.entry, name, function.function, args
             )
-        return self.invoke_function(call.name, function, args)
+        return self.invoke_function(name, function, args)
 
-    def check_arity(self, name, function, arg_exprs):
-        if len(arg_exprs) != len(function.params):
+    def check_arity(self, name, function, args):
+        if len(args) != len(function.params):
             expected = len(function.params)
             raise RolyError(
                 f"function '{name}' expects {expected} "
-                f"argument{'s' if expected != 1 else ''}, got {len(arg_exprs)}"
+                f"argument{'s' if expected != 1 else ''}, got {len(args)}"
             )
+
+    def call_builtin_compiled(self, name, arg_fns):
+        arity = BUILTIN_ARITIES.get(name)
+        if arity is not None and len(arg_fns) != arity:
+            raise RolyError(
+                f"builtin '{name}' expects {arity} "
+                f"argument{'s' if arity != 1 else ''}, got {len(arg_fns)}"
+            )
+        values = [arg_fn(self) for arg_fn in arg_fns]
+        return BUILTINS[name](*values)
 
     def invoke_function(self, name, function, args):
         for (param_name, param_type), value in zip(function.params, args):
@@ -326,7 +168,7 @@ class Interpreter:
         if is_lib:
             self.lib_depth += 1
         try:
-            self.exec_statement(function.body)
+            self.compiled_body(function)(self)
         except ReturnSignal as signal:
             return signal.value
         finally:
@@ -336,16 +178,6 @@ class Interpreter:
             self.locals_stack.pop()
             self.module_frames.pop()
         raise RolyError(f"function '{name}' did not return a value")
-
-    def call_builtin(self, call):
-        arity = BUILTIN_ARITIES.get(call.name)
-        if arity is not None and len(call.args) != arity:
-            raise RolyError(
-                f"builtin '{call.name}' expects {arity} "
-                f"argument{'s' if arity != 1 else ''}, got {len(call.args)}"
-            )
-        values = [self.eval(arg) for arg in call.args]
-        return BUILTINS[call.name](*values)
 
     def execute_import(self, module_name, names):
         if module_name in [n for n, _ in self.loading]:
@@ -467,7 +299,7 @@ class Interpreter:
             )
         raise RolyError(f"module '{module_name}' has no member '{member_name}'")
 
-    def call_module_function(self, module_name, member_name, arg_exprs):
+    def call_module_compiled(self, module_name, member_name, arg_fns):
         self.count_step()
         entry = self.modules.get(module_name)
         if entry is None:
@@ -482,8 +314,8 @@ class Interpreter:
         while isinstance(function, ModuleFunctionRef):
             entry = function.entry
             function = function.function
-        self.check_arity(member_name, function, arg_exprs)
-        args = [self.eval(arg) for arg in arg_exprs]
+        self.check_arity(member_name, function, arg_fns)
+        args = [arg_fn(self) for arg_fn in arg_fns]
         return self.run_in_module(entry, member_name, function, args)
 
     def run_in_module(self, entry, name, function, args):
@@ -513,50 +345,12 @@ class Interpreter:
     def type_name(self, param_type):
         return {int: "int", str: "str", bool: "bool", list: "list"}[param_type]
 
-    def apply_op(self, op, left, right):
-        if op == "+":
-            if type(left) is str and type(right) is str:
-                return left + right
-            self.require_int(op, left)
-            self.require_int(op, right)
-            return left + right
-        if op in ("-", "*", "/"):
-            self.require_int(op, left)
-            self.require_int(op, right)
-            if op == "-":
-                return left - right
-            if op == "*":
-                return left * right
-            if right == 0:
-                raise RolyError("division by zero")
-            return left // right
-        if op in ("<", ">", "<=", ">="):
-            self.require_int(op, left)
-            self.require_int(op, right)
-            if op == "<":
-                return left < right
-            if op == ">":
-                return left > right
-            if op == "<=":
-                return left <= right
-            return left >= right
-        if op == "==":
-            return roly_equal(left, right)
-        if op == "!=":
-            return not roly_equal(left, right)
-        raise RolyError(f"unknown operator '{op}'")
-
     def truthy(self, value):
         if isinstance(value, bool):
             return value
         if isinstance(value, int):
             return value != 0
         raise RolyError(f"condition must be a number, got {value!r}")
-
-    def truthy_bool(self, value):
-        if type(value) is bool:
-            return value
-        raise RolyError(f"comparison must produce a bool, got {value!r}")
 
     def subscript(self, base, index):
         if type(base) is str:
@@ -598,12 +392,6 @@ class Interpreter:
                 frame[name] = value
                 return
         self.globals[name] = value
-
-    def require_int(self, op, value):
-        if type(value) is not int:
-            raise RolyError(
-                f"operator '{op}' requires integer operands, got {value!r}"
-            )
 
     def count_step(self):
         self.steps += 1
