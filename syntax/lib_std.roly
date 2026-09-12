@@ -1,3 +1,7 @@
+!import math {gcd, lcm, mod, isqrt}
+!import fmt {binary, hex, to_base, group, pad, roman}
+!import digits {digit_sum}
+
 fn rep(s: str, n: int) {
     r = ""
     i = 0

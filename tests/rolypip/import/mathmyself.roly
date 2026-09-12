@@ -1,3 +1,5 @@
+!import math {isqrt}
+
 fn triple (n: int) {
     return n * 3
 }

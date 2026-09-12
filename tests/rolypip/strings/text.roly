@@ -1,3 +1,5 @@
+!import strings {trim, upper, lower, starts_with, contains, index_of, substr, reverse_str, count_sub}
+
 name = "  Roly Core  "
 clean = trim(name)
 

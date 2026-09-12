@@ -1,3 +1,5 @@
+!import lists {sort_list, join, sum_list, max_list, min_list, remove_at}
+
 scores = list()
 scores = push(scores, 87)
 scores = push(scores, 42)

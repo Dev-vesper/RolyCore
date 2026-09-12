@@ -1,3 +1,5 @@
+!import lists {sum_list, sort_list, max_list, min_list, join}
+
 temps = [12, 18, 25, 7, 30]
 print(format("all={} count={} sum={}", temps, len(temps), sum_list(temps)))
 print(format("sorted={} max={} min={}", sort_list(temps), max_list(temps), min_list(temps)))

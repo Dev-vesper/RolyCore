@@ -1,3 +1,6 @@
+!import lists {join, reverse_list}
+!import strings {char_lower, char_upper}
+
 letters = list("roly")
 print(letters)
 print(join(reverse_list(letters), ""))
