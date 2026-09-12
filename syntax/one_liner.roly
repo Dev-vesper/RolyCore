@@ -1,0 +1,9 @@
+fn later () { ... }
+
+if (FALSE) { ... } else { ... }
+
+x = 0; while (x < 5) { x += 1 }; print(x); print(x * x)
+
+later()
+
+y = 3; print(y); print(y + x)

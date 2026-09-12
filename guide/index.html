@@ -268,7 +268,8 @@ footer {
     <h2>Running Roly</h2>
     <p>Two commands drive the engine. <code>run</code> executes a file, <code>exec</code> executes inline code:</p>
     <pre><code>roly run program.roly
-roly exec 'x = 1 + 2 print(x)'</code></pre>
+roly exec 'x = 1 + 2 print(x)'
+roly exec 'x = 0; while (x &lt; 5) { x += 1 }; print(x)'</code></pre>
     <p>Standard output shows only what <code>print</code> emits. Nothing else is printed — there is no dump of variables after the run, so a program that ends without printing produces no output.</p>
     <p>Every failure is a single clean error line on standard error, and the exit code is 1. Lexing and parsing errors carry the position; runtime errors name the problem:</p>
     <pre><code>error: line 1, column 5: expected a statement, got '.'
@@ -497,7 +498,17 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
 }</code></pre>
 
     <h3>Blocks</h3>
-    <p>A bare braced block is itself a statement. Statements do not need separators — no semicolons, no special line structure. Newlines separate statements freely; they just cannot appear inside one — see the one-line rule under <a href="#arithmetic">Arithmetic</a>. A block must contain at least one statement: <code>{ }</code>, <code>while (TRUE) { }</code>, or an empty function body is a parse error.</p>
+    <p>A bare braced block is itself a statement. Newlines separate statements freely; they just cannot appear inside one — see the one-line rule under <a href="#arithmetic">Arithmetic</a>. A semicolon works the same way as a newline separator, which keeps one-liners readable — especially with <code>exec</code>:</p>
+    <pre><code>x = 1 y = 2
+
+x = 1; y = 2
+<span class="tok-kw">while</span> (x &gt; 0) { x -= 1 }; <span class="tok-fn">print</span>(x)</code></pre>
+    <div class="note">A <code>;</code> must have a statement on both sides — a trailing one is a parse error, just like a trailing comma in a list. It never appears inside an expression: <code>f(1; 2)</code> does not parse.</div>
+    <p>A block must contain at least one statement: <code>{ }</code>, <code>while (TRUE) { }</code>, or an empty function body is a parse error. To mark a block as intentionally empty, write <code>...</code> as its entire body — a placeholder for code that comes later:</p>
+    <pre><code><span class="tok-kw">fn</span> later () { ... }
+
+<span class="tok-kw">if</span> (FALSE) { ... } <span class="tok-kw">else</span> { ... }</code></pre>
+    <div class="note"><code>...</code> is legal only as the whole body of a block — <code>{ ... x = 1 }</code> or <code>x = ...</code> is a parse error. Calling a function whose body is <code>...</code> runs nothing; using its result is the usual <code>did not return a value</code> error.</div>
     <pre><code>x = 1 y = 2
 
 {
@@ -825,7 +836,10 @@ break_statement     : 'break' ;
 continue_statement  : 'continue' ;
 return_statement    : 'return' expression ;
 
-block               : '{' statement+ '}' ;
+block               : '{' statement+ '}' | '{' '...' '}' ;
+
+(* Statements are separated by newlines or a single ';' — a trailing ';' is an error. *)
+(* '...' is only legal as the entire body of an otherwise-empty block. *)
 
 expression          : comparison ;
 comparison          : additive ( comparison_op additive )+ ;
