@@ -137,7 +137,7 @@ def test_brace_collision_errors(tmp_path):
 
 
 def test_module_step_limit(tmp_path):
-    write_module(tmp_path, "testme", "while (TRUE) { }")
+    write_module(tmp_path, "testme", "while (TRUE) { x = 1 }")
     raises("step limit", "import testme", tmp_path, max_steps=100)
     write_module(tmp_path, "testme", "fn f () { return 1 }")
     raises(

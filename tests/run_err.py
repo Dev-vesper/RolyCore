@@ -64,7 +64,7 @@ def test_chain_type_error():
 
 
 def test_step_limit():
-    raises("step limit", "while (1) { }", max_steps=10)
+    raises("step limit", "while (1) { x = 1 }", max_steps=10)
     raises("step limit", "x = 1 while (x > 0) { x += 1 }", max_steps=25)
     raises("step limit", "while (1) { continue }", max_steps=50)
     raises("step limit", "fn f () { return f() } x = f()", max_steps=30)
@@ -117,7 +117,11 @@ def test_function_argument_type_errors():
 
 def test_function_must_return():
     raises("did not return a value", "fn f () { x = 1 } y = f()")
-    raises("did not return a value", "fn noend () { one = 1 } noend()")
+    raises("did not return a value", "fn f () { x = 1 } print(f())")
+    raises(
+        "did not return a value",
+        "fn f () { x = 1 } fn g (n: int) { return n } x = g(f())",
+    )
 
 
 def test_function_redefinition():

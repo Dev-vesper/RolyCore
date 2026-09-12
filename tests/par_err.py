@@ -58,6 +58,17 @@ def test_if_while_structure_errors():
             parse(source)
 
 
+def test_empty_block_errors():
+    for source in [
+        "fn f () { }", "fn f () { return 1 } fn g () { }",
+        "if (TRUE) { }", "if (TRUE) { x = 1 } else { }",
+        "if (TRUE) { x = 1 } else if (TRUE) { }",
+        "while (TRUE) { }", "{ }",
+    ]:
+        with pytest.raises(ParseError, match="a block cannot be empty"):
+            parse(source)
+
+
 def test_function_placement_errors():
     for source in [
         "{ fn f () { return 1 } }",
