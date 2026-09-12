@@ -69,6 +69,29 @@ def test_empty_block_errors():
             parse(source)
 
 
+def test_semicolon_errors():
+    for source in [
+        "x = 1;", "x = 1;; y = 2", "x = 1; ; y = 2",
+        "if (TRUE) { x = 1; }",
+        "while (x > 0) { x -= 1; }",
+        "fn f () { return 1; }",
+        "x = f(1; 2)", "l = [1; 2]",
+    ]:
+        with pytest.raises(ParseError):
+            parse(source)
+
+
+def test_ellipsis_errors():
+    for source in [
+        "...", "x = ...", "print(...)",
+        "if (TRUE) { ... x = 1 }",
+        "fn f () { ... return 1 }",
+        "x = 1 ...",
+    ]:
+        with pytest.raises(ParseError):
+            parse(source)
+
+
 def test_function_placement_errors():
     for source in [
         "{ fn f () { return 1 } }",
