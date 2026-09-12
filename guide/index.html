@@ -641,7 +641,7 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
 
 <section id="stdlib">
     <h2>Standard Library</h2>
-    <p>The standard library lives in <code>roly/lib/</code> as five modules: <code>math</code>, <code>fmt</code>, <code>digits</code>, <code>strings</code>, and <code>lists</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
+    <p>The standard library lives in <code>roly/lib/</code> as four modules: <code>math</code>, <code>fmt</code>, <code>strings</code>, and <code>lists</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
     <pre><code><span class="tok-kw">!import</span> math {gcd, mod}
 <span class="tok-kw">!import</span> fmt
 
@@ -669,13 +669,6 @@ print(fmt.group(1234567))  <span class="tok-com">// 1,234,567 — qualified work
         <tr><td>pad(n, w)</td><td>zero-padded to width w, like printf %05d</td></tr>
         <tr><td>group(n)</td><td>thousands separators: 1,234,567</td></tr>
         <tr><td>roman(n)</td><td>roman numerals — n must be between 1 and 3999</td></tr>
-    </table>
-
-    <h3>digits</h3>
-    <table>
-        <tr><th>Function</th><th>Result</th></tr>
-        <tr><td>digit_count(n) / digit_sum(n)</td><td>how many decimal digits / their sum</td></tr>
-        <tr><td>reverse_digits(n)</td><td>decimal digits reversed, sign kept</td></tr>
     </table>
 
     <h3>strings</h3>
