@@ -478,7 +478,7 @@ def test_module_fn_arg_types_checked(tmp_path):
 
 
 def test_module_fn_in_condition(tmp_path):
-    write_module(tmp_path, "testme", "fn odd (n: int) { return is_odd(n) }")
+    write_module(tmp_path, "testme", "fn odd (n: int) { return mod(n, 2) != 0 }")
     env = run_source(
         "import testme if (testme.odd(3)) { a = 1 } else { a = 2 }",
         base_dir=tmp_path,

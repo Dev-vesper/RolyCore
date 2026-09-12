@@ -128,10 +128,13 @@ def test_reverse_str():
     assert run_source('x = reverse_str("x")')["x"] == "x"
 
 
-def test_is_palindrome_str():
-    assert run_source('x = is_palindrome_str("racecar")')["x"] is True
-    assert run_source('x = is_palindrome_str("hello")')["x"] is False
-    assert run_source('x = is_palindrome_str("")')["x"] is True
+def test_is_palindrome_str_is_user_writable():
+    env = run_source(
+        'fn is_pal_str (s: str) { return s == reverse_str(s) }'
+        ' x = is_pal_str("racecar") y = is_pal_str("hello")'
+    )
+    assert env["x"] is True
+    assert env["y"] is False
 
 
 def test_substr():
@@ -185,7 +188,7 @@ def test_string_functions_do_not_touch_user_globals():
         'v4 = reverse_str("xy") v5 = count_sub("aa", "a") '
         'v6 = index_of("abc", "b") v7 = contains("abc", "b") '
         'v8 = starts_with("ab", "a") v9 = ends_with("ab", "b") '
-        'v10 = is_palindrome_str("aba") v11 = lower("AB") '
+        'v10 = upper("aba") v11 = lower("AB") '
         'v12 = index_from("aaa", "a", 2) v13 = char_upper("z") '
         'v14 = char_lower("Z")'
     )

@@ -17,5 +17,5 @@ print(format("key={} value={}", substr("author=roly", 0, eq), substr("author=rol
 
 word = "racecar"
 print(format("{} reversed is {}", word, reverse_str(word)))
-print(is_palindrome_str(word))
+print(word == reverse_str(word))
 print(count_sub("abababa", "aba"))

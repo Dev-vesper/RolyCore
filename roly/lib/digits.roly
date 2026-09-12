@@ -18,21 +18,10 @@ fn digit_sum(n: int) {
     }
     s = 0
     while (m > 0) {
-        s = s + m - m / 10 * 10
+        s += mod(m, 10)
         m = m / 10
     }
     return s
-}
-
-fn digital_root(n: int) {
-    m = n
-    if (m < 0) {
-        m = -m
-    }
-    while (m > 9) {
-        m = digit_sum(m)
-    }
-    return m
 }
 
 fn reverse_digits(n: int) {
@@ -42,18 +31,11 @@ fn reverse_digits(n: int) {
     }
     r = 0
     while (m > 0) {
-        r = r * 10 + m - m / 10 * 10
+        r = r * 10 + mod(m, 10)
         m = m / 10
     }
     if (n < 0) {
         return -r
     }
     return r
-}
-
-fn is_palindrome(n: int) {
-    if (n < 0) {
-        return FALSE
-    }
-    return n == reverse_digits(n)
 }

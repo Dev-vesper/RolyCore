@@ -303,7 +303,7 @@ x /= 2</code></pre>
     <p>Assigning again is always allowed — variables are freely reassignable, and a variable may hold a different type later. There is no declaration keyword: the first assignment creates the variable.</p>
     <pre><code>x = 5
 x = <span class="tok-str">"five"</span>      <span class="tok-com">// fine — the same name now holds a string</span></code></pre>
-    <div class="note">Some names are taken: the 15 keywords, the 11 built-in function names (<code>len = 5</code> is an error), and the 31 standard library names (<code>gcd = 5</code> likewise). Everything else is yours.</div>
+    <div class="note">Some names are taken: the 15 keywords, the 11 built-in function names (<code>len = 5</code> is an error), and the 40 standard library names (<code>gcd = 5</code> likewise). Everything else is yours.</div>
 </section>
 
 <section id="comments">
@@ -385,7 +385,7 @@ found = -1
     }
     i += 1
 }                     <span class="tok-com">// found is the position, or -1 if absent</span></code></pre>
-    <div class="note">A boolean stored in a variable or returned by a function works directly as a condition: <code>if (is_even(n)) { ... }</code>. Booleans cannot be combined with arithmetic — <code>a + b</code> on booleans is a runtime error — so nesting and flags are the only way to join conditions.</div>
+    <div class="note">A boolean stored in a variable or returned by a function works directly as a condition: <code>if (is_prime(n)) { ... }</code>. Booleans cannot be combined with arithmetic — <code>a + b</code> on booleans is a runtime error — so nesting and flags are the only way to join conditions.</div>
 </section>
 
 <section id="strings">
@@ -646,12 +646,13 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
     <h3>math</h3>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
-        <tr><td>abs(n) / sign(n)</td><td>absolute value / -1, 0, or 1</td></tr>
+        <tr><td>abs(n)</td><td>absolute value</td></tr>
         <tr><td>min(a, b) / max(a, b)</td><td>smaller / larger of two integers</td></tr>
         <tr><td>clamp(n, lo, hi)</td><td>n held inside [lo, hi] — lo above hi is an error</td></tr>
         <tr><td>mod(n, d)</td><td>floored remainder — always satisfies n == (n / d) * d + mod(n, d)</td></tr>
         <tr><td>gcd(a, b) / lcm(a, b)</td><td>greatest common divisor / least common multiple</td></tr>
         <tr><td>isqrt(n)</td><td>integer square root, floored — n must not be below 0</td></tr>
+        <tr><td>is_prime(n)</td><td>TRUE when n is prime</td></tr>
     </table>
 
     <h3>format</h3>
@@ -664,24 +665,11 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>roman(n)</td><td>roman numerals — n must be between 1 and 3999</td></tr>
     </table>
 
-    <h3>digits and bits</h3>
+    <h3>digits</h3>
     <table>
         <tr><th>Function</th><th>Result</th></tr>
         <tr><td>digit_count(n) / digit_sum(n)</td><td>how many decimal digits / their sum</td></tr>
-        <tr><td>digital_root(n)</td><td>sum digits repeatedly until one digit remains</td></tr>
         <tr><td>reverse_digits(n)</td><td>decimal digits reversed, sign kept</td></tr>
-        <tr><td>is_palindrome(n)</td><td>TRUE when n reads the same both ways</td></tr>
-        <tr><td>is_even(n) / is_odd(n)</td><td>parity tests</td></tr>
-        <tr><td>popcount(n) / bitlen(n)</td><td>number of 1 bits / bit length of |n|</td></tr>
-    </table>
-
-    <h3>numbers</h3>
-    <table>
-        <tr><th>Function</th><th>Result</th></tr>
-        <tr><td>is_prime(n) / next_prime(n)</td><td>primality test / first prime above n</td></tr>
-        <tr><td>factorial(n) / fibonacci(n)</td><td>factorial / nth Fibonacci number — n must not be below 0</td></tr>
-        <tr><td>divisor_count(n)</td><td>how many divisors n has — n must be at least 1</td></tr>
-        <tr><td>collatz_steps(n)</td><td>steps to reach 1 by halving or 3n+1 — n must be at least 1</td></tr>
     </table>
 
     <h3>strings</h3>
@@ -696,7 +684,7 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
         <tr><td>index_of(s, sub) / index_from(s, sub, start)</td><td>first match position, or -1</td></tr>
         <tr><td>count_sub(s, sub)</td><td>non-overlapping occurrences</td></tr>
         <tr><td>substr(s, start, end)</td><td>characters from start up to end, clamped to the string</td></tr>
-        <tr><td>reverse_str(s) / is_palindrome_str(s)</td><td>reversed / reads the same both ways</td></tr>
+        <tr><td>reverse_str(s)</td><td>reversed</td></tr>
     </table>
 
     <h3>lists</h3>
@@ -726,7 +714,7 @@ print(mod(-7, 3))          <span class="tok-com">// 2, floored like the division
 print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
 print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
-    <div class="note">Library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every function is a program you could have written. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>factorial(-1)</code> — the function tells you what it expected.</div>
+    <div class="note">The library holds only functions with real logic — one-liners are yours to write. A parity test is <code>n / 2 * 2 == n</code>, a palindrome check is <code>s == reverse_str(s)</code>, and factorial is a five-line loop. Most library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every one of them is a program you could have written yourself. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>isqrt(-1)</code> — the function tells you what it expected.</div>
 </section>
 
 <section id="modules">

@@ -8,6 +8,23 @@ fn rep(s: str, n: int) {
     return r
 }
 
+fn fact(n: int) {
+    r = 1
+    i = 2
+    while (i <= n) {
+        r *= i
+        i += 1
+    }
+    return r
+}
+
+fn is_pal(n: int) {
+    if (n < 0) {
+        return FALSE
+    }
+    return n == reverse_digits(n)
+}
+
 a = 27
 b = 36
 
@@ -20,9 +37,9 @@ print(isqrt(a * b))
 n = 123456789
 print(digit_sum(n))
 print(reverse_digits(n))
-print(is_palindrome(n))
+print(is_pal(12321))
 
-print(group(factorial(12)))
+print(group(fact(12)))
 print(hex(4096))
 print(binary(255))
 print(pad(7, 4))

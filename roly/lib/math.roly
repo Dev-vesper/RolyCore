@@ -5,16 +5,6 @@ fn abs(n: int) {
     return n
 }
 
-fn sign(n: int) {
-    if (n < 0) {
-        return -1
-    }
-    if (n > 0) {
-        return 1
-    }
-    return 0
-}
-
 fn min(a: int, b: int) {
     if (a < b) {
         return a
@@ -54,7 +44,7 @@ fn gcd(a: int, b: int) {
         b = -b
     }
     while (b != 0) {
-        t = a - a / b * b
+        t = mod(a, b)
         a = b
         b = t
     }
@@ -87,4 +77,18 @@ fn isqrt(n: int) {
         y = (x + n / x) / 2
     }
     return x
+}
+
+fn is_prime(n: int) {
+    if (n < 2) {
+        return FALSE
+    }
+    d = 2
+    while (d * d <= n) {
+        if (mod(n, d) == 0) {
+            return FALSE
+        }
+        d += 1
+    }
+    return TRUE
 }

@@ -197,10 +197,6 @@ fn reverse_str(s: str) {
     return r
 }
 
-fn is_palindrome_str(s: str) {
-    return s == reverse_str(s)
-}
-
 fn substr(s: str, start: int, end: int) {
     a = start
     b = end

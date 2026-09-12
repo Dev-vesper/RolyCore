@@ -8,10 +8,20 @@ fn rep(s: str, n: int) {
     return r
 }
 
+fn fact(n: int) {
+    r = 1
+    i = 2
+    while (i <= n) {
+        r *= i
+        i += 1
+    }
+    return r
+}
+
 x = gcd(48, 18)
 y = lcm(4, 6)
 s = rep("=", 10)
-big = factorial(10)
+big = fact(10)
 
 print(x)
 print(y)

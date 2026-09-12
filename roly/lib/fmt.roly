@@ -42,7 +42,7 @@ fn to_base(n: int, base: int) {
     }
     r = ""
     while (m > 0) {
-        r = digit_char(m - m / base * base) + r
+        r = digit_char(mod(m, base)) + r
         m = m / base
     }
     if (n < 0) {
@@ -68,12 +68,7 @@ fn pad(n: int, w: int) {
         m = -m
         target = w - 1
     }
-    c = 1
-    t = m
-    while (t > 9) {
-        c += 1
-        t = t / 10
-    }
+    c = digit_count(m)
     while (c < target) {
         s = s + "0"
         c += 1
@@ -93,7 +88,7 @@ fn group(n: int) {
     }
     r = ""
     while (m > 999) {
-        chunk = m - m / 1000 * 1000
+        chunk = mod(m, 1000)
         r = "," + pad(chunk, 3) + r
         m = m / 1000
     }
