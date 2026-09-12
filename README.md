@@ -58,9 +58,7 @@ python3 build.py
 **Windows**
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
-python -m pip install pyinstaller
+pip install pyinstaller
 python build.py
 ```
 
