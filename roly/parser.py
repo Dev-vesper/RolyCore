@@ -227,6 +227,7 @@ class Parser:
 
     def parse_if(self):
         self.match(T.IF, "'if'")
+        self.require_same_line()
         self.match(T.LPAREN, "'('")
         self.bracket_depth += 1
         condition = self.parse_expression()
@@ -239,6 +240,7 @@ class Parser:
             self.advance()
             if self.check(T.IF):
                 self.advance()
+                self.require_same_line()
                 self.match(T.LPAREN, "'('")
                 self.bracket_depth += 1
                 elif_condition = self.parse_expression()
@@ -264,6 +266,7 @@ class Parser:
 
     def parse_while(self):
         self.match(T.WHILE, "'while'")
+        self.require_same_line()
         self.match(T.LPAREN, "'('")
         self.bracket_depth += 1
         condition = self.parse_expression()
@@ -276,6 +279,7 @@ class Parser:
 
     def parse_print(self):
         self.match(T.PRINT, "'print'")
+        self.require_same_line()
         self.match(T.LPAREN, "'('")
         self.bracket_depth += 1
         value = self.parse_expression()
@@ -295,6 +299,7 @@ class Parser:
         name_token = self.match(T.IDENT, "a function name")
         params = []
         seen = set()
+        self.require_same_line()
         self.match(T.LPAREN, "'('")
         if not self.check(T.RPAREN):
             first = self.parse_parameter()

@@ -174,6 +174,9 @@ def test_operator_on_next_line_is_parse_error():
     for source in [
         "x = 5\n-2", "x = 1\n+ 2", "a = 1\n== 2", "x = 10\n* 2", "x = 1 +\n2",
         "l = [1, 2] x = l\n[0]", "x = f\n(1)", "x =\n-2",
+        "if\n(TRUE) { ... }", "while\n(TRUE) { break }", "print\n(1)",
+        "fn f\n(a: int) { return a }",
+        "if (TRUE) { ... } else if\n(FALSE) { ... }",
     ]:
         with pytest.raises(ParseError, match="cannot continue on the next line"):
             parse(source)
