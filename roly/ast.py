@@ -130,6 +130,7 @@ class FnDef:
 class Import:
     module: str
     names: "list[str] | None"
+    from_lib: bool = False
 
 
 @dataclass(slots=True)

@@ -152,6 +152,19 @@ class Parser:
                         self.current(),
                     )
                 statements.append(self.parse_import())
+            elif self.check(T.BANG):
+                if terminator is not T.EOF:
+                    raise ParseError(
+                        "imports are only allowed at top level",
+                        self.current(),
+                    )
+                self.advance()
+                if self.new_line():
+                    raise ParseError(
+                        "'import' must follow '!' on the same line",
+                        self.current(),
+                    )
+                statements.append(self.parse_import(from_lib=True))
             else:
                 statements.append(self.parse_statement())
         return statements
@@ -302,8 +315,8 @@ class Parser:
         self.fn_depth -= 1
         return FnDef(name_token.value, params, body)
 
-    def parse_import(self):
-        self.match(T.IMPORT, "'import'")
+    def parse_import(self, from_lib=False):
+        self.match(T.IMPORT, "'import' after '!'" if from_lib else "'import'")
         name_token = self.match(T.IDENT, "a module name")
         names = None
         if self.check(T.LBRACE):
@@ -313,7 +326,7 @@ class Parser:
                 self.advance()
                 names.append(self.match(T.IDENT, "a member name").value)
             self.match(T.RBRACE, "'}' or ','")
-        return Import(name_token.value, names)
+        return Import(name_token.value, names, from_lib)
 
     def parse_parameter(self):
         name_token = self.match(T.IDENT, "a parameter name")

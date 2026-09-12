@@ -21,6 +21,7 @@ class T(Enum):
     TRUE = auto()
     FALSE = auto()
     IMPORT = auto()
+    BANG = auto()
     COLON = auto()
     COMMA = auto()
     DOT = auto()

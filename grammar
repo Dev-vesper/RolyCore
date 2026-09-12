@@ -1,6 +1,6 @@
 program             : ( function_declaration | import_statement | statement )* EOF ;
 
-import_statement    : 'import' IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
+import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT )* '}' )? ;
 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;

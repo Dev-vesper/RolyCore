@@ -343,10 +343,11 @@ def compile_statement(statement, interp):
     if isinstance(statement, Import):
         module = statement.module
         names = statement.names
+        from_lib = statement.from_lib
 
         def f_import(I):
             I.count_step()
-            I.execute_import(module, names)
+            I.execute_import(module, names, from_lib)
 
         return f_import
     raise RolyError(f"cannot execute {statement!r}")

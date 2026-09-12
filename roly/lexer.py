@@ -14,6 +14,7 @@ TWO_CHAR_OPS = {
 }
 
 ONE_CHAR_OPS = {
+    "!": T.BANG,
     "=": T.ASSIGN,
     "+": T.PLUS,
     "-": T.MINUS,
