@@ -33,7 +33,7 @@ from roly.builtins import BUILTINS, BUILTIN_ARITIES, list_get, roly_equal, text_
 from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
-from roly.stdlib import lib_functions
+from roly.stdlib import NativeFn, lib_functions
 
 DEFAULT_MAX_STEPS = 10_000_000
 MAX_CALL_DEPTH = 200
@@ -309,6 +309,8 @@ class Interpreter:
                     f"argument '{param_name}' of '{name}' must be "
                     f"{self.type_name(param_type)}, got {value!r}"
                 )
+        if isinstance(function, NativeFn):
+            return function.callable(*args)
         if self.call_depth >= MAX_CALL_DEPTH:
             raise RolyError(
                 f"call depth of {MAX_CALL_DEPTH} exceeded "

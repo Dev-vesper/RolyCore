@@ -1,26 +1,3 @@
-fn reverse_list(l: list) {
-    r = list()
-    i = len(l) - 1
-    while (i >= 0) {
-        r = push(r, get(l, i))
-        i -= 1
-    }
-    return r
-}
-
-fn join(l: list, sep: str) {
-    r = ""
-    i = 0
-    while (i < len(l)) {
-        if (i > 0) {
-            r = r + sep
-        }
-        r = r + str(get(l, i))
-        i += 1
-    }
-    return r
-}
-
 fn sum_list(l: list) {
     s = 0
     i = 0
@@ -97,26 +74,3 @@ fn remove_at(l: list, i: int) {
     return r
 }
 
-fn sort_list(l: list) {
-    r = list()
-    i = 0
-    while (i < len(l)) {
-        x = get(l, i) + 0
-        pos = len(r)
-        while (pos > 0) {
-            if (get(r, pos - 1) <= x) {
-                break
-            }
-            pos -= 1
-        }
-        r = push(r, x)
-        j = len(r) - 1
-        while (j > pos) {
-            r = set(r, j, get(r, j - 1))
-            j -= 1
-        }
-        r = set(r, pos, x)
-        i += 1
-    }
-    return r
-}
