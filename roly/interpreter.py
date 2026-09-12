@@ -9,6 +9,7 @@ from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
 from roly.runtime import (
+    MISSING,
     ModuleAlias,
     ModuleEntry,
     ModuleFunctionRef,
@@ -161,7 +162,7 @@ class Interpreter:
             self.call_depth -= 1
             self.locals_stack.pop()
             self.module_frames.pop()
-        raise RolyError(f"function '{name}' did not return a value")
+        return MISSING
 
     def execute_import(self, module_name, names, from_lib=False):
         if module_name in [n for n, _ in self.loading]:

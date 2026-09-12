@@ -1,3 +1,6 @@
+MISSING = object()
+
+
 class BreakSignal(Exception):
     pass
 

@@ -28,7 +28,13 @@ from roly.ast import (
 )
 from roly.builtins import roly_equal
 from roly.errors import RolyError
-from roly.runtime import BreakSignal, ContinueSignal, ModuleAlias, ReturnSignal
+from roly.runtime import (
+    BreakSignal,
+    ContinueSignal,
+    MISSING,
+    ModuleAlias,
+    ReturnSignal,
+)
 
 MISS = object()
 
@@ -100,7 +106,7 @@ OPS = {
 }
 
 
-def compile_expression(node):
+def compile_expression(node, discard=False):
     if isinstance(node, (Num, Str, Bool)):
         value = node.value
         return lambda I: value
@@ -210,7 +216,10 @@ def compile_expression(node):
         args = [compile_expression(arg) for arg in node.args]
 
         def f_call(I):
-            return I.call_compiled(name, args)
+            v = I.call_compiled(name, args)
+            if v is MISSING and not discard:
+                raise RolyError(f"function '{name}' did not return a value")
+            return v
 
         return f_call
     if isinstance(node, ModuleCall):
@@ -219,7 +228,10 @@ def compile_expression(node):
         args = [compile_expression(arg) for arg in node.args]
 
         def f_module_call(I):
-            return I.call_module_compiled(module, name, args)
+            v = I.call_module_compiled(module, name, args)
+            if v is MISSING and not discard:
+                raise RolyError(f"function '{name}' did not return a value")
+            return v
 
         return f_module_call
     raise RolyError(f"cannot evaluate {node!r}")
@@ -305,7 +317,7 @@ def compile_statement(statement, interp):
 
         return f_print
     if isinstance(statement, ExprStmt):
-        value = compile_expression(statement.value)
+        value = compile_expression(statement.value, discard=True)
 
         def f_expr(I):
             I.count_step()
