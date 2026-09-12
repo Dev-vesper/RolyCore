@@ -1,6 +1,5 @@
 !import math {gcd, lcm, mod, isqrt}
 !import fmt {binary, hex, to_base, group, pad, roman}
-!import digits {digit_sum}
 
 fn rep(s: str, n: int) {
     r = ""
@@ -37,6 +36,5 @@ print(pad(42, 5))
 print(roman(2026))
 print(s)
 print(big)
-print(digit_sum(big))
 print(mod(-7, 3))
 print(isqrt(994009))

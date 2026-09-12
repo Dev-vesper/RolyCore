@@ -1,5 +1,5 @@
 !import math {gcd, lcm, mod, max, abs, isqrt}
-!import digits {digit_sum, reverse_digits}
+!import strings {reverse_str}
 !import fmt {group, hex, binary, pad, roman}
 
 fn rep(s: str, n: int) {
@@ -26,7 +26,8 @@ fn is_pal(n: int) {
     if (n < 0) {
         return FALSE
     }
-    return n == reverse_digits(n)
+    s = str(n)
+    return s == reverse_str(s)
 }
 
 a = 27
@@ -39,8 +40,7 @@ print(max(a, b) + abs(-5))
 print(isqrt(a * b))
 
 n = 123456789
-print(digit_sum(n))
-print(reverse_digits(n))
+print(reverse_str(str(n)))
 print(is_pal(12321))
 
 print(group(fact(12)))
