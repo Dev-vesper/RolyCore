@@ -316,7 +316,9 @@ bit-for-bit as before.
   `RolyError` (fail-loud — `op: cannot <action> '<path>': <os reason>`, reason
   lowercased); `exists` never fails.
 - `read_lines` splits on `\n`, strips one trailing `\r` per line and drops one
-  trailing empty line; empty file → `[]`.
+  trailing empty line; empty file → `[]`. A file that is not valid UTF-8
+  raises `read: cannot read '<path>': the file is not valid UTF-8 text`
+  (never a Python traceback — `UnicodeDecodeError` has no `strerror`).
 - `rename` refuses when dst exists (POSIX would silently replace, Windows
   errors — the guard makes it deterministic); `copy` overwrites (same on both).
 - `mkdir` is single-level (`parents=False`); `delete` is file-only.
@@ -367,10 +369,12 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   not take the same name from both sources: `import math` + `!import math`
   → `'math' is already imported` (tracked via `ModuleEntry.from_lib`).
 - For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`, `thfile`), the
-  natives are injected into the module's function table right after load,
-  guarded by a `defined twice` collision check against the file's own fns.
-  For `thfile` the anchor file holds only a comment — the injected natives ARE
-  the module.
+  natives are injected into the module's function table right after a FRESH
+  load only — never on a `module_cache` hit (the 2026-09-13 bug-hunt: a second
+  importer re-injected into the same entry and died on the `defined twice`
+  guard). The guard itself still protects against a lib file defining a fn
+  with a native's name. For `thfile` the anchor file holds only a comment —
+  the injected natives ARE the module.
 - Everything else about a lib module is plain module behavior:
 - **Braces never restrict.** All members are always reachable as
   `name.member` with or without braces; braces additionally bind the listed
@@ -638,10 +642,12 @@ cycles. First-class functions or mutable lists would invalidate the
 assumption.
 
 15.35 Native lib fns (`sort_list`/`join`/`reverse_list`) must reproduce the
-old pure-Roly error messages bit-for-bit — `native_sort_list` pre-scans for
-non-int elements specifically so `join`'s `operator '+' requires integer
-operands` fires exactly as before. Changing one side without the other
-breaks parity.
+old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list` non-int
+pre-scan exists so `join`'s `operator '+' requires integer operands` fires
+exactly as before) AND OUTPUT (`native_join` renders elements through
+`to_str`, never Python `str` — Python renders `['a']` single-quoted where
+Roly renders `["a"]`; found in the 2026-09-13 bug-hunt). Changing one side
+without the other breaks parity.
 
 15.36 `NativeFn`s bypass frame push and depth counting (pure host
 functions). A native fn with anything stateful does not belong in that
@@ -682,10 +688,11 @@ when a user file and a lib module share a name: the second import raises
 module that calls a lib fn must `!import` it itself — lib cross-deps are
 declared at the top of the lib files (`fmt` → `math {mod}`).
 
-15.46 Native fns (`sort_list`/`join`/`reverse_list`) are injected into the
-`lists` module after load and ONLY on the `from_lib` path — a user module
-named `lists` gets nothing, and a collision with a fn the module itself
-defined raises "defined twice".
+15.46 Native fns (`sort_list`/`join`/`reverse_list`, the `thfile` set) are
+injected into the module after load and ONLY on the `from_lib` path AND only
+on a fresh load — a `module_cache` hit must not re-inject (the double-import
+bug). A user module named `lists` gets nothing, and a collision with a fn the
+module itself defined raises "defined twice".
 
 15.47 `stdlib.LIB_DIR` is read at `!import` time, never captured at Python
 import time — that is what makes the missing-lib-dir test monkeypatchable.
@@ -800,6 +807,13 @@ must be `RolyError`s carrying the full path, not Python tracebacks.
   `entry_base_dir` added to support entry-relative paths. Fail-loud errors,
   `rename` dst guard, UTF-8 only. First native module after `lists` —
   establishes the anchor-file pattern (15.53).
+- **Phase 26 (2026-09-13)** — bug-hunt round 3, three fixes: native injection
+  moved to fresh-load-only (a native module imported by two importers died on
+  a false `defined twice` — the cache-hit path re-injected); thfile binary
+  reads raise a clean `not valid UTF-8 text` error instead of leaking a Python
+  traceback (`UnicodeDecodeError` has no `strerror`); `native_join` renders
+  through `to_str` restoring the pure-Roly output parity (`["a"]`, not
+  Python's `['a']`).
 
 ## 17. Tests & Maintenance Rules
 

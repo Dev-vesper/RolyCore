@@ -2,6 +2,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from roly.builtins import to_str
 from roly.errors import RolyError
 
 
@@ -32,7 +33,7 @@ def native_sort_list(I, items):
 
 
 def native_join(I, items, sep):
-    return sep.join(str(value) for value in items)
+    return sep.join(to_str(value) for value in items)
 
 
 def native_reverse_list(I, items):
@@ -47,6 +48,8 @@ NATIVE_LIB = {
 
 
 def _io_reason(error):
+    if isinstance(error, UnicodeDecodeError):
+        return "the file is not valid UTF-8 text"
     text = error.strerror or str(error)
     return text[:1].lower() + text[1:]
 

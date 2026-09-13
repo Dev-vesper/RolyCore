@@ -54,6 +54,12 @@ def test_list_laws():
         "print(join(l, \"-\"))",
         "True\nTrue\nTrue\n[1, 2, 3]\nTrue\nTrue\nTrue\n3-1-2",
     )
+    invariant(
+        "!import lists {join}\n"
+        'print(join([[1, "a"]], "-"))\n'
+        'print(join([TRUE, "b"], ","))',
+        '[1, "a"]\nTrue,b',
+    )
     invariant("print([] == []) print(len([]) == 0)", "True\nTrue")
 
 

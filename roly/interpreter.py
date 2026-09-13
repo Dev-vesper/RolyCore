@@ -177,9 +177,9 @@ class Interpreter:
             entry = self.module_cache.get(path)
             if entry is None:
                 entry = self.load_module(module_name, path, from_lib)
+                if from_lib:
+                    self.inject_native_fns(entry, module_name)
             self.modules[module_name] = entry
-            if from_lib:
-                self.inject_native_fns(entry, module_name)
         if names is None:
             return
         self.validate_members(entry, module_name, names)
