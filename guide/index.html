@@ -729,6 +729,35 @@ print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
 print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
     <div class="note">The library holds only functions with real logic — one-liners are yours to write. A parity test is <code>n / 2 * 2 == n</code>, a palindrome check is <code>s == reverse_str(s)</code>, and factorial is a five-line loop. Most library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every one of them is a program you could have written yourself. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>isqrt(-1)</code> — the function tells you what it expected.</div>
+
+    <h3>thfile</h3>
+    <p>File operations. This is the one library module written natively — a Roly program cannot reach the outside world on its own. Everything is text, in UTF-8.</p>
+    <table>
+        <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>read(path)</td><td>the whole file as a str</td></tr>
+        <tr><td>write(path, content)</td><td>creates or overwrites the file — TRUE</td></tr>
+        <tr><td>append(path, content)</td><td>adds content to the end, creating the file if needed — TRUE</td></tr>
+        <tr><td>read_lines(path)</td><td>the file as a list of lines, without the line breaks</td></tr>
+        <tr><td>delete(path)</td><td>removes a file — TRUE</td></tr>
+        <tr><td>exists(path)</td><td>TRUE if the file or directory exists</td></tr>
+        <tr><td>size(path)</td><td>the size in bytes</td></tr>
+        <tr><td>mkdir(path)</td><td>creates a directory — TRUE; the parent must already exist</td></tr>
+        <tr><td>list_dir(path)</td><td>the names in a directory, sorted, as a list</td></tr>
+        <tr><td>rename(src, dst)</td><td>renames a file — TRUE; an existing dst is an error</td></tr>
+        <tr><td>copy(src, dst)</td><td>copies a file, overwriting dst if it exists — TRUE</td></tr>
+    </table>
+    <pre><code><span class="tok-kw">!import</span> thfile {read, write, append, read_lines, exists, delete}
+
+<span class="tok-kw">if</span> (exists(<span class="tok-str">"log.txt"</span>)) {
+    <span class="tok-fn">delete</span>(<span class="tok-str">"log.txt"</span>)
+}
+<span class="tok-fn">write</span>(<span class="tok-str">"log.txt"</span>, <span class="tok-str">"start\n"</span>)
+<span class="tok-fn">append</span>(<span class="tok-str">"log.txt"</span>, <span class="tok-str">"entry 1\n"</span>)
+lines = read_lines(<span class="tok-str">"log.txt"</span>)
+<span class="tok-fn">print</span>(lines[0])              <span class="tok-com">// start</span>
+<span class="tok-fn">print</span>(<span class="tok-fn">len</span>(lines))           <span class="tok-com">// 2</span>
+<span class="tok-fn">print</span>(thfile.size(<span class="tok-str">"log.txt"</span>))  <span class="tok-com">// 14 — the name works too</span></code></pre>
+    <div class="note">A relative path is relative to your program's file — run <code>roly run proj/app.roly</code> from anywhere and the files sit next to <code>app.roly</code>. Inline code (<code>roly exec</code>) uses the current directory instead. Absolute paths always go exactly where they say. Errors are loud, like the rest of the library: reading a missing file stops the program — check with <code>exists</code> first. <code>read_lines</code> splits on line breaks and drops one trailing empty line, so a file ending in a newline does not produce an empty last element. <code>rename</code> refuses to overwrite — <code>copy</code> does not.</div>
 </section>
 
 <section id="modules">
@@ -751,6 +780,7 @@ print(strings.upper("hi"))  <span class="tok-com">// HI</span></code></pre>
         <li>a name may come from one source only — <code>import math</code> and <code>!import math</code> in one program is an error</li>
         <li><code>!</code> is allowed only right before <code>import</code>, on the same line, at the top level</li>
         <li><code>sort_list</code>, <code>join</code>, and <code>reverse_list</code> are members of the <code>lists</code> module, written natively for speed — <code>!import lists {sort_list}</code> brings them in</li>
+        <li>the whole <code>thfile</code> module is native — its file functions are the only library functions that could not have been written in Roly</li>
     </ul>
 
     <h3>Bringing names in</h3>

@@ -6,7 +6,7 @@ something changes. It is not a tutorial — `guide/index.html` is the user-facin
 reference. This file is gitignored on purpose: the source code carries no
 comments or docstrings (project convention), so the "why" lives here.
 
-Facts below were verified against the source on 2026-09-12. When this document
+Facts below were verified against the source on 2026-09-13. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -22,12 +22,12 @@ and the code disagree, the code wins — then fix this document.
 | `roly/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
 | `roly/builtins.py` | The 11 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
-| `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the 3 native functions (`NativeFn`), and `NATIVE_MODULE_FNS` mapping the `lists` module to its natives. Lib loading itself goes through the normal module machinery. |
+| `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
 | `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
 | `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 4 modules, 34 pure-Roly functions, imported explicitly with `!import`. |
+| `roly/lib/*.roly` | The standard library itself: 5 modules — 34 pure-Roly functions in math/fmt/strings/lists plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
@@ -293,13 +293,33 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `fmt.roly` (7) | `digit_char to_base binary hex pad group roman` |
 | `strings.roly` (13) | `char_upper char_lower upper lower trim starts_with ends_with index_from index_of contains count_sub reverse_str substr` |
 | `lists.roly` (5) | `sum_list max_list min_list sublist remove_at` |
+| `thfile.roly` (11 native) | `read write append delete exists size read_lines mkdir list_dir rename copy` |
 
-Plus **3 native functions** (`NativeFn` in stdlib.py): `sort_list`, `join`,
-`reverse_list` — injected as members of the **lists** module after load (see
-`NATIVE_MODULE_FNS`), so `!import lists {sort_list}` and
-`lists.sort_list(...)` both work. `native_sort_list` scans for non-int
-elements first purely so `join`'s `operator '+' requires integer operands`
-error surfaces bit-for-bit as before.
+Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
+`sort_list`/`join`/`reverse_list` (injected for speed, §10 rules below), and the
+entire `thfile` module — file I/O is impossible in pure Roly, so all eleven of
+its functions are native. `native_sort_list` scans for non-int elements first
+purely so `join`'s `operator '+' requires integer operands` error surfaces
+bit-for-bit as before.
+
+**thfile specifics** (file operations):
+
+- `NativeFn` callables receive the interpreter first — the call shape in
+  `invoke_function` is `function.callable(self, *args)` — because thfile needs
+  `I.entry_base_dir` to resolve relative paths.
+- `entry_base_dir` is captured once in `Interpreter.__init__` and NEVER swapped
+  during module loading; `base_dir` itself points into `roly/lib/` while a
+  module fn runs (the classic trap — see 15.52).
+- Relative paths resolve against the entry program's directory (cwd for inline
+  `exec`); absolute paths pass through.
+- Every value is UTF-8 text; mutations return `TRUE`; every failure raises
+  `RolyError` (fail-loud — `op: cannot <action> '<path>': <os reason>`, reason
+  lowercased); `exists` never fails.
+- `read_lines` splits on `\n`, strips one trailing `\r` per line and drops one
+  trailing empty line; empty file → `[]`.
+- `rename` refuses when dst exists (POSIX would silently replace, Windows
+  errors — the guard makes it deterministic); `copy` overwrites (same on both).
+- `mkdir` is single-level (`parents=False`); `delete` is file-only.
 
 **Lib files import each other with `!import`** — they are ordinary modules:
 - `fmt.roly` starts with `!import math {mod}`
@@ -346,9 +366,11 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   resolves ONLY `base_dir`. Neither falls back to the other. A program may
   not take the same name from both sources: `import math` + `!import math`
   → `'math' is already imported` (tracked via `ModuleEntry.from_lib`).
-- For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`), the
+- For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`, `thfile`), the
   natives are injected into the module's function table right after load,
   guarded by a `defined twice` collision check against the file's own fns.
+  For `thfile` the anchor file holds only a comment — the injected natives ARE
+  the module.
 - Everything else about a lib module is plain module behavior:
 - **Braces never restrict.** All members are always reachable as
   `name.member` with or without braces; braces additionally bind the listed
@@ -691,6 +713,23 @@ every branch (statement, fn, import) — that single point is what makes
 `fn f () { ... }; x = 1` and `import a; import b` work while trailing
 `;` fails. There is no empty statement: `;` alone or `;;` is an error.
 
+15.52 **Native fns receive the interpreter**: the `NativeFn` call in
+`invoke_function` is `function.callable(self, *args)`. Anything needing
+run context (path base, limits) must come through that `I` — never from a
+module-level capture. `thfile` resolves relative paths against
+`I.entry_base_dir`, which is captured once in `__init__` and never swapped;
+using `I.base_dir` instead would resolve user paths into `roly/lib/`
+whenever a module fn is on the stack, because `load_module`/`run_in_module`
+swap `base_dir` to the module's own directory.
+
+15.53 **Adding a native module** (the thfile pattern): implementations live
+in `roly/stdlib.py` next to the other natives (user rule 2026-09-13: fold
+features into existing files, do not create new Python modules), registered
+in `NATIVE_MODULE_FNS`, plus an anchor `.roly` file in `roly/lib/` that can
+be empty or comment-only — the module does not exist for `!import` without
+the anchor. Arity/type checks come free through `NativeFn.params`. Errors
+must be `RolyError`s carrying the full path, not Python tracebacks.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -755,6 +794,12 @@ every branch (statement, fn, import) — that single point is what makes
   lists; fn/var name collisions rejected on the global write path; lists
   render Roly-style (`[1, "a"]`) in `print`/`str`/`format` via `to_str`
   recursion (print now routes through `to_str` in the compiler).
+- **Phase 25 (2026-09-13)** — `thfile` module: 11 native file operations
+  (read/write/append/delete/exists/size/read_lines/mkdir/list_dir/rename/copy).
+  `NativeFn` callables now receive the interpreter (`callable(I, *args)`);
+  `entry_base_dir` added to support entry-relative paths. Fail-loud errors,
+  `rename` dst guard, UTF-8 only. First native module after `lists` —
+  establishes the anchor-file pattern (15.53).
 
 ## 17. Tests & Maintenance Rules
 
@@ -786,7 +831,7 @@ every branch (statement, fn, import) — that single point is what makes
 | `lex_err.py` | lexer errors (bad chars, unterminated strings, bad escapes) |
 | `par_err.py` | parse errors (structure, nesting, one-line rule, reserved words) |
 | `run_err.py` | runtime errors (types, division, undefined names, limits, builtins) |
-| `lib_err.py` | lib rejections (guards, types, arity), `!import` errors, unimported-use errors |
+| `lib_err.py` | lib rejections (guards, types, arity), `!import` errors, unimported-use errors, thfile errors |
 | `mod_err.py` | module errors (circular, members, collisions, isolation, wrapping) |
 | `cli_err.py` | CLI surface errors (bad usage, missing files) |
 | `smoke.py` | every showcase program runs clean |
