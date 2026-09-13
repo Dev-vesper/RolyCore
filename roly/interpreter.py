@@ -43,6 +43,7 @@ class Interpreter:
         self.module_frames = []
         self.module_context = None
         self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd()
+        self.entry_base_dir = self.base_dir
         self.modules = {}
         self.module_cache = {}
         self.loading = []
@@ -142,7 +143,7 @@ class Interpreter:
                     f"{self.type_name(param_type)}, got {value!r}"
                 )
         if isinstance(function, NativeFn):
-            return function.callable(*args)
+            return function.callable(self, *args)
         if self.call_depth >= MAX_CALL_DEPTH:
             raise RolyError(
                 f"call depth of {MAX_CALL_DEPTH} exceeded "
