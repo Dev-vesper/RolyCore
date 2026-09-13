@@ -152,3 +152,25 @@ def test_parameter_names_checked():
 def test_missing_lib_dir_errors(monkeypatch, tmp_path):
     monkeypatch.setattr(stdlib, "LIB_DIR", tmp_path / "nowhere")
     raises("cannot find the standard library directory", "!import math")
+
+
+def test_thfile_errors(tmp_path):
+    raises("cannot read", '!import thfile {read} x = read("nope.txt")', base_dir=tmp_path)
+    raises("cannot delete", '!import thfile {delete} delete("nope.txt")', base_dir=tmp_path)
+    raises("cannot get the size", '!import thfile {size} x = size("nope.txt")', base_dir=tmp_path)
+    raises("read_lines", '!import thfile {read_lines} x = read_lines("nope.txt")', base_dir=tmp_path)
+    raises("cannot make directory", '!import thfile {mkdir} mkdir("no/deep")', base_dir=tmp_path)
+    raises("cannot list", '!import thfile {list_dir} x = list_dir("nope")', base_dir=tmp_path)
+    raises("cannot rename", '!import thfile {rename} rename("a.txt", "b.txt")', base_dir=tmp_path)
+    raises("cannot copy", '!import thfile {copy} copy("a.txt", "b.txt")', base_dir=tmp_path)
+    raises("has no member 'nope'", "!import thfile {nope}")
+    raises("has no member 'nope'", "!import thfile thfile.nope()")
+    raises("module 'thfile' not found", "import thfile")
+
+
+def test_thfile_types_and_guards(tmp_path):
+    raises("must be str", '!import thfile {read} x = read(42)', base_dir=tmp_path)
+    raises("expects 2 arguments", '!import thfile {copy} x = copy("a")', base_dir=tmp_path)
+    (tmp_path / "a.txt").write_text("a", encoding="utf-8")
+    (tmp_path / "b.txt").write_text("b", encoding="utf-8")
+    raises("already exists", '!import thfile {rename} rename("a.txt", "b.txt")', base_dir=tmp_path)
