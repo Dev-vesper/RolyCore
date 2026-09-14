@@ -7,12 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 ROLY = ROOT / "roly.py"
 
 
-def run_cli(*args):
+def run_cli(*args, stdin=None):
     return subprocess.run(
         [sys.executable, str(ROLY), *args],
         capture_output=True,
         text=True,
         cwd=ROOT,
+        stdin=stdin,
     )
 
 
@@ -74,6 +75,15 @@ def test_run_non_utf8_file_errors(tmp_path):
     result = run_cli("run", str(script))
     assert result.returncode == 1
     assert "not valid UTF-8" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_input_eof_errors_cleanly():
+    result = run_cli(
+        "exec", 'x = input("q: ") print(x)', stdin=subprocess.DEVNULL
+    )
+    assert result.returncode == 1
+    assert "end of input reached" in result.stderr
     assert "Traceback" not in result.stderr
 
 

@@ -121,6 +121,13 @@ def test_fail_builtin_errors():
     raises(r"builtin 'fail' expects a str, got 42", "x = fail(42)")
 
 
+def test_input_builtin_errors():
+    raises("builtin 'input' expects 1 argument, got 0", "x = input()")
+    raises("builtin 'input' expects 1 argument, got 2", 'x = input("a", "b")')
+    raises(r"builtin 'input' expects a str, got 42", "x = input(42)")
+    raises("builtin", "input = 5")
+
+
 def test_builtin_names_reserved():
     raises("builtin", "push = 5")
     raises("builtin", "fn get () { return 1 }")
