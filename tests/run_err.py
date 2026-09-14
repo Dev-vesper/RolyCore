@@ -54,15 +54,18 @@ def test_division_by_zero():
 
 
 def test_operator_type_errors():
-    raises("integer operands", "x = 1 == 1 y = x + 2")
-    raises("integer operands", "x = TRUE + 1")
-    raises("integer operands", 'x = "a" + 1')
-    raises("integer operands", 'x = 1 + "a"')
-    raises("integer operands", 'x = "a" < "b"')
-    raises("integer operands", 'x = "a" * "b"')
-    raises("integer operands", 'x = -TRUE')
-    raises("integer operands", 'x = -"a"')
-    raises("integer operands", "x = list() + list()")
+    raises("numeric operands", "x = 1 == 1 y = x + 2")
+    raises("numeric operands", "x = TRUE + 1")
+    raises("numeric operands", 'x = "a" + 1')
+    raises("numeric operands", 'x = 1 + "a"')
+    raises("numeric operands", 'x = "a" < "b"')
+    raises("numeric operands", 'x = "a" * "b"')
+    raises("numeric operands", 'x = -TRUE')
+    raises("numeric operands", 'x = -"a"')
+    raises("numeric operands", "x = list() + list()")
+    raises("numeric operands", "x = 1 < TRUE")
+    raises("numeric operands", "x = 1.5 + TRUE")
+    raises("numeric operands", 'x = 1.5 < "a"')
 
 
 def test_condition_type_errors():
@@ -75,7 +78,32 @@ def test_condition_type_errors():
 
 
 def test_chain_type_error():
-    raises("integer operands", 'x = 1 < 2 < "a"')
+    raises("numeric operands", 'x = 1 < 2 < "a"')
+
+
+def test_float_division_by_zero():
+    raises("division by zero", "x = 1 / 0.0")
+    raises("division by zero", "x = 1.0 / 0")
+    raises("division by zero", "x = 0.0 / 0.0")
+
+
+def test_float_builtin_errors():
+    raises("cannot convert 'abc' to float", 'x = float("abc")')
+    raises("cannot convert ' 42' to float", 'x = float(" 42")')
+    raises("cannot convert '1_0' to float", 'x = float("1_0")')
+    raises("cannot convert 'inf' to float", 'x = float("inf")')
+    raises("cannot convert 'nan' to float", 'x = float("nan")')
+    raises("cannot convert", "x = float([1])")
+    raises("builtin 'float' expects 1 argument", "x = float()")
+    raises("builtin 'float' expects 1 argument", "x = float(1, 2)")
+    raises("cannot convert inf to int", 'x = int(float("1e999"))')
+
+
+def test_float_parameter_strictness():
+    raises("must be float", "fn h (x: float) { return x } x = h(3)")
+    raises("must be float", "fn h (x: float) { return x } x = h(TRUE)")
+    raises("must be int", "fn h (x: int) { return x } x = h(1.5)")
+    raises("must be int", "fn h (x: int) { return x } x = h(0.0)")
 
 
 def test_step_limit():

@@ -1,0 +1,39 @@
+price = 19.99
+quantity = 3
+total = price * quantity
+print(total)
+print(total / 2)
+print(int(total))
+
+weight = 0.1 + 0.2
+print(weight)
+
+ratio = 7 / 2
+print(ratio)
+exact = 7.0 / 2
+print(exact)
+
+fn average (a: float, b: float) {
+    return (a + b) / 2
+}
+print(average(1.5, 2.5))
+print(average(float(1), 2.0))
+
+!import lists {sort_list, sum_list}
+readings = [36.6, 37.2, 36.9]
+print(sort_list(readings))
+print(sum_list(readings) / len(readings))
+
+print(float("2.5e3"))
+print(str(1.5) + " kg")
+print(1 == 1.0)
+print(1.5 < 2 < 2.5)
+print(bool(0.0))
+
+step = 0.5
+i = 0
+while (i < 2) {
+    step += step
+    i += 1
+}
+print(step)

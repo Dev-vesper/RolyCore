@@ -24,6 +24,50 @@ def test_arithmetic_laws():
     invariant("print(1 - 2 + 3) print(10 - 2 + 3)", "2\n11")
 
 
+def test_float_laws():
+    invariant(
+        "print(1 + 0.5) print(0.5 + 1) print(2 * 1.5) print(1 - 0.5) print(-1.5)",
+        "1.5\n1.5\n3.0\n0.5\n-1.5",
+    )
+    invariant(
+        "print(7 / 2) print(-7 / 2) print(7.0 / 2) print(7 / 2.0) print(7.5 / 0.5)",
+        "3\n-4\n3.5\n3.5\n15.0",
+    )
+    invariant(
+        "print(1 == 1.0) print(1.0 == 1) print([1] == [1.0]) print(1.5 != 2)"
+        " print(1 < 1.5 < 2) print(2.5 >= 2.5) print(1.0 == TRUE)",
+        "True\nTrue\nTrue\nTrue\nTrue\nTrue\nFalse",
+    )
+    invariant(
+        "print(0.1 + 0.2) print(str(0.1 + 0.2)) print(format(\"{}\", 1.5))",
+        "0.30000000000000004\n0.30000000000000004\n1.5",
+    )
+    invariant(
+        "print(int(3.9)) print(int(-3.9)) print(int(2.5)) print(float(7))"
+        " print(float(\"3.14\")) print(float(\"-2.5e3\")) print(str(1.5))",
+        "3\n-3\n2\n7.0\n3.14\n-2500.0\n1.5",
+    )
+    invariant(
+        "fn half (x: float) { return x / 2 }\n"
+        "print(half(1.5)) print(half(float(3))) print(half(5.0))",
+        "0.75\n1.5\n2.5",
+    )
+    invariant(
+        "x = 1\nx += 0.5\nprint(x)\nx *= 2\nprint(x)\nx -= 0.25\nprint(x)\nx /= 2\nprint(x)",
+        "1.5\n3.0\n2.75\n1.375",
+    )
+    invariant(
+        "print(1e2) print(1.5e-2) print(2.5e3) print(bool(0.0)) print(bool(0.5))",
+        "100.0\n0.015\n2500.0\nFalse\nTrue",
+    )
+    invariant(
+        "!import lists {sort_list, sum_list, max_list, min_list}\n"
+        "print(sort_list([2, 0.5, 1.5, 0])) print(sum_list([1, 0.5, 0.25]))\n"
+        "print(max_list([1.5, 2]) + min_list([0.5, 1]))",
+        "[0, 0.5, 1.5, 2]\n1.75\n2.5",
+    )
+
+
 def test_string_laws():
     invariant('print(len("ab" + "cd") == len("ab") + len("cd"))', "True")
     invariant('print(("a" + "b") + "c" == "a" + ("b" + "c"))', "True")

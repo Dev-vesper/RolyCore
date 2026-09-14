@@ -53,11 +53,12 @@ def test_list_lib_guards_error():
 
 
 def test_list_lib_element_types_checked():
-    raises("requires integer operands", '!import lists {sum_list} x = sum_list(list("ab"))')
-    raises("requires integer operands", '!import lists {sort_list} x = sort_list(["a"])')
-    raises("requires integer operands", "!import lists {max_list} x = max_list([TRUE])")
-    raises("requires integer operands", '!import lists {min_list} x = min_list(["zz"])')
-    raises("requires integer operands", "!import lists {sort_list} x = sort_list([[1]])")
+    raises("requires numeric operands", '!import lists {sum_list} x = sum_list(list("ab"))')
+    raises("requires numeric operands", '!import lists {sort_list} x = sort_list(["a"])')
+    raises("requires numeric operands", "!import lists {max_list} x = max_list([TRUE])")
+    raises("requires numeric operands", '!import lists {min_list} x = min_list(["zz"])')
+    raises("requires numeric operands", "!import lists {sort_list} x = sort_list([[1]])")
+    raises("requires numeric operands", "!import lists {sort_list} x = sort_list([TRUE])")
 
 
 def test_string_builtin_errors():

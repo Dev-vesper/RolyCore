@@ -104,7 +104,6 @@ def test_function_placement_errors():
 
 def test_function_parameter_errors():
     for source in [
-        "fn f (a: float) { return a }",
         "fn f (a: print) { return a }",
         "fn f (a) { return a }",
         "fn f (: int) { return 1 }",
@@ -119,9 +118,9 @@ def test_function_parameter_errors():
 def test_unknown_type_message():
     with pytest.raises(
         ParseError,
-        match=r"unknown type 'float' \(expected int, str, bool, or list\)",
+        match=r"unknown type 'double' \(expected int, str, bool, list, or float\)",
     ):
-        parse("fn f (a: float) { return a }")
+        parse("fn f (a: double) { return a }")
 
 
 def test_duplicate_parameter_errors():
@@ -151,14 +150,16 @@ def test_print_structure_errors():
             parse(source)
 
 
-def test_float_literals_rejected():
-    with pytest.raises(ParseError):
-        parse("x = 1.5")
+def test_malformed_float_literals_rejected():
+    for source in ["x = 1.", "x = 1.2.3", "x = .5", "x = 1e", "x = 1e+", "x = 1.5e"]:
+        with pytest.raises(ParseError):
+            parse(source)
 
 
 def test_type_names_are_not_values():
     for source in [
         "x = int", "print(str)", "x = list", "fn f (list: int) { return list }",
+        "x = float",
     ]:
         with pytest.raises(ParseError):
             parse(source)
