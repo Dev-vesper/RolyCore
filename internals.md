@@ -419,9 +419,11 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
     module re-exports a brace-imported name, refs flatten at
     registration/call time.
   - Collisions: brace fn over a user fn → `already defined`; brace var over
-    a live fn name → `'x' is already a function name` (the "split-brain"
-    fix — before it, the two tables could disagree). Brace vars may
-    silently overwrite importer globals.
+    a live fn name → `'x' is already a function name`; brace fn over a user
+    variable → `'x' is already a variable name` (the two "split-brain"
+    fixes — before them, a name could live in both tables at once, with
+    reads seeing the variable and calls seeing the function). Brace vars
+    may silently overwrite importer globals.
 - Module fns cannot see caller frames (`module_frames` boundary, §5) — the
   same bug family as the old lib leak, fixed the same way.
 - `run()` returns an alias-dereferenced copy of globals, so host code never
@@ -737,6 +739,14 @@ be empty or comment-only — the module does not exist for `!import` without
 the anchor. Arity/type checks come free through `NativeFn.params`. Errors
 must be `RolyError`s carrying the full path, not Python tracebacks.
 
+15.54 **The two tables make every bind site a dual check**: functions and
+variables live in separate dicts, and any code path that writes into one
+table must first prove the name is absent from the other — `assign()` and
+fn pre-registration do this, and brace binding in `execute_import` must
+too (both directions, 2026-09-13 and 2026-09-14 split-brain fixes). The
+hole appears exactly where a bind bypasses `assign()`; the fix is a
+one-line globals lookup in the fn branch, not a redesign.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -814,6 +824,14 @@ must be `RolyError`s carrying the full path, not Python tracebacks.
   traceback (`UnicodeDecodeError` has no `strerror`); `native_join` renders
   through `to_str` restoring the pure-Roly output parity (`["a"]`, not
   Python's `['a']`).
+- **Phase 27 (2026-09-14)** — bug-hunt round 2 continued: 6500-case
+  differential fuzz against Python (arithmetic, precedence, comparison
+  chains, format) found zero mismatches. One confirmed bug fixed: brace fn
+  over an importer variable created a split-brain name (`print(x)` read the
+  variable, `x(3)` called the module fn, `x = 6` errored). User chose the
+  strict option after a language survey (Rust/Go/JS error on import
+  collisions; Python silently rebinds): now `'x' is already a variable
+  name`, completing the collision matrix (15.54).
 
 ## 17. Tests & Maintenance Rules
 

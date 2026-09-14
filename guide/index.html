@@ -823,7 +823,7 @@ d = counter.c        <span class="tok-com">// 2 — reads the live value</span><
         <li>module functions cannot see the locals of the function calling them</li>
         <li>built-in names are not module members — <code>testme.len</code> does not work; a module can pass on names it imported with braces — if <code>testme</code> does <code>!import math {gcd}</code>, then <code>testme.gcd</code> works</li>
         <li>member names follow identifier rules — keywords cannot be members</li>
-        <li>a brace name replaces a variable with the same name; a brace function colliding with one of your functions is an error</li>
+        <li>a brace name replaces a variable with the same name, but collides with one of your functions; a brace function colliding with one of your functions or variables is an error</li>
         <li><code>import</code> is a keyword; it cannot be used as a variable or function name</li>
     </ul>
 </section>

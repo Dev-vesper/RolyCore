@@ -191,6 +191,8 @@ class Interpreter:
                     existing, ModuleFunctionRef
                 ):
                     raise RolyError(f"function '{name}' is already defined")
+                if name in self.globals:
+                    raise RolyError(f"'{name}' is already a variable name")
                 self.functions[name] = self.module_function_ref(entry, function)
             if name in entry.globals:
                 if name in self.functions and self.own_function(entry, name) is None:

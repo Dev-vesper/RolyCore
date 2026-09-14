@@ -145,6 +145,23 @@ def test_lib_import_errors():
     )
 
 
+def test_brace_fn_over_variable_errors(tmp_path):
+    (tmp_path / "mfn.roly").write_text(
+        "fn x (n: int) { return n * 2 }\n", encoding="utf-8"
+    )
+    (tmp_path / "mvar.roly").write_text("x = 7\n", encoding="utf-8")
+    raises(
+        "'x' is already a variable name",
+        "x = 5\nimport mfn {x}",
+        base_dir=tmp_path,
+    )
+    raises(
+        "'x' is already a variable name",
+        "import mvar {x}\nimport mfn {x}",
+        base_dir=tmp_path,
+    )
+
+
 def test_parameter_names_checked():
     raises("parameter 'len' of 'f' is a builtin", "fn f (len: int) { return len }")
 
