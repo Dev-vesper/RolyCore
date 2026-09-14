@@ -408,8 +408,9 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
 - **Errors**: load-time errors are wrapped `error in module 'x': ...`
   (`error in library 'x': ...` for `!import`); errors from later calls are
   raw. Not-found is `module 'x' not found (looked for {path})` vs
-  `library 'x' not found (looked for {path})`. Qualified module calls count
-  steps.
+  `library 'x' not found (looked for {path})`. Unreadable or non-UTF-8
+  source is `cannot read module 'x': {reason}` with the reason from
+  `stdlib._io_reason` (15.55). Qualified module calls count steps.
 - **Brace binding mechanics**:
   - Variables → `ModuleAlias(entry, name)` in the importer's globals,
     dereferenced LIVE on every read — the importer sees later module
@@ -503,6 +504,9 @@ Message conventions that tests match on:
   module 'm'` / `is not a function in module 'm'`,
   `'m' is already imported` (import vs `!import` clash),
   `library 'x' not found (looked for {path})`.
+- File reads (CLI entry + module loads + thfile): `cannot read ...: {reason}`
+  from `stdlib._io_reason` — strerror with the first letter lowercased, or
+  `the file is not valid UTF-8 text` for decode failures.
 
 The CLI renders any of them as `error: {msg}` on stderr, exit 1. Only
 `print()` output ever reaches stdout.
@@ -747,6 +751,14 @@ too (both directions, 2026-09-13 and 2026-09-14 split-brain fixes). The
 hole appears exactly where a bind bypasses `assign()`; the fix is a
 one-line globals lookup in the fn branch, not a redesign.
 
+15.55 **`UnicodeDecodeError` is a `ValueError`, not an `OSError`**: every
+site that decodes a user file must catch it explicitly, or a non-UTF-8
+file leaks a raw Python traceback. Three sites, one shared reason helper
+(`stdlib._io_reason`): the CLI entry read (`roly.py`), module loads
+(`load_module`), and thfile `read`/`read_lines`. Reusing the helper also
+lowercases strerror everywhere, so read errors match the language's
+lowercase message style.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -832,6 +844,11 @@ one-line globals lookup in the fn branch, not a redesign.
   strict option after a language survey (Rust/Go/JS error on import
   collisions; Python silently rebinds): now `'x' is already a variable
   name`, completing the collision matrix (15.54).
+- **Phase 28 (2026-09-14)** — bug-hunt round 2, second fix: non-UTF-8 entry
+  files and module files leaked raw Python tracebacks (both read sites
+  caught only `OSError`). Both now go through `stdlib._io_reason` —
+  `the file is not valid UTF-8 text` — and the CLI's read errors are
+  lowercase like every other Roly error (15.55).
 
 ## 17. Tests & Maintenance Rules
 
@@ -927,7 +944,9 @@ loop-compiled. Re-run the full suite and spot-check via the CLI.
 **CLI** (`roly.py`): `run file.roly` and `exec "inline code"`. Runs through
 `run_source` with `base_dir`/`entry_path` set from the file so module
 resolution works. Only program `print()` output goes to stdout; errors print
-`error: {msg}` to stderr and exit 1; `BrokenPipeError` is swallowed by
+`error: {msg}` to stderr and exit 1; entry-file read failures (missing,
+unreadable, non-UTF-8) print `error: cannot read '{file}': {reason}` via
+`stdlib._io_reason`; `BrokenPipeError` is swallowed by
 redirecting stdout to devnull (safe `| head` usage).
 
 **Build** (`python build.py [--clean]`): thin argparse over `builder/` —
