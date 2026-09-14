@@ -250,7 +250,7 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (11)
+## 9. Builtins (12)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -264,6 +264,7 @@ Python exceptions through the compiled closures:
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
+| `input(prompt)` | 1 | Prompt must be a str (required). Wraps Python's `input()`: writes the prompt to the REAL stdout, reads one line, returns it as a str with the trailing newline stripped. EOF → `input: end of input reached`. Always returns str — `int(input(...))` is the sanctioned numeric read. |
 | `format(...)` | variadic | `{}` sequential and `{n}` reusable positional placeholders; `{{`/`}}` escapes; mixing auto and manual numbering is an error; messages match Python's `str.format` word-for-word. |
 
 Dispatch rules that matter:
@@ -759,6 +760,16 @@ file leaks a raw Python traceback. Three sites, one shared reason helper
 lowercases strerror everywhere, so read errors match the language's
 lowercase message style.
 
+15.56 **`input` bypasses `out` on purpose**: the prompt is written by
+Python's `input()` to the REAL stdout, not through the interpreter's
+redirectable `out` callback — so a prompt always reaches the terminal even
+when `out` is captured (tests) or silenced (module load). Consequences: a
+module calling `input` at load time prints its prompt and blocks on stdin
+despite `_silent_out`; and `input` as a bare statement is a legal `Call`
+ExprStmt — the line is read and discarded, matching Python. EOF must map
+to a `RolyError` (`input: end of input reached`), never a raw
+`EOFError` traceback.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -849,6 +860,12 @@ lowercase message style.
   caught only `OSError`). Both now go through `stdlib._io_reason` —
   `the file is not valid UTF-8 text` — and the CLI's read errors are
   lowercase like every other Roly error (15.55).
+- **Phase 29 (2026-09-15)** — `input(prompt)` builtin (12th): Python-style
+  user input. User-pinned semantics: prompt REQUIRED and str-typed (unlike
+  Python's optional prompt), return is ALWAYS str — `int(input(...))` is
+  the numeric read; a bare `input(...)` statement reads and discards.
+  EOF → clean `RolyError`. No rolypip showcase — an interactive script
+  would hang the glob-discovered smoke run.
 
 ## 17. Tests & Maintenance Rules
 

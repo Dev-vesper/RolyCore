@@ -613,7 +613,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p>Eleven built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>fail()</code> stops the program with a message.</p>
+    <p>Twelve built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 s = str(7)          <span class="tok-com">// "7"</span>
@@ -623,7 +623,10 @@ b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is 
 
 n = len("hello")    <span class="tok-com">// 5</span>
 c = char("hello", 1) <span class="tok-com">// "e" — indexes start at 0</span>
-f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span></code></pre>
+f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
+
+name = <span class="tok-fn">input</span>("name? ")  <span class="tok-com">// prints the prompt, reads one line — a str</span>
+age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? "))  <span class="tok-com">// the numeric read — convert explicitly</span></code></pre>
     <table>
         <tr><th>Call</th><th>Accepts</th><th>Result</th></tr>
         <tr><td>int(x)</td><td>int, bool, str</td><td>int — bool gives 1/0; str must be an optionally signed decimal number</td></tr>
@@ -636,8 +639,10 @@ f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
         <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error; <code>l[i]</code> is the same thing</td></tr>
         <tr><td>set(l, i, x)</td><td>list, int, any value</td><td>list — a new list with position i replaced</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
+        <tr><td>input(prompt)</td><td>str</td><td>str — prints the prompt, reads one line from the user; the line is always a str, convert with <code>int()</code></td></tr>
         <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
     </table>
+    <div class="note"><code>input</code> requires its prompt — <code>input()</code> with no argument is an error. Called as a bare statement (<code>input("ask: ")</code> on its own line) it still reads a line and throws the answer away. When the input is closed — a piped program reaching its end — the error is <code>input: end of input reached</code>.</div>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
     <div class="note">Built-in names cannot be redefined — <code>len = 5</code> and <code>fn len (...)</code> are errors. The four conversion names are keywords in call position: <code>x = int</code> without parentheses is a parse error. <code>bool()</code> rejects lists — a list is never a condition.</div>
 
