@@ -4,6 +4,7 @@ from enum import Enum, auto
 
 class T(Enum):
     INT = auto()
+    FLOAT = auto()
     STRING = auto()
     IDENT = auto()
     IF = auto()
@@ -18,6 +19,7 @@ class T(Enum):
     STR_TYPE = auto()
     BOOL_TYPE = auto()
     LIST_TYPE = auto()
+    FLOAT_TYPE = auto()
     TRUE = auto()
     FALSE = auto()
     IMPORT = auto()
@@ -72,6 +74,7 @@ KEYWORDS = {
     "str": T.STR_TYPE,
     "bool": T.BOOL_TYPE,
     "list": T.LIST_TYPE,
+    "float": T.FLOAT_TYPE,
     "TRUE": T.TRUE,
     "FALSE": T.FALSE,
     "import": T.IMPORT,
@@ -82,4 +85,5 @@ TYPE_TOKENS = {
     T.STR_TYPE: str,
     T.BOOL_TYPE: bool,
     T.LIST_TYPE: list,
+    T.FLOAT_TYPE: float,
 }

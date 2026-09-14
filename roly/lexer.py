@@ -107,7 +107,34 @@ class Lexer:
         start = self.pos
         while self.pos < len(self.source) and self.source[self.pos] in DIGITS:
             self.advance()
+        is_float = False
+        if (
+            self.pos < len(self.source)
+            and self.source[self.pos] == "."
+            and self.pos + 1 < len(self.source)
+            and self.source[self.pos + 1] in DIGITS
+        ):
+            is_float = True
+            self.advance()
+            while self.pos < len(self.source) and self.source[self.pos] in DIGITS:
+                self.advance()
+        if self.pos < len(self.source) and self.source[self.pos] in "eE":
+            lookahead = self.pos + 1
+            if lookahead < len(self.source) and self.source[lookahead] in "+-":
+                lookahead += 1
+            if lookahead < len(self.source) and self.source[lookahead] in DIGITS:
+                is_float = True
+                self.advance()
+                if self.source[self.pos] in "+-":
+                    self.advance()
+                while (
+                    self.pos < len(self.source)
+                    and self.source[self.pos] in DIGITS
+                ):
+                    self.advance()
         text = self.source[start : self.pos]
+        if is_float:
+            return Token(T.FLOAT, float(text), start_line, start_column)
         return Token(T.INT, int(text), start_line, start_column)
 
     def read_string(self, start_line, start_column):

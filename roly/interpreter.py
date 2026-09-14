@@ -351,12 +351,18 @@ class Interpreter:
             ) = saved
 
     def type_name(self, param_type):
-        return {int: "int", str: "str", bool: "bool", list: "list"}[param_type]
+        return {
+            int: "int",
+            str: "str",
+            bool: "bool",
+            list: "list",
+            float: "float",
+        }[param_type]
 
     def truthy(self, value):
         if isinstance(value, bool):
             return value
-        if isinstance(value, int):
+        if isinstance(value, int) or isinstance(value, float):
             return value != 0
         raise RolyError(f"condition must be a number, got {value!r}")
 

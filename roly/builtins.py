@@ -6,12 +6,18 @@ sys.set_int_max_str_digits(0)
 
 DIGITS = "0123456789"
 
+_INF = float("inf")
+
 
 def to_int(value):
     if type(value) is int:
         return value
     if type(value) is bool:
         return 1 if value else 0
+    if type(value) is float:
+        if value != value or value == _INF or value == -_INF:
+            raise RolyError(f"cannot convert {value!r} to int")
+        return int(value)
     if type(value) is not str:
         raise RolyError(f"cannot convert {value!r} to int")
     text = value
@@ -45,9 +51,50 @@ def to_bool(value):
         return value
     if type(value) is int:
         return value != 0
+    if type(value) is float:
+        return value != 0
     if type(value) is str:
         return value != ""
     raise RolyError(f"cannot convert {value!r} to bool")
+
+
+def to_float(value):
+    if type(value) is float:
+        return value
+    if type(value) is int:
+        return float(value)
+    if type(value) is bool:
+        return 1.0 if value else 0.0
+    if type(value) is not str:
+        raise RolyError(f"cannot convert {value!r} to float")
+    text = value
+    i = 0
+    if text[:1] in ("+", "-"):
+        i = 1
+    digits = 0
+    while i < len(text) and text[i] in DIGITS:
+        i += 1
+        digits += 1
+    if i < len(text) and text[i] == ".":
+        i += 1
+        while i < len(text) and text[i] in DIGITS:
+            i += 1
+            digits += 1
+    if digits == 0:
+        raise RolyError(f"cannot convert {value!r} to float")
+    if i < len(text) and text[i] in "eE":
+        i += 1
+        if i < len(text) and text[i] in "+-":
+            i += 1
+        exponent_digits = 0
+        while i < len(text) and text[i] in DIGITS:
+            i += 1
+            exponent_digits += 1
+        if exponent_digits == 0:
+            raise RolyError(f"cannot convert {value!r} to float")
+    if i != len(text):
+        raise RolyError(f"cannot convert {value!r} to float")
+    return float(text)
 
 
 def roly_equal(left, right):
@@ -58,6 +105,10 @@ def roly_equal(left, right):
             if not roly_equal(a, b):
                 return False
         return True
+    left_is_number = type(left) is int or type(left) is float
+    right_is_number = type(right) is int or type(right) is float
+    if left_is_number and right_is_number:
+        return left == right
     return type(left) is type(right) and left == right
 
 
@@ -195,6 +246,7 @@ BUILTINS = {
     "int": to_int,
     "str": to_str,
     "bool": to_bool,
+    "float": to_float,
     "list": make_list,
     "len": text_len,
     "char": text_char,
@@ -210,6 +262,7 @@ BUILTIN_ARITIES = {
     "int": 1,
     "str": 1,
     "bool": 1,
+    "float": 1,
     "len": 1,
     "char": 2,
     "push": 2,

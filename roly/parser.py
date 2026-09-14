@@ -10,6 +10,7 @@ from roly.ast import (
     Continue,
     ExprStmt,
     FnDef,
+    Float,
     If,
     Import,
     ListLit,
@@ -60,6 +61,7 @@ PARAM_TYPES = {
     T.STR_TYPE: str,
     T.BOOL_TYPE: bool,
     T.LIST_TYPE: list,
+    T.FLOAT_TYPE: float,
 }
 
 BUILTIN_NAMES = {
@@ -67,6 +69,7 @@ BUILTIN_NAMES = {
     T.STR_TYPE: "str",
     T.BOOL_TYPE: "bool",
     T.LIST_TYPE: "list",
+    T.FLOAT_TYPE: "float",
 }
 
 
@@ -346,7 +349,7 @@ class Parser:
         if type_token.type not in PARAM_TYPES:
             raise ParseError(
                 f"unknown type {self.describe(type_token)} "
-                f"(expected int, str, bool, or list)",
+                f"(expected int, str, bool, list, or float)",
                 type_token,
             )
         self.advance()
@@ -437,6 +440,9 @@ class Parser:
         if token.type is T.INT:
             self.advance()
             return Num(token.value)
+        if token.type is T.FLOAT:
+            self.advance()
+            return Float(token.value)
         if token.type is T.STRING:
             self.advance()
             return Str(token.value)

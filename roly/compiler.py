@@ -12,6 +12,7 @@ from roly.ast import (
     Continue,
     ExprStmt,
     FnDef,
+    Float,
     If,
     Import,
     ListLit,
@@ -39,54 +40,47 @@ from roly.runtime import (
 MISS = object()
 
 
+def _require_number(op, value):
+    if type(value) is not int and type(value) is not float:
+        raise RolyError(f"operator '{op}' requires numeric operands, got {value!r}")
+
+
 def op_add(I, a, b):
     if type(a) is str:
         if type(b) is str:
             return a + b
-        raise RolyError(f"operator '+' requires integer operands, got {a!r}")
-    if type(a) is not int:
-        raise RolyError(f"operator '+' requires integer operands, got {a!r}")
-    if type(b) is not int:
-        raise RolyError(f"operator '+' requires integer operands, got {b!r}")
+        raise RolyError(f"operator '+' requires numeric operands, got {a!r}")
+    _require_number("+", a)
+    _require_number("+", b)
     return a + b
 
 
 def op_sub(I, a, b):
-    if type(a) is not int:
-        raise RolyError(f"operator '-' requires integer operands, got {a!r}")
-    if type(b) is not int:
-        raise RolyError(f"operator '-' requires integer operands, got {b!r}")
+    _require_number("-", a)
+    _require_number("-", b)
     return a - b
 
 
 def op_mul(I, a, b):
-    if type(a) is not int:
-        raise RolyError(f"operator '*' requires integer operands, got {a!r}")
-    if type(b) is not int:
-        raise RolyError(f"operator '*' requires integer operands, got {b!r}")
+    _require_number("*", a)
+    _require_number("*", b)
     return a * b
 
 
 def op_div(I, a, b):
-    if type(a) is not int:
-        raise RolyError(f"operator '/' requires integer operands, got {a!r}")
-    if type(b) is not int:
-        raise RolyError(f"operator '/' requires integer operands, got {b!r}")
+    _require_number("/", a)
+    _require_number("/", b)
     if b == 0:
         raise RolyError("division by zero")
+    if type(a) is float or type(b) is float:
+        return a / b
     return a // b
 
 
 def _cmp_op(symbol, fn):
     def op(I, a, b):
-        if type(a) is not int:
-            raise RolyError(
-                f"operator '{symbol}' requires integer operands, got {a!r}"
-            )
-        if type(b) is not int:
-            raise RolyError(
-                f"operator '{symbol}' requires integer operands, got {b!r}"
-            )
+        _require_number(symbol, a)
+        _require_number(symbol, b)
         return fn(a, b)
 
     return op
@@ -107,7 +101,7 @@ OPS = {
 
 
 def compile_expression(node, discard=False):
-    if isinstance(node, (Num, Str, Bool)):
+    if isinstance(node, (Num, Float, Str, Bool)):
         value = node.value
         return lambda I: value
     if isinstance(node, Var):
@@ -128,9 +122,9 @@ def compile_expression(node, discard=False):
 
         def f_neg(I):
             v = operand(I)
-            if type(v) is not int:
+            if type(v) is not int and type(v) is not float:
                 raise RolyError(
-                    f"operator '-' requires integer operands, got {v!r}"
+                    f"operator '-' requires numeric operands, got {v!r}"
                 )
             return -v
 

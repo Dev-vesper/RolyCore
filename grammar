@@ -5,7 +5,7 @@ import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
 parameter           : IDENT ':' type ;
-type                : 'int' | 'str' | 'bool' | 'list' ;
+type                : 'int' | 'str' | 'bool' | 'list' | 'float' ;
 
 statement           : assignment
                     | compound_assignment
@@ -44,11 +44,11 @@ comparison_op       : '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
 primary             : atom ( '[' expression ']' )* ;
-atom                : INT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
+atom                : INT | FLOAT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
 list_literal        : '[' ( expression ( ',' expression )* )? ']' ;
 unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
-builtin_call        : ( 'int' | 'str' | 'bool' | 'list' ) '(' arguments? ')' ;
+builtin_call        : ( 'int' | 'str' | 'bool' | 'list' | 'float' ) '(' arguments? ')' ;
 module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
 module_call         : IDENT '.' IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;

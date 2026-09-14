@@ -21,14 +21,14 @@ class NativeFn:
         self.callable = callable
 
 
-def _require_int_element(op, value):
-    if type(value) is not int:
-        raise RolyError(f"operator '{op}' requires integer operands, got {value!r}")
+def _require_number_element(op, value):
+    if type(value) is not int and type(value) is not float:
+        raise RolyError(f"operator '{op}' requires numeric operands, got {value!r}")
 
 
 def native_sort_list(I, items):
     for value in items:
-        _require_int_element("+", value)
+        _require_number_element("+", value)
     return sorted(items)
 
 
