@@ -62,7 +62,10 @@ def to_float(value):
     if type(value) is float:
         return value
     if type(value) is int:
-        return float(value)
+        try:
+            return float(value)
+        except OverflowError:
+            raise RolyError("integer too large to convert to float")
     if type(value) is bool:
         return 1.0 if value else 0.0
     if type(value) is not str:

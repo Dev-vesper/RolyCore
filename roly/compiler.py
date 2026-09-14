@@ -52,19 +52,28 @@ def op_add(I, a, b):
         raise RolyError(f"operator '+' requires numeric operands, got {a!r}")
     _require_number("+", a)
     _require_number("+", b)
-    return a + b
+    try:
+        return a + b
+    except OverflowError:
+        raise RolyError("integer too large to convert to float")
 
 
 def op_sub(I, a, b):
     _require_number("-", a)
     _require_number("-", b)
-    return a - b
+    try:
+        return a - b
+    except OverflowError:
+        raise RolyError("integer too large to convert to float")
 
 
 def op_mul(I, a, b):
     _require_number("*", a)
     _require_number("*", b)
-    return a * b
+    try:
+        return a * b
+    except OverflowError:
+        raise RolyError("integer too large to convert to float")
 
 
 def op_div(I, a, b):
@@ -73,7 +82,10 @@ def op_div(I, a, b):
     if b == 0:
         raise RolyError("division by zero")
     if type(a) is float or type(b) is float:
-        return a / b
+        try:
+            return a / b
+        except OverflowError:
+            raise RolyError("integer too large to convert to float")
     return a // b
 
 
