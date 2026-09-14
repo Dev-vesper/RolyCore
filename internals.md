@@ -7,7 +7,7 @@ reference. The source code carries no comments or docstrings (project
 convention), so the "why" lives here — the file is public and tracked in the
 repository.
 
-Facts below were verified against the source on 2026-09-13. When this document
+Facts below were verified against the source on 2026-09-15. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -17,12 +17,12 @@ and the code disagree, the code wins — then fix this document.
 | Path | Responsibility |
 |---|---|
 | `roly.py` | CLI entry point. `run file.roly` / `exec "code"`. Prints only program `print()` output; errors go to stderr as `error: {msg}` with exit code 1. Handles `BrokenPipeError` by redirecting stdout to devnull. |
-| `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (15 entries), `TYPE_TOKENS` (int/str/bool/list). |
+| `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (16 entries), `TYPE_TOKENS` (int/str/bool/list/float). |
 | `roly/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
-| `roly/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
+| `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 12 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 13 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -72,7 +72,7 @@ additive    : multiplicative ((+|-) multiplicative)*     ← iterative spine
 multiplicative: unary ((*|/) unary)*                     ← iterative spine
 unary       : '-' unary | primary
 primary     : atom ('[' expression ']')*                 ← iterative postfix
-atom        : INT | STRING | TRUE | FALSE | list-literal
+atom        : INT | FLOAT | STRING | TRUE | FALSE | list-literal
             | IDENT call? | IDENT '.' IDENT call? | builtin-call
             | '-' atom | '(' expression ')'
 ```
@@ -82,8 +82,8 @@ Precedence, loosest to tightest:
 | Level | Forms | Notes |
 |---|---|---|
 | 1 | comparisons `== != < <= > >=` | flat chains, see §7 |
-| 2 | `+ -` | `+` is int-only or str+str |
-| 3 | `* /` | `/` is floor division |
+| 2 | `+ -` | numeric operands (int/float) or str+str for `+` |
+| 3 | `* /` | `/` floors two ints, true division when either side is a float |
 | 4 | unary `-` | `-a[0]` is `Neg(Subscript)` — postfix beats unary |
 | 5 | postfix `()` `[]` `.` | call, subscript, module access; chains freely: `f()[0].x[1]` |
 
@@ -124,29 +124,40 @@ without `;`; it is pure sugar for one-liners and `exec`.
 
 ## 4. Values & Type System
 
-Four value types, period: `int`, `str`, `bool`, `list`. No floats, ever.
+Five value types, period: `int`, `str`, `bool`, `list`, `float`.
 
 - **int** is Python `int` (unbounded; `sys.set_int_max_str_digits(0)` lifts
-  the print limit). `/` is floor division, division by zero is a runtime
-  error. `mod(n, d)` is implemented in the lib as `n - n/d*d` purely so it
-  inherits the flooring for free.
+  the print limit). `/` floors two ints, true division when either side is
+  a float; division by zero is a runtime error either way. `mod(n, d)` is
+  implemented in the lib as `n - n/d*d` purely so it inherits the flooring
+  for free.
+- **float** is Python `float` (64-bit IEEE-754 double), including Python's
+  `inf`/`nan` spelling on print. Mixed int/float arithmetic promotes to
+  float exactly like Python. `int(f)` truncates toward zero; `int(inf)` and
+  `int(nan)` are clean errors. Literals need digits on both sides of the
+  dot (`1.5`, `1e5`, `2.5e-3` parse; `1.` and `.5` are parse errors — see
+  15.8).
 - **bool** is Python `bool`. Because Python `bool` is a subclass of `int`,
   every type check in the pipeline uses *exact* checks (`type(v) is not t`).
-  `TRUE` passed where `int` is declared is a type error, not a quiet `1`.
+  `TRUE` passed where `int` *or* `float` is declared is a type error, not a
+  quiet `1`; likewise `1 < TRUE` is a runtime error — bools are not numbers
+  in Roly even though they are in Python.
 - **str** is Python `str`. `+` concatenates str+str; `int + str` is an error.
 - **list** is Python `list` but **immutable by discipline**: `push`/`set`
   return *new* lists and callers must rebind (`l = push(l, x)`). `l[i] = x`
   is a parse error and will stay one. No aliasing is possible in user code.
 
 **Equality.** `==`/`!=` route through `roly_equal` — recursive structural
-comparison with strict per-element types: `[TRUE] != [1]`, `[[1,2]]` compares
-element-wise. There is no ordering across types.
+comparison where numbers compare by value across int and float
+(`1 == 1.0`, `[1] == [1.0]`), everything else requires strict per-element
+types: `[TRUE] != [1]`, `[[1,2]]` compares element-wise. There is no
+ordering across types.
 
 **Truthiness.** `truthy()` (interpreter.py:348) accepts: `bool` → itself,
-`int` → `!= 0` (so `if (1)` is legal and true), anything else (str, list) →
-runtime error `condition must be a number, got {value!r}`. Note the asymmetry:
-ints are valid conditions but bools are NOT valid ints where types are
-declared.
+`int`/`float` → `!= 0` (so `if (1)` is legal and true), anything else (str,
+list) → runtime error `condition must be a number, got {value!r}`. Note the
+asymmetry: ints are valid conditions but bools are NOT valid ints where
+types are declared.
 
 **Subscript desugaring.** `s[i]` is exactly `char(s, i)` and `l[i]` is
 exactly `get(l, i)` — same rules, same error messages. The compiler's
@@ -200,9 +211,9 @@ fn name (a: int, b: str) { ... return expr }
   fn visible to earlier statements too) raises
   `'{name}' is already a function name` in `Interpreter.assign`, on the
   global write path only (params/locals may shadow freely).
-- **Params**: typed `int`/`str`/`bool`/`list` (`float` is not a type);
-  unknown type is a parse error. Names must be unique and not keyword /
-  builtin names — checked at registration with the matching message (§14).
+- **Params**: typed `int`/`str`/`bool`/`list`/`float`; unknown type is a
+  parse error. Names must be unique and not keyword / builtin names —
+  checked at registration with the matching message (§14).
 - **Invocation order** (`call_compiled` → `invoke_function`), in exact order:
   1. `count_step()` — a call is a step.
   2. Builtins checked FIRST (`BUILTINS` before the user fn table — a user
@@ -251,12 +262,13 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (12)
+## 9. Builtins (13)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
-| `int(x)` | 1 | Strict grammar: optional sign + ASCII digits only — no whitespace, underscores, unicode digits. `int(TRUE)` → `1` allowed. Rejects lists. |
-| `str(x)` | 1 | `str(TRUE)` → `"True"` (matches what `print` shows). Lists render Roly-style: `[1, "a"]` — string elements double-quoted, nested lists recursed, `"` escaped as `\"`. |
+| `int(x)` | 1 | Strict grammar: optional sign + ASCII digits only — no whitespace, underscores, unicode digits. `int(TRUE)` → `1` allowed. Rejects lists. `int(float)` truncates toward zero; `int(inf)`/`int(nan)` → `cannot convert inf to int`. |
+| `float(x)` | 1 | float passes through; `int`/`bool` convert (`float(7)` → `7.0`). Strings follow Python's grammar minus the exotic spellings: optional sign, digits with optional dot on either side (`"1."`/`".5"` convert), optional exponent — no whitespace, underscores, `inf`/`nan` spellings. Rejects lists. |
+| `str(x)` | 1 | `str(TRUE)` → `"True"` (matches what `print` shows). Lists render Roly-style: `[1, "a"]` — string elements double-quoted, nested lists recursed, `"` escaped as `\"`. Floats render in Python's spelling (`1.5`, `inf`). |
 | `bool(x)` | 1 | Python-style truthiness: `""`/`0` → `FALSE`, non-empty str/int → `TRUE`. Rejects lists. |
 | `len(x)` | 1 | str or list; exact types. |
 | `char(s, i)` | 2 | Both args exact types (str, int); 0-based; OOB runtime error. |
@@ -300,9 +312,9 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
 `sort_list`/`join`/`reverse_list` (injected for speed, §10 rules below), and the
 entire `thfile` module — file I/O is impossible in pure Roly, so all eleven of
-its functions are native. `native_sort_list` scans for non-int elements first
-purely so `join`'s `operator '+' requires integer operands` error surfaces
-bit-for-bit as before.
+its functions are native. `native_sort_list` scans for non-number elements
+first purely so `join`'s `operator '+' requires numeric operands` error
+surfaces bit-for-bit as before (the scan now admits floats alongside ints).
 
 **thfile specifics** (file operations):
 
@@ -340,7 +352,7 @@ Design rules:
   to_base/roman/isqrt-style fns; `to_base` fails with
   "base must be between 2 and 16" outside that range.
 - Impossible-by-design in pure Roly: `divmod`, generic binary search,
-  sieves, floats, arbitrary-element-typed helpers (typed params block
+  sieves, arbitrary-element-typed helpers (typed params block
   `contains`/`index_of_item` for lists — host-side candidates if ever
   needed).
 - **Lib call isolation** is the module isolation of §5/§11 — lib fns see
@@ -535,17 +547,24 @@ statement whitelist is enforced there.
 membership too, or `x = int`-style parse handling diverges.
 
 15.5 Python's `bool ⊂ int` trap: all pipeline type checks are exact
-(`type(v) is not t`). `TRUE` is not an `int` argument; `1` is not a `bool`
+(`type(v) is not t`). `TRUE` is not an `int` argument, nor a `float`
+argument, nor a numeric operand (`1 + TRUE` errors); `1` is not a `bool`
 element in `roly_equal`. Never "simplify" these to `isinstance`.
 
-15.6 Truthiness is asymmetric with type strictness: `if (1)` is legal
-(ints are conditions), but `"a"`/`[1]` as a condition is a runtime error.
+15.6 Truthiness is asymmetric with type strictness: `if (1)` and `if (0.5)`
+are legal (numbers are conditions), but `"a"`/`[1]` as a condition is a
+runtime error.
 
-15.7 `/` floors. `mod()` is `n - n/d*d` *because* of that — if `/` ever
+15.7 `/` floors only when BOTH operands are ints; any float makes it true
+division. `mod()` is `n - n/d*d` *because* of the int flooring — if `/` ever
 changes semantics, `mod` silently changes too.
 
-15.8 No floats: `INT DOT INT` is a parse error; `.` is module access only.
-The DOT token exists solely for `name.member`.
+15.8 Float lexing: the dot must be followed by a digit, so `1.` and `.5`
+stay parse errors (DOT remains module-access only) while `1.5` lexes as a
+single FLOAT token. An `e`/`E` is consumed only after a no-advance lookahead
+confirms `[+-]?digit` follows — otherwise `1e` and `1e+` fall back to INT +
+IDENT and the parser reports the error. `read_number` never advances on the
+lookahead path.
 
 15.9 Lists are immutable by discipline, not by wrapper type — the values are
 plain Python lists. The immutability contract is enforced by having no
@@ -650,12 +669,12 @@ cycles. First-class functions or mutable lists would invalidate the
 assumption.
 
 15.35 Native lib fns (`sort_list`/`join`/`reverse_list`) must reproduce the
-old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list` non-int
-pre-scan exists so `join`'s `operator '+' requires integer operands` fires
-exactly as before) AND OUTPUT (`native_join` renders elements through
-`to_str`, never Python `str` — Python renders `['a']` single-quoted where
-Roly renders `["a"]`; found in the 2026-09-13 bug-hunt). Changing one side
-without the other breaks parity.
+old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list`
+non-number pre-scan exists so `join`'s `operator '+' requires numeric
+operands` fires exactly as before) AND OUTPUT (`native_join` renders
+elements through `to_str`, never Python `str` — Python renders `['a']`
+single-quoted where Roly renders `["a"]`; found in the 2026-09-13 bug-hunt).
+Changing one side without the other breaks parity.
 
 15.36 `NativeFn`s bypass frame push and depth counting (pure host
 functions). A native fn with anything stateful does not belong in that
@@ -785,7 +804,7 @@ to a `RolyError` (`input: end of input reached`), never a raw
 - **Phase 5** — functions: typed params, separate fn table,
   pre-registration, depth 200, `ReturnSignal`.
 - **Phase 6** — `TRUE`/`FALSE` literals, unary minus, conversion builtins.
-  User decision: NO floats.
+  User decision: NO floats (reversed in Phase 30).
 - **Phase 7** — `tests/rolypip/` per-feature showcases.
 - **Phase 8** — else-if chains as a flat `elifs` list (depth-free).
 - **Phase 9** — standard library: auto-load, no import keyword, reserved
@@ -867,6 +886,20 @@ to a `RolyError` (`input: end of input reached`), never a raw
   the numeric read; a bare `input(...)` statement reads and discards.
   EOF → clean `RolyError`. No rolypip showcase — an interactive script
   would hang the glob-discovered smoke run.
+- **Phase 30 (2026-09-15)** — `float` type + `float()` builtin (13th).
+  Python-parity semantics, user-pinned in four decisions: full promotion
+  (`1 + 0.5` → `1.5`, `1 == 1.0`, `[1] == [1.0]`; bools stay excluded —
+  `1 + TRUE` errors); `/` floors only two ints, any float operand makes it
+  true division; `float()` strings follow Python's grammar minus
+  whitespace/underscores/`inf`/`nan` (but `float(".5")`/`float("1.")`
+  convert, unlike the literal grammar); `int(f)` truncates toward zero,
+  `int(inf)`/`int(nan)` error. Operation error messages changed
+  "requires integer operands" → "requires numeric operands" (compiler OPS
+  + `_require_number_element`); `sort_list`/`sum_list`/`max_list`/`min_list`
+  accept numbers. Lexer: dot must be followed by a digit, exponent via
+  no-advance lookahead (15.8). Verified with a 4000-case differential fuzz
+  against Python (0 mismatches) plus edge probes (inf, -0.0, 1e-400 → 0.0,
+  big-int precision loss).
 
 ## 17. Tests & Maintenance Rules
 
@@ -875,7 +908,7 @@ to a `RolyError` (`input: end of input reached`), never a raw
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~100 tests.
+  every file. Currently 7 files / ~130 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
