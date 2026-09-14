@@ -3,8 +3,9 @@
 This document is the maintainer's map of Roly: how every piece works, why it
 works that way, where the sharp edges are, and what has to be updated when
 something changes. It is not a tutorial — `guide/index.html` is the user-facing
-reference. This file is gitignored on purpose: the source code carries no
-comments or docstrings (project convention), so the "why" lives here.
+reference. The source code carries no comments or docstrings (project
+convention), so the "why" lives here — the file is public and tracked in the
+repository.
 
 Facts below were verified against the source on 2026-09-13. When this document
 and the code disagree, the code wins — then fix this document.
@@ -672,9 +673,9 @@ bundled inside. `resolve_lib_dir()` switches on `sys.frozen`.
 moment the file exists (and a broken one fails the suite). There is no
 registration list anymore.
 
-15.40 internals.md is gitignored and the code is comment-free by convention
-— this file is the only place rationale is recorded. Update it in the same
-change as the code it describes.
+15.40 internals.md is a public, tracked file and the code is comment-free by
+convention — this file is the only place rationale is recorded. Update it in
+the same change as the code it describes.
 
 15.41 The CLI shows ONLY `print()` output; anything the host prints (debug,
 tracing) leaks into program output and breaks that contract.

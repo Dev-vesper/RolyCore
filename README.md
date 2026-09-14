@@ -69,7 +69,7 @@ The build writes the executable and the library folder to `dist/`:
 | Linux / macOS | `dist/roly` | `dist/lib` |
 | Windows | `dist\roly.exe` | `dist\lib` |
 
-The `lib` folder must stay next to the executable — the engine loads the standard library from there at startup, and a missing folder is a clean error rather than a crash. Pass `--clean` (for example `python3 build.py --clean`) to remove `dist/` before building.
+The `lib` folder must stay next to the executable — the engine loads the standard library from there when a program imports it with `!import`, and a missing folder is a clean error rather than a crash. Pass `--clean` (for example `python3 build.py --clean`) to remove `dist/` before building.
 
 ## Notes
 
