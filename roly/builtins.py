@@ -81,6 +81,15 @@ def fail(message):
     raise RolyError(message)
 
 
+def read_input(prompt):
+    if type(prompt) is not str:
+        raise RolyError(f"builtin 'input' expects a str, got {prompt!r}")
+    try:
+        return input(prompt)
+    except EOFError:
+        raise RolyError("input: end of input reached")
+
+
 def make_list(*values):
     if len(values) > 1:
         raise RolyError("builtin 'list' expects no arguments or a str")
@@ -191,6 +200,7 @@ BUILTINS = {
     "char": text_char,
     "format": format_text,
     "fail": fail,
+    "input": read_input,
     "push": list_push,
     "get": list_get,
     "set": list_set,
@@ -206,4 +216,5 @@ BUILTIN_ARITIES = {
     "get": 2,
     "set": 3,
     "fail": 1,
+    "input": 1,
 }
