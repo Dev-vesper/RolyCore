@@ -106,6 +106,16 @@ def test_float_parameter_strictness():
     raises("must be int", "fn h (x: int) { return x } x = h(0.0)")
 
 
+def test_huge_int_meets_float():
+    build = "x = 1 i = 0 while (i < 400) { x *= 10 i += 1 } "
+    raises("integer too large to convert to float", build + "y = x + 0.5")
+    raises("integer too large to convert to float", build + "y = 0.5 - x")
+    raises("integer too large to convert to float", build + "y = x * 2.0")
+    raises("integer too large to convert to float", build + "y = x / 0.5")
+    raises("integer too large to convert to float", build + "x += 0.5")
+    raises("integer too large to convert to float", build + "y = float(x)")
+
+
 def test_step_limit():
     raises("step limit", "while (1) { x = 1 }", max_steps=10)
     raises("step limit", "x = 1 while (x > 0) { x += 1 }", max_steps=25)
