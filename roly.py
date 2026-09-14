@@ -8,6 +8,7 @@ from pathlib import Path
 from roly.interpreter import RolyError
 from roly.lexer import LexError
 from roly.parser import ParseError
+from roly.stdlib import _io_reason
 from roly.utils.runner import run_source
 
 
@@ -35,9 +36,12 @@ def main(argv: list[str] | None = None) -> int:
         try:
             with open(args.file, encoding="utf-8") as source_file:
                 source = source_file.read()
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             try:
-                print(f"error: cannot read '{args.file}': {error.strerror}", file=sys.stderr)
+                print(
+                    f"error: cannot read '{args.file}': {_io_reason(error)}",
+                    file=sys.stderr,
+                )
             except OSError:
                 pass
             return 1

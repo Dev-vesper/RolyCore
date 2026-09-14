@@ -239,9 +239,10 @@ class Interpreter:
         try:
             try:
                 source = path.read_text(encoding="utf-8")
-            except OSError as error:
+            except (OSError, UnicodeDecodeError) as error:
                 raise RolyError(
-                    f"cannot read {kind} '{module_name}': {error.strerror}"
+                    f"cannot read {kind} '{module_name}': "
+                    f"{stdlib._io_reason(error)}"
                 )
             try:
                 tokens = Lexer(source).tokenize()
