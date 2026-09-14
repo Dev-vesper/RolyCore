@@ -162,6 +162,11 @@ def test_brace_fn_over_variable_errors(tmp_path):
     )
 
 
+def test_non_utf8_module_errors(tmp_path):
+    (tmp_path / "badmod.roly").write_bytes(b'x = "\xff"\n')
+    raises("not valid UTF-8", "import badmod", base_dir=tmp_path)
+
+
 def test_parameter_names_checked():
     raises("parameter 'len' of 'f' is a builtin", "fn f (len: int) { return len }")
 

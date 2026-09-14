@@ -68,6 +68,15 @@ def test_run_missing_imported_module_errors(tmp_path):
     assert "not found" in result.stderr
 
 
+def test_run_non_utf8_file_errors(tmp_path):
+    script = tmp_path / "binary.roly"
+    script.write_bytes(b'x = "\xff\xfe"\n')
+    result = run_cli("run", str(script))
+    assert result.returncode == 1
+    assert "not valid UTF-8" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 def test_broken_pipe_handled_cleanly(tmp_path):
     code = "i = 0 while (i < 100000) { print(i) i += 1 }"
     err_file = tmp_path / "stderr.txt"
