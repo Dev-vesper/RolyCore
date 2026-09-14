@@ -133,10 +133,14 @@ Five value types, period: `int`, `str`, `bool`, `list`, `float`.
   for free.
 - **float** is Python `float` (64-bit IEEE-754 double), including Python's
   `inf`/`nan` spelling on print. Mixed int/float arithmetic promotes to
-  float exactly like Python. `int(f)` truncates toward zero; `int(inf)` and
-  `int(nan)` are clean errors. Literals need digits on both sides of the
-  dot (`1.5`, `1e5`, `2.5e-3` parse; `1.` and `.5` are parse errors — see
-  15.8).
+  float exactly like Python; an int beyond the double range meeting a float
+  (or `float()` of one) is the clean error `integer too large to convert
+  to float` — the four arithmetic ops wrap their tail in try/except
+  OverflowError (zero-cost on 3.11+, but do NOT wrap them in an extra
+  function call — that cost ~10% on the arith bench). `int(f)` truncates
+  toward zero; `int(inf)` and `int(nan)` are clean errors. Literals need
+  digits on both sides of the dot (`1.5`, `1e5`, `2.5e-3` parse; `1.` and
+  `.5` are parse errors — see 15.8).
 - **bool** is Python `bool`. Because Python `bool` is a subclass of `int`,
   every type check in the pipeline uses *exact* checks (`type(v) is not t`).
   `TRUE` passed where `int` *or* `float` is declared is a type error, not a
@@ -899,7 +903,13 @@ to a `RolyError` (`input: end of input reached`), never a raw
   accept numbers. Lexer: dot must be followed by a digit, exponent via
   no-advance lookahead (15.8). Verified with a 4000-case differential fuzz
   against Python (0 mismatches) plus edge probes (inf, -0.0, 1e-400 → 0.0,
-  big-int precision loss).
+  big-int precision loss). Same-day bug hunt: int/float `+ - * /` and
+  `float(int)` leaked raw `OverflowError` tracebacks when the int exceeded
+  the double range — now the clean `integer too large to convert to float`
+  (comparisons never overflow; Python compares int/float exactly), pinned
+  by a 5000-case fuzz that mixed ~300-digit int leaves in (1678 overflow
+  paths, 0 mismatches) and a 6000-case literal fuzz (0 crashes, 0 value
+  mismatches).
 
 ## 17. Tests & Maintenance Rules
 
