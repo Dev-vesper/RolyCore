@@ -304,7 +304,7 @@ x /= 2</code></pre>
     <p>Assigning again is always allowed — variables are freely reassignable, and a variable may hold a different type later. There is no declaration keyword: the first assignment creates the variable.</p>
     <pre><code>x = 5
 x = <span class="tok-str">"five"</span>      <span class="tok-com">// fine — the same name now holds a string</span></code></pre>
-    <div class="note">Some names are taken: the 15 keywords and the 11 built-in function names (<code>len = 5</code> is an error). Standard library names are yours until you import them — after <code>!import math {gcd}</code> the name <code>gcd</code> means that function and cannot be redefined.</div>
+    <div class="note">Some names are taken: the 15 keywords and the 12 built-in function names (<code>len = 5</code> is an error). Standard library names are yours until you import them — after <code>!import math {gcd}</code> the name <code>gcd</code> means that function and cannot be redefined.</div>
 </section>
 
 <section id="comments">
@@ -906,7 +906,7 @@ arguments           : expression ( ',' expression )* ;
         <tr><td>No logical operators</td><td>no and / or / not — conditions combine by nesting and flags, see <a href="#comparisons">Comparisons</a></td></tr>
         <tr><td>No negative indexes</td><td>element access (<code>l[i]</code>, <code>get</code>, <code>char</code>) is strict — out of range errors; range functions (<code>substr</code>, <code>sublist</code>) clamp</td></tr>
         <tr><td>Statements</td><td>only calls may stand alone as statements; every other expression must be assigned, printed, or returned — and expressions cannot continue onto the next line</td></tr>
-        <tr><td>Reserved names</td><td>15 keywords + 11 built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
+        <tr><td>Reserved names</td><td>15 keywords + 12 built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, TRUE, FALSE, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file — or from the standard library with <code>!import</code>; circular imports are an error</td></tr>
