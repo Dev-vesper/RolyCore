@@ -22,7 +22,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 17 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 18 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -266,7 +266,7 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (17)
+## 9. Builtins (18)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -282,6 +282,7 @@ Python exceptions through the compiled closures:
 | `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
 | `delete_at(l, i)` | 2 | Returns NEW list; 0-based, OOB errors like `get`. Replaced the lib's pure-Roly `remove_at` (deleted the same day). |
 | `concat(l, m)` | 2 | Returns NEW list; both args must be lists (`+` between lists stays an error on purpose). |
+| `map_equal(a, b)` | 2 | Order-independent equality over `[key, value]` pair lists. Elements must be 2-item lists (`map_equal: element is not a [key, value] pair`); length mismatch or an unmatched pair → `False`. Matching is the user-pinned naive scan (for each pair of a, ANY equal pair in b — matches are not consumed), comparisons via `roly_equal` so keys/values follow `==` semantics including int/float promotion. |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
@@ -937,6 +938,15 @@ to a `RolyError` (`input: end of input reached`), never a raw
   lists into a new one. Deliberately a builtin rather than reopening `+`:
   the operator stays numbers-or-strings only, so `l + m` keeps erroring
   and the type story of `+` doesn't fork.
+- **Phase 35 (2026-09-15)** — `map_equal(a, b)` builtin (18th):
+  order-independent equality for `[[key, value], ...]` pair lists, the
+  map idiom on top of plain lists (no dict type exists). Full spec was
+  user-supplied: length mismatch → FALSE; each pair of a must find an
+  equal pair in b; duplicate keys allowed; comparisons route through
+  `roly_equal`. Gotcha: the scan does NOT consume matches —
+  `[["x",1],["x",1]]` vs `[["x",1],["x",2]]` is TRUE under it. That is
+  the user-pinned algorithm; switch to consumed multiset matching only on
+  request.
 
 ## 17. Tests & Maintenance Rules
 
