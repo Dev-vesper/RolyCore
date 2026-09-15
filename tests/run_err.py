@@ -198,6 +198,17 @@ def test_builtin_used_as_value():
     raises("'format' is a builtin, not a value", "x = format")
 
 
+def test_ord_errors():
+    raises("builtin 'ord' expects a str", "x = ord(1)")
+    raises("builtin 'ord' expects a str", "x = ord(TRUE)")
+    raises("builtin 'ord' expects a str", "x = ord(1.5)")
+    raises("builtin 'ord' expects a str", "x = ord([1])")
+    raises("builtin 'ord' expects a single character", 'x = ord("ab")')
+    raises("builtin 'ord' expects a single character", 'x = ord("")')
+    raises("builtin 'ord' expects 1 argument", "x = ord()")
+    raises("builtin 'ord' expects 1 argument", 'x = ord("a", "b")')
+
+
 def test_subscript_errors():
     raises("char: index 4 out of range for length 4", 'x = "roly"[4]')
     raises("index -1 out of range", 'x = "roly"[-1]')
