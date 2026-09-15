@@ -282,7 +282,7 @@ Python exceptions through the compiled closures:
 | `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
 | `delete_at(l, i)` | 2 | Returns NEW list; 0-based, OOB errors like `get`. Replaced the lib's pure-Roly `remove_at` (deleted the same day). |
 | `concat(l, m)` | 2 | Returns NEW list; both args must be lists (`+` between lists stays an error on purpose). |
-| `map_equal(a, b)` | 2 | Order-independent equality over `[key, value]` pair lists. Elements must be 2-item lists (`map_equal: element is not a [key, value] pair`); length mismatch or an unmatched pair → `False`. Matching is the user-pinned naive scan (for each pair of a, ANY equal pair in b — matches are not consumed), comparisons via `roly_equal` so keys/values follow `==` semantics including int/float promotion. |
+| `map_equal(a, b)` | 2 | Order-independent multiset equality over `[key, value]` pair lists. Elements must be 2-item lists (`map_equal: element is not a [key, value] pair`); length mismatch or an unmatched pair → `False`. Matching CONSUMES pairs from a working copy of b — duplicate counts must agree, and the relation is symmetric (`map_equal(a,b) == map_equal(b,a)`). Comparisons via `roly_equal` so keys/values follow `==` semantics including int/float promotion. |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
@@ -943,10 +943,11 @@ to a `RolyError` (`input: end of input reached`), never a raw
   map idiom on top of plain lists (no dict type exists). Full spec was
   user-supplied: length mismatch → FALSE; each pair of a must find an
   equal pair in b; duplicate keys allowed; comparisons route through
-  `roly_equal`. Gotcha: the scan does NOT consume matches —
-  `[["x",1],["x",1]]` vs `[["x",1],["x",2]]` is TRUE under it. That is
-  the user-pinned algorithm; switch to consumed multiset matching only on
-  request.
+  `roly_equal`. Same change, user decision: matching is multiset
+  (consumed) — the first draft's non-consuming scan broke symmetry
+  (`map_equal(a,b)` ≠ `map_equal(b,a)` on duplicate keys); the user
+  supplied the comparison table proving consumed matching is the only
+  symmetric, intuitive choice.
 
 ## 17. Tests & Maintenance Rules
 

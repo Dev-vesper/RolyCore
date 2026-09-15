@@ -648,7 +648,7 @@ age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? ")
         <tr><td>insert(l, i, x)</td><td>list, int, any value</td><td>list — a new list with x placed at position i; 0 prepends, <code>len(l)</code> appends, the rest shift right</td></tr>
         <tr><td>delete_at(l, i)</td><td>list, int</td><td>list — a new list without the element at position i</td></tr>
         <tr><td>concat(l, m)</td><td>list, list</td><td>list — a new list with all of l's elements followed by all of m's</td></tr>
-        <tr><td>map_equal(a, b)</td><td>list, list</td><td>bool — are a and b the same set of <code>[key, value]</code> pairs, ignoring order? Values and keys compare like <code>==</code> (numbers mix across int and float); different lengths or an unmatched pair give <code>False</code>; an element that is not a two-item list is an error</td></tr>
+        <tr><td>map_equal(a, b)</td><td>list, list</td><td>bool — are a and b the same set of <code>[key, value]</code> pairs, ignoring order and counting duplicates? Values and keys compare like <code>==</code> (numbers mix across int and float); different lengths or an unmatched pair give <code>False</code>; an element that is not a two-item list is an error</td></tr>
         <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error; <code>l[i]</code> is the same thing</td></tr>
         <tr><td>set(l, i, x)</td><td>list, int, any value</td><td>list — a new list with position i replaced</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
