@@ -305,7 +305,7 @@ x /= 2</code></pre>
     <p>Assigning again is always allowed — variables are freely reassignable, and a variable may hold a different type later. There is no declaration keyword: the first assignment creates the variable.</p>
     <pre><code>x = 5
 x = <span class="tok-str">"five"</span>      <span class="tok-com">// fine — the same name now holds a string</span></code></pre>
-    <div class="note">Some names are taken: the 16 keywords and the 13 built-in function names (<code>len = 5</code> is an error). Standard library names are yours until you import them — after <code>!import math {gcd}</code> the name <code>gcd</code> means that function and cannot be redefined.</div>
+    <div class="note">Some names are taken: the <span data-count="keywords"></span> keywords and the <span data-count="builtins"></span> built-in function names (<code>len = 5</code> is an error). Standard library names are yours until you import them — after <code>!import math {gcd}</code> the name <code>gcd</code> means that function and cannot be redefined.</div>
 </section>
 
 <section id="comments">
@@ -616,7 +616,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p>Thirteen built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
+    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 z = int(3.9)        <span class="tok-com">// 3 — floats truncate toward zero</span>
@@ -629,6 +629,7 @@ b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is 
 
 n = len("hello")    <span class="tok-com">// 5</span>
 c = char("hello", 1) <span class="tok-com">// "e" — indexes start at 0</span>
+k = ord("e")        <span class="tok-com">// 101 — the code of a single character</span>
 f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
 
 name = <span class="tok-fn">input</span>("name? ")  <span class="tok-com">// prints the prompt, reads one line — a str</span>
@@ -641,6 +642,7 @@ age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? ")
         <tr><td>bool(x)</td><td>int, float, str, bool</td><td>bool — int/float: nonzero; str: non-empty</td></tr>
         <tr><td>len(s)</td><td>str, list</td><td>int — length of the string or list</td></tr>
         <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based; <code>s[i]</code> is the same thing</td></tr>
+        <tr><td>ord(c)</td><td>str</td><td>int — the Unicode code point of the single character c; the empty string or more than one character is an error</td></tr>
         <tr><td>list() / list(s)</td><td>nothing, or a str</td><td>list — the empty list, or the string's characters in order</td></tr>
         <tr><td>push(l, x)</td><td>list, any value</td><td>list — a new list with x appended</td></tr>
         <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error; <code>l[i]</code> is the same thing</td></tr>
@@ -913,7 +915,7 @@ arguments           : expression ( ',' expression )* ;
         <tr><td>No logical operators</td><td>no and / or / not — conditions combine by nesting and flags, see <a href="#comparisons">Comparisons</a></td></tr>
         <tr><td>No negative indexes</td><td>element access (<code>l[i]</code>, <code>get</code>, <code>char</code>) is strict — out of range errors; range functions (<code>substr</code>, <code>sublist</code>) clamp</td></tr>
         <tr><td>Statements</td><td>only calls may stand alone as statements; every other expression must be assigned, printed, or returned — and expressions cannot continue onto the next line</td></tr>
-        <tr><td>Reserved names</td><td>16 keywords + 13 built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
+        <tr><td>Reserved names</td><td><span data-count="keywords"></span> keywords + <span data-count="builtins"></span> built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
         <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, float, TRUE, FALSE, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file — or from the standard library with <code>!import</code>; circular imports are an error</td></tr>
@@ -924,5 +926,11 @@ arguments           : expression ( ',' expression )* ;
 <footer>Roly — a tiny stable language</footer>
 
 </div>
+<script>
+    const counts = { keywords: 16, builtins: 14 };
+    document.querySelectorAll("[data-count]").forEach(el => {
+        el.textContent = counts[el.dataset.count];
+    });
+</script>
 </body>
 </html>

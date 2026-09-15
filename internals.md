@@ -22,7 +22,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 13 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 14 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -266,7 +266,7 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (13)
+## 9. Builtins (14)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -276,6 +276,7 @@ Python exceptions through the compiled closures:
 | `bool(x)` | 1 | Python-style truthiness: `""`/`0` → `FALSE`, non-empty str/int → `TRUE`. Rejects lists. |
 | `len(x)` | 1 | str or list; exact types. |
 | `char(s, i)` | 2 | Both args exact types (str, int); 0-based; OOB runtime error. |
+| `ord(c)` | 1 | Exact str type; must be exactly one character (empty or longer → error). Returns the Unicode code point — the inverse of indexing a single char out. |
 | `list()` / `list(s)` | 0–1 | Empty list, or str → list of 1-char strings. |
 | `push(l, x)` | 2 | Returns NEW list. |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
@@ -910,6 +911,13 @@ to a `RolyError` (`input: end of input reached`), never a raw
   by a 5000-case fuzz that mixed ~300-digit int leaves in (1678 overflow
   paths, 0 mismatches) and a 6000-case literal fuzz (0 crashes, 0 value
   mismatches).
+- **Phase 31 (2026-09-15)** — `ord(c)` builtin (14th): the Unicode code
+  point of a single character, the inverse of `char`-style indexing.
+  Strict: a non-str argument or a str of length ≠ 1 is an error. The
+  guide's keyword/builtin counts are no longer hardcoded per spot — a
+  tiny script at the end of `guide/index.html` fills
+  `<span data-count="keywords|builtins">` from one `counts` object;
+  update THAT (and the Keywords row listing) when adding names.
 
 ## 17. Tests & Maintenance Rules
 
@@ -918,7 +926,7 @@ to a `RolyError` (`input: end of input reached`), never a raw
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~130 tests.
+  every file. Currently 7 files / ~135 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
