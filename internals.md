@@ -22,7 +22,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 16 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 17 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -266,7 +266,7 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (16)
+## 9. Builtins (17)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -281,6 +281,7 @@ Python exceptions through the compiled closures:
 | `push(l, x)` | 2 | Returns NEW list. |
 | `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
 | `delete_at(l, i)` | 2 | Returns NEW list; 0-based, OOB errors like `get`. Replaced the lib's pure-Roly `remove_at` (deleted the same day). |
+| `concat(l, m)` | 2 | Returns NEW list; both args must be lists (`+` between lists stays an error on purpose). |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
@@ -932,6 +933,10 @@ to a `RolyError` (`input: end of input reached`), never a raw
   position). The lib's pure-Roly `remove_at` was deleted in the same
   change (user decision) — `delete_at` fully replaces it; showcase,
   lib_err and invariant references migrated.
+- **Phase 34 (2026-09-15)** — `concat(a, b)` builtin (17th): joins two
+  lists into a new one. Deliberately a builtin rather than reopening `+`:
+  the operator stays numbers-or-strings only, so `l + m` keeps erroring
+  and the type story of `+` doesn't fork.
 
 ## 17. Tests & Maintenance Rules
 
