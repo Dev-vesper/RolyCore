@@ -233,6 +233,15 @@ def test_delete_at_errors():
     raises("builtin 'delete_at' expects 2 arguments", "x = delete_at([1], 0, 9)")
 
 
+def test_concat_errors():
+    raises("builtin 'concat' expects a list", "x = concat([1], 2)")
+    raises("builtin 'concat' expects a list", "x = concat(1, [2])")
+    raises("builtin 'concat' expects a list", 'x = concat("ab", [1])')
+    raises("builtin 'concat' expects a list", "x = concat([1], TRUE)")
+    raises("builtin 'concat' expects 2 arguments", "x = concat([1])")
+    raises("builtin 'concat' expects 2 arguments", "x = concat([1], [2], [3])")
+
+
 def test_subscript_errors():
     raises("char: index 4 out of range for length 4", 'x = "roly"[4]')
     raises("index -1 out of range", 'x = "roly"[-1]')
