@@ -129,6 +129,14 @@ def text_char(s, i):
     return s[i]
 
 
+def text_ord(s):
+    if type(s) is not str:
+        raise RolyError(f"builtin 'ord' expects a str, got {s!r}")
+    if len(s) != 1:
+        raise RolyError(f"builtin 'ord' expects a single character, got {s!r}")
+    return ord(s)
+
+
 def fail(message):
     if type(message) is not str:
         raise RolyError(f"builtin 'fail' expects a str, got {message!r}")
@@ -253,6 +261,7 @@ BUILTINS = {
     "list": make_list,
     "len": text_len,
     "char": text_char,
+    "ord": text_ord,
     "format": format_text,
     "fail": fail,
     "input": read_input,
@@ -268,6 +277,7 @@ BUILTIN_ARITIES = {
     "float": 1,
     "len": 1,
     "char": 2,
+    "ord": 1,
     "push": 2,
     "get": 2,
     "set": 3,
