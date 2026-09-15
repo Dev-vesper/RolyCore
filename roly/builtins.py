@@ -182,6 +182,17 @@ def list_push(items, value):
     return items + [value]
 
 
+def list_insert(items, index, value):
+    require_list("insert", items)
+    if type(index) is not int:
+        raise RolyError(f"builtin 'insert' expects an int index, got {index!r}")
+    if index < 0 or index > len(items):
+        raise RolyError(
+            f"insert: index {index} out of range for length {len(items)}"
+        )
+    return items[:index] + [value] + items[index:]
+
+
 def list_get(items, index):
     require_list("get", items)
     require_index("get", index, len(items))
@@ -266,6 +277,7 @@ BUILTINS = {
     "fail": fail,
     "input": read_input,
     "push": list_push,
+    "insert": list_insert,
     "get": list_get,
     "set": list_set,
 }
@@ -279,6 +291,7 @@ BUILTIN_ARITIES = {
     "char": 2,
     "ord": 1,
     "push": 2,
+    "insert": 3,
     "get": 2,
     "set": 3,
     "fail": 1,
