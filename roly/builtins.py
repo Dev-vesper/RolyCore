@@ -204,6 +204,13 @@ def list_delete_at(items, index):
     return items[:index] + items[index + 1 :]
 
 
+def list_concat(left, right):
+    require_list("concat", left)
+    if type(right) is not list:
+        raise RolyError(f"builtin 'concat' expects a list, got {right!r}")
+    return left + right
+
+
 def list_get(items, index):
     require_list("get", items)
     require_index("get", index, len(items))
@@ -290,6 +297,7 @@ BUILTINS = {
     "push": list_push,
     "insert": list_insert,
     "delete_at": list_delete_at,
+    "concat": list_concat,
     "get": list_get,
     "set": list_set,
 }
@@ -305,6 +313,7 @@ BUILTIN_ARITIES = {
     "push": 2,
     "insert": 3,
     "delete_at": 2,
+    "concat": 2,
     "get": 2,
     "set": 3,
     "fail": 1,
