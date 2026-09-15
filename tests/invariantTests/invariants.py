@@ -225,6 +225,28 @@ def test_library_invariants():
         "!import math !import math {gcd}\nprint(gcd(12, 8))",
         "4",
     )
+    invariant(
+        "!import map {new_map, put_int, map_get, map_size, map_keys,"
+        " map_items, map_merge}\n"
+        "a = new_map()\n"
+        'a = put_int(a, "x", 1)\n'
+        'a = put_int(a, "y", 2)\n'
+        'a = put_int(a, "z", 3)\n'
+        "b = new_map()\n"
+        'b = put_int(b, "z", 3)\n'
+        'b = put_int(b, "x", 1)\n'
+        'b = put_int(b, "y", 2)\n'
+        "print(map_equal(map_items(a), map_items(b)))\n"
+        "print(map_equal(map_items(b), map_items(a)))\n"
+        "print(map_size(a) == len(map_keys(a)))\n"
+        'print(map_get(a, "x") == map_get(b, "x"))\n'
+        'a = put_int(a, "y", 9)\n'
+        "print(map_size(a))\n"
+        "c = map_merge(a, b)\n"
+        'print(map_get(c, "y"))\n'
+        "print(map_size(c))",
+        "True\nTrue\nTrue\nTrue\n3\n2\n3",
+    )
 
 
 def test_subscript_invariants():

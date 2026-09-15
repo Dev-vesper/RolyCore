@@ -181,6 +181,36 @@ def test_missing_lib_dir_errors(monkeypatch, tmp_path):
     raises("cannot find the standard library directory", "!import math")
 
 
+def test_map_key_errors():
+    raises("map: key 'b' not found", '!import map {map_get} x = map_get(list(), "b")')
+    raises("map: key 8 not found", "!import map {map_get_i} x = map_get_i(list(), 8)")
+    raises("map: key 'b' not found", '!import map {map_del} x = map_del(list(), "b")')
+    raises("map: key 8 not found", "!import map {map_del_i} x = map_del_i(list(), 8)")
+
+
+def test_map_shape_validation_errors():
+    raises("map: invalid map entry", '!import map {map_size} x = map_size([["h", "k"]])')
+    raises(
+        "map: invalid map entry",
+        '!import map {put_str} x = put_str([["h", "k", [1, 2]]], "k2", "v")',
+    )
+    raises(
+        "expects a list",
+        '!import map {map_has} x = map_has(["x"], "k")',
+    )
+
+
+def test_map_box_errors():
+    raises(
+        "map: box must hold exactly one value",
+        '!import map {put, new_map} x = put(new_map(), "k", [1, 2])',
+    )
+    raises(
+        "map: box must hold exactly one value",
+        '!import map {put_i, new_map} x = put_i(new_map(), 3, list())',
+    )
+
+
 def test_thfile_errors(tmp_path):
     raises("cannot read", '!import thfile {read} x = read("nope.txt")', base_dir=tmp_path)
     raises("cannot delete", '!import thfile {delete} delete("nope.txt")', base_dir=tmp_path)
