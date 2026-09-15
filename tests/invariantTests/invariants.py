@@ -86,7 +86,7 @@ def test_string_laws():
 
 def test_list_laws():
     invariant(
-        "!import lists {sort_list, join, sum_list, sublist, reverse_list, remove_at}\n"
+        "!import lists {sort_list, join, sum_list, sublist, reverse_list}\n"
         "l = [3, 1, 2]\n"
         "print(len(push(l, 9)) == len(l) + 1)\n"
         "print(reverse_list(reverse_list(l)) == l)\n"
@@ -94,7 +94,7 @@ def test_list_laws():
         "print(sort_list(l))\n"
         "print(sum_list([5]) == 5)\n"
         "print(sublist(l, 0, len(l)) == l)\n"
-        "print(remove_at(push(l, 9), 3) == l)\n"
+        "print(delete_at(push(l, 9), 3) == l)\n"
         "print(join(l, \"-\"))",
         "True\nTrue\nTrue\n[1, 2, 3]\nTrue\nTrue\nTrue\n3-1-2",
     )
@@ -230,11 +230,11 @@ def test_subscript_invariants():
         "True\nTrue",
     )
     invariant(
-        "!import lists {sublist, remove_at}\n"
+        "!import lists {sublist}\n"
         "l = [10, 20, 30]\n"
         "print(sublist(l, 1, 3) == [20, 30])\n"
-        "print(remove_at(l, 0) == [20, 30])\n"
-        "print(remove_at(l, 1) == [10, 30])",
+        "print(delete_at(l, 0) == [20, 30])\n"
+        "print(delete_at(l, 1) == [10, 30])",
         "True\nTrue\nTrue",
     )
 

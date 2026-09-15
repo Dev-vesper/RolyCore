@@ -1,4 +1,4 @@
-!import lists {sort_list, join, sum_list, max_list, min_list, remove_at}
+!import lists {sort_list, join, sum_list, max_list, min_list}
 
 scores = list()
 scores = push(scores, 87)
@@ -16,5 +16,5 @@ print(format("sum={} avg={} max={} min={}",
     max_list(scores),
     min_list(scores)))
 
-top = remove_at(sorted_scores, 0)
+top = delete_at(sorted_scores, 0)
 print(format("without the lowest: {}", join(top, " ")))

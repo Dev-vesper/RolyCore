@@ -56,21 +56,3 @@ fn sublist(l: list, start: int, end: int) {
     return r
 }
 
-fn remove_at(l: list, i: int) {
-    if (i < 0) {
-        return fail("remove_at: index out of range")
-    }
-    if (i >= len(l)) {
-        return fail("remove_at: index out of range")
-    }
-    r = list()
-    j = 0
-    while (j < len(l)) {
-        if (j != i) {
-            r = push(r, get(l, j))
-        }
-        j += 1
-    }
-    return r
-}
-

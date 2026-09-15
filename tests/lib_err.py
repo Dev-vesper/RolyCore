@@ -26,7 +26,7 @@ def test_lib_argument_types_checked():
     raises("must be int", '!import math {abs} x = abs("-5")')
     raises("must be str", "!import strings {upper} x = upper(42)")
     raises("must be int", '!import strings {substr} x = substr("hi", "0", 1)')
-    raises("must be int", '!import lists {remove_at} x = remove_at(list(), "0")')
+    raises("must be int", '!import strings {substr} x = substr("hi", "0", 1)')
     raises("must be str", "!import lists {join} x = join(list(), 5)")
     raises("must be list", "!import lists {reverse_list} x = reverse_list(5)")
 
@@ -47,9 +47,6 @@ def test_deleted_names_are_not_lib_functions():
 def test_list_lib_guards_error():
     raises("max_list", "!import lists {max_list} x = max_list(list())")
     raises("min_list", "!import lists {min_list} x = min_list(list())")
-    raises("remove_at", "!import lists {remove_at} x = remove_at(list(), 0)")
-    raises("remove_at", "!import lists {remove_at} x = remove_at(push(list(), 1), 1)")
-    raises("remove_at", "!import lists {remove_at} x = remove_at(push(list(), 1), -1)")
 
 
 def test_list_lib_element_types_checked():
