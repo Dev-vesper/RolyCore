@@ -221,14 +221,16 @@ def map_equal(a, b):
                 raise RolyError("map_equal: element is not a [key, value] pair")
     if len(a) != len(b):
         return False
+    remaining = list(b)
     for key, value in a:
-        found = False
-        for other_key, other_value in b:
+        found = -1
+        for i, (other_key, other_value) in enumerate(remaining):
             if roly_equal(key, other_key) and roly_equal(value, other_value):
-                found = True
+                found = i
                 break
-        if not found:
+        if found == -1:
             return False
+        del remaining[found]
     return True
 
 
