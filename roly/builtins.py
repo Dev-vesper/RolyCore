@@ -211,6 +211,27 @@ def list_concat(left, right):
     return left + right
 
 
+def map_equal(a, b):
+    require_list("map_equal", a)
+    if type(b) is not list:
+        raise RolyError(f"builtin 'map_equal' expects a list, got {b!r}")
+    for pairs in (a, b):
+        for pair in pairs:
+            if type(pair) is not list or len(pair) != 2:
+                raise RolyError("map_equal: element is not a [key, value] pair")
+    if len(a) != len(b):
+        return False
+    for key, value in a:
+        found = False
+        for other_key, other_value in b:
+            if roly_equal(key, other_key) and roly_equal(value, other_value):
+                found = True
+                break
+        if not found:
+            return False
+    return True
+
+
 def list_get(items, index):
     require_list("get", items)
     require_index("get", index, len(items))
@@ -298,6 +319,7 @@ BUILTINS = {
     "insert": list_insert,
     "delete_at": list_delete_at,
     "concat": list_concat,
+    "map_equal": map_equal,
     "get": list_get,
     "set": list_set,
 }
@@ -314,6 +336,7 @@ BUILTIN_ARITIES = {
     "insert": 3,
     "delete_at": 2,
     "concat": 2,
+    "map_equal": 2,
     "get": 2,
     "set": 3,
     "fail": 1,
