@@ -1,0 +1,302 @@
+// map.roly — a hash map over plain immutable lists.
+//
+// Representation: a map is a list of entries sorted by stored hash:
+//     [[hash, key, box], ...]
+// - hash: int in [0, 1000003) — djb2 for str keys, mod for int keys
+// - key:  the user's str or int key, compared with == (roly_equal semantics)
+// - box:  a single-item list holding the value
+//
+// Boxing is what makes a generic container possible in Roly: typed
+// parameters cannot accept "any value", so put_str/put_int/put_bool/
+// put_float/put_list wrap v as [v] and the internals only ever move boxes.
+//
+// Lookup is a lower-bound binary search on the stored hashes followed by
+// linear probing over the entries sharing that hash. Insertion reuses the
+// lower bound as the insertion point, so the array stays sorted by hash
+// without any re-sorting. map_merge walks both hash-sorted inputs in one
+// ordered pass — no rehashing; on a key present in both sides, the right
+// side wins.
+//
+// Every public function validates the map's shape first: each entry must be
+// a 3-item list whose third slot is a 1-item box. push() only accepts
+// lists, so the length checks double as type checks.
+
+!import math {mod}
+
+// djb2 (Bernstein): hash = hash * 33 + ord(c), kept in the hash window
+fn _hash (s: str) {
+    h = 5381
+    i = 0
+    while (i < len(s)) {
+        h = mod(h * 33 + ord(char(s, i)), 1000003)
+        i += 1
+    }
+    return h
+}
+
+// int keys share the same window; a collision across key types is resolved
+// by key equality, never by the hash alone
+fn _hash_i (n: int) {
+    return mod(n, 1000003)
+}
+
+// first index whose stored hash is >= h — lower-bound binary search
+fn _lower_bound (m: list, h: int) {
+    lo = 0
+    hi = len(m)
+    while (lo < hi) {
+        mid = (lo + hi) / 2
+        if (get(get(m, mid), 0) < h) {
+            lo = mid + 1
+        } else {
+            hi = mid
+        }
+    }
+    return lo
+}
+
+// walk the collision chain; -1 when the key is absent
+fn _find (m: list, h: int, kbox: list) {
+    j = _lower_bound(m, h)
+    while (j < len(m)) {
+        e = get(m, j)
+        if (get(e, 0) != h) {
+            break
+        }
+        if (get(e, 1) == get(kbox, 0)) {
+            return j
+        }
+        j += 1
+    }
+    return -1
+}
+
+// upsert: replace the entry in place when the key exists, otherwise insert
+// at the lower bound so the array stays sorted by hash
+fn _put_h (m: list, h: int, kbox: list, box: list) {
+    i = _lower_bound(m, h)
+    j = i
+    while (j < len(m)) {
+        e = get(m, j)
+        if (get(e, 0) != h) {
+            break
+        }
+        if (get(e, 1) == get(kbox, 0)) {
+            return set(m, j, [h, get(kbox, 0), box])
+        }
+        j += 1
+    }
+    return insert(m, i, [h, get(kbox, 0), box])
+}
+
+// shape validation: every entry is a [hash, key, box] triple with a 1-item
+// box; the push() calls reject non-list entries and non-list boxes
+fn _validate (m: list) {
+    i = 0
+    while (i < len(m)) {
+        e = get(m, i)
+        if (len(push(e, 0)) != 4) {
+            return fail("map: invalid map entry")
+        }
+        if (len(push(get(e, 2), 0)) != 2) {
+            return fail("map: invalid map entry")
+        }
+        i += 1
+    }
+    return m
+}
+
+fn new_map () {
+    return list()
+}
+
+fn put (m: list, k: str, box: list) {
+    _validate(m)
+    if (len(box) != 1) {
+        return fail("map: box must hold exactly one value")
+    }
+    return _put_h(m, _hash(k), [k], box)
+}
+
+fn put_i (m: list, k: int, box: list) {
+    _validate(m)
+    if (len(box) != 1) {
+        return fail("map: box must hold exactly one value")
+    }
+    return _put_h(m, _hash_i(k), [k], box)
+}
+
+fn put_str (m: list, k: str, v: str) {
+    return put(m, k, [v])
+}
+
+fn put_int (m: list, k: str, v: int) {
+    return put(m, k, [v])
+}
+
+fn put_bool (m: list, k: str, v: bool) {
+    return put(m, k, [v])
+}
+
+fn put_float (m: list, k: str, v: float) {
+    return put(m, k, [v])
+}
+
+fn put_list (m: list, k: str, v: list) {
+    return put(m, k, [v])
+}
+
+fn map_get (m: list, k: str) {
+    _validate(m)
+    i = _find(m, _hash(k), [k])
+    if (i == -1) {
+        return fail("map: key '" + k + "' not found")
+    }
+    return get(get(get(m, i), 2), 0)
+}
+
+fn map_get_i (m: list, k: int) {
+    _validate(m)
+    i = _find(m, _hash_i(k), [k])
+    if (i == -1) {
+        return fail("map: key " + str(k) + " not found")
+    }
+    return get(get(get(m, i), 2), 0)
+}
+
+fn map_has (m: list, k: str) {
+    _validate(m)
+    if (_find(m, _hash(k), [k]) == -1) {
+        return FALSE
+    }
+    return TRUE
+}
+
+fn map_has_i (m: list, k: int) {
+    _validate(m)
+    if (_find(m, _hash_i(k), [k]) == -1) {
+        return FALSE
+    }
+    return TRUE
+}
+
+fn map_del (m: list, k: str) {
+    _validate(m)
+    i = _find(m, _hash(k), [k])
+    if (i == -1) {
+        return fail("map: key '" + k + "' not found")
+    }
+    return delete_at(m, i)
+}
+
+fn map_del_i (m: list, k: int) {
+    _validate(m)
+    i = _find(m, _hash_i(k), [k])
+    if (i == -1) {
+        return fail("map: key " + str(k) + " not found")
+    }
+    return delete_at(m, i)
+}
+
+fn map_size (m: list) {
+    _validate(m)
+    return len(m)
+}
+
+// keys, values and items follow the stored hash order, not key order
+fn map_keys (m: list) {
+    _validate(m)
+    r = list()
+    i = 0
+    while (i < len(m)) {
+        r = push(r, get(get(m, i), 1))
+        i += 1
+    }
+    return r
+}
+
+fn map_values (m: list) {
+    _validate(m)
+    r = list()
+    i = 0
+    while (i < len(m)) {
+        r = push(r, get(get(get(m, i), 2), 0))
+        i += 1
+    }
+    return r
+}
+
+// [[key, value], ...] — feeds straight into map_equal
+fn map_items (m: list) {
+    _validate(m)
+    r = list()
+    i = 0
+    while (i < len(m)) {
+        r = push(r, [get(get(m, i), 1), get(get(get(m, i), 2), 0)])
+        i += 1
+    }
+    return r
+}
+
+// dict-style rendering: {name: Ali, age: 31, active: True} — keys and
+// values both through str(), in stored hash order; empty map renders as {}
+fn show (m: list) {
+    _validate(m)
+    r = "{"
+    i = 0
+    while (i < len(m)) {
+        e = get(m, i)
+        if (i > 0) {
+            r = r + ", "
+        }
+        r = r + str(get(e, 1)) + ": " + str(get(get(e, 2), 0))
+        i += 1
+    }
+    return r + "}"
+}
+
+// ordered merge over the two hash-sorted inputs; the right side wins on
+// shared keys
+fn map_merge (a: list, b: list) {
+    _validate(a)
+    _validate(b)
+    r = list()
+    i = 0
+    j = 0
+    while (i < len(a)) {
+        ha = get(get(a, i), 0)
+        drain = TRUE
+        while (drain) {
+            if (j >= len(b)) {
+                drain = FALSE
+            } else {
+                if (get(get(b, j), 0) < ha) {
+                    r = push(r, get(b, j))
+                    j += 1
+                } else {
+                    drain = FALSE
+                }
+            }
+        }
+        dup = FALSE
+        if (j < len(b)) {
+            if (get(get(b, j), 0) == ha) {
+                if (get(get(b, j), 1) == get(get(a, i), 1)) {
+                    dup = TRUE
+                }
+            }
+        }
+        if (dup) {
+            r = push(r, get(b, j))
+            j += 1
+        } else {
+            r = push(r, get(a, i))
+        }
+        i += 1
+    }
+    while (j < len(b)) {
+        r = push(r, get(b, j))
+        j += 1
+    }
+    return r
+}
