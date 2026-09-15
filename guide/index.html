@@ -405,12 +405,13 @@ found = -1
 
 <section id="lists">
     <h2>Lists</h2>
-    <p>A list holds any number of values in order — numbers, strings, booleans, even other lists. Lists are <b>immutable</b>: no operation changes an existing list. <code>push()</code> and <code>set()</code> return new lists, so the result must be assigned:</p>
+    <p>A list holds any number of values in order — numbers, strings, booleans, even other lists. Lists are <b>immutable</b>: no operation changes an existing list. <code>push()</code>, <code>set()</code>, and <code>insert()</code> return new lists, so the result must be assigned:</p>
     <pre><code>nums = <span class="tok-fn">list</span>()          <span class="tok-com">// the empty list</span>
 nums = <span class="tok-fn">push</span>(nums, 10)  <span class="tok-com">// [10] — rebind, the old list is unchanged</span>
 nums = <span class="tok-fn">push</span>(nums, 20)  <span class="tok-com">// [10, 20]</span>
 top = nums[0]        <span class="tok-com">// 10 — indexes start at 0</span>
-nums = <span class="tok-fn">set</span>(nums, 0, 99) <span class="tok-com">// [99, 20] — a new list with one element replaced</span></code></pre>
+nums = <span class="tok-fn">set</span>(nums, 0, 99) <span class="tok-com">// [99, 20] — a new list with one element replaced</span>
+nums = <span class="tok-fn">insert</span>(nums, 1, 15) <span class="tok-com">// [99, 15, 20] — a new list with 15 placed at position 1</span></code></pre>
     <p>The subscript <code>[ ]</code> reads one element: <code>l[i]</code> is exactly <code>get(l, i)</code> and <code>s[i]</code> is exactly <code>char(s, i)</code> — same rules, same errors. Subscripts chain left to right, and attach to any value: a variable, a call result, a module member, a parenthesized expression:</p>
     <pre><code>s = <span class="tok-str">"roly"</span>
 s[0]                 <span class="tok-com">// 'r'</span>
@@ -438,6 +439,7 @@ letters = <span class="tok-fn">list</span>(<span class="tok-str">"roly"</span>) 
     <h3>Working with lists</h3>
     <p>"Changing" a list always means building a new one and rebinding the variable — that is the whole model. The toolkit:</p>
     <pre><code>l = <span class="tok-fn">push</span>(l, x)          <span class="tok-com">// append at the end</span>
+l = <span class="tok-fn">insert</span>(l, i, x)       <span class="tok-com">// place x at position i — the rest shift right</span>
 l = <span class="tok-fn">set</span>(l, i, x)          <span class="tok-com">// replace the element at position i</span>
 l = remove_at(l, i)    <span class="tok-com">// drop the element at position i — library</span>
 l = sort_list(l)       <span class="tok-com">// new list, sorted ascending — library, numbers only</span></code></pre>
@@ -449,18 +451,10 @@ total = 0
     total += l[i]
     i += 1
 }                      <span class="tok-com">// total is 60</span></code></pre>
-    <p>Inserting into the middle has no library function — build the new list with a loop:</p>
-    <pre><code>l = [<span class="tok-num">1</span>, <span class="tok-num">3</span>]
-at = <span class="tok-num">1</span>
-r = []
-i = 0
-<span class="tok-kw">while</span> (i &lt; len(l)) {
-    <span class="tok-kw">if</span> (i == at) {
-        r = <span class="tok-fn">push</span>(r, <span class="tok-num">99</span>)
-    }
-    r = <span class="tok-fn">push</span>(r, l[i])
-    i += 1
-}                      <span class="tok-com">// r is [1, 99, 3]</span></code></pre>
+    <p>Inserting into the middle is <code>insert(l, i, x)</code> — position 0 inserts at the front, <code>len(l)</code> appends at the end:</p>
+    <pre><code>l = insert([1, 3], 1, 99)   <span class="tok-com">// [1, 99, 3]</span>
+l = insert([1, 2], 0, 0)    <span class="tok-com">// [0, 1, 2] — at the front</span>
+l = insert([1, 2], 2, 3)    <span class="tok-com">// [1, 2, 3] — at the end</span></code></pre>
     <p>A function can never modify your list — it returns a new one, and the caller rebinds:</p>
     <pre><code><span class="tok-kw">fn</span> append_nine (l: <span class="tok-kw">list</span>) {
     <span class="tok-kw">return</span> <span class="tok-fn">push</span>(l, <span class="tok-num">9</span>)
@@ -616,7 +610,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
+    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>insert()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 z = int(3.9)        <span class="tok-com">// 3 — floats truncate toward zero</span>
@@ -645,6 +639,7 @@ age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? ")
         <tr><td>ord(c)</td><td>str</td><td>int — the Unicode code point of the single character c; the empty string or more than one character is an error</td></tr>
         <tr><td>list() / list(s)</td><td>nothing, or a str</td><td>list — the empty list, or the string's characters in order</td></tr>
         <tr><td>push(l, x)</td><td>list, any value</td><td>list — a new list with x appended</td></tr>
+        <tr><td>insert(l, i, x)</td><td>list, int, any value</td><td>list — a new list with x placed at position i; 0 prepends, <code>len(l)</code> appends, the rest shift right</td></tr>
         <tr><td>get(l, i)</td><td>list, int</td><td>the element at position i — 0-based, out of range is an error; <code>l[i]</code> is the same thing</td></tr>
         <tr><td>set(l, i, x)</td><td>list, int, any value</td><td>list — a new list with position i replaced</td></tr>
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
@@ -927,7 +922,7 @@ arguments           : expression ( ',' expression )* ;
 
 </div>
 <script>
-    const counts = { keywords: 16, builtins: 14 };
+    const counts = { keywords: 16, builtins: 15 };
     document.querySelectorAll("[data-count]").forEach(el => {
         el.textContent = counts[el.dataset.count];
     });

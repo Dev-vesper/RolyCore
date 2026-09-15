@@ -22,7 +22,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 14 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 15 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -266,7 +266,7 @@ Python exceptions through the compiled closures:
   NOT desugared into nested `If`s, so a long else-if ladder costs no parser
   depth (the elifs list is consumed iteratively).
 
-## 9. Builtins (14)
+## 9. Builtins (15)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -279,6 +279,7 @@ Python exceptions through the compiled closures:
 | `ord(c)` | 1 | Exact str type; must be exactly one character (empty or longer → error). Returns the Unicode code point — the inverse of indexing a single char out. |
 | `list()` / `list(s)` | 0–1 | Empty list, or str → list of 1-char strings. |
 | `push(l, x)` | 2 | Returns NEW list. |
+| `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
@@ -918,6 +919,12 @@ to a `RolyError` (`input: end of input reached`), never a raw
   tiny script at the end of `guide/index.html` fills
   `<span data-count="keywords|builtins">` from one `counts` object;
   update THAT (and the Keywords row listing) when adding names.
+- **Phase 32 (2026-09-15)** — `insert(l, i, x)` builtin (15th): places a
+  value at a 0-based position, rest shift right. `i == len` appends (the
+  one relaxation vs `set`/`get`, which require a position below len);
+  negative or `> len` is an error. User-pinned 0-based indexing
+  ("باید از 0 شروع بشه"). Replaced the guide's manual
+  loop-based insertion example.
 
 ## 17. Tests & Maintenance Rules
 
@@ -926,7 +933,7 @@ to a `RolyError` (`input: end of input reached`), never a raw
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~135 tests.
+  every file. Currently 7 files / ~140 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
