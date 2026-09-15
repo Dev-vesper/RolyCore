@@ -193,6 +193,17 @@ def list_insert(items, index, value):
     return items[:index] + [value] + items[index:]
 
 
+def list_delete_at(items, index):
+    require_list("delete_at", items)
+    if type(index) is not int:
+        raise RolyError(f"builtin 'delete_at' expects an int index, got {index!r}")
+    if index < 0 or index >= len(items):
+        raise RolyError(
+            f"delete_at: index {index} out of range for length {len(items)}"
+        )
+    return items[:index] + items[index + 1 :]
+
+
 def list_get(items, index):
     require_list("get", items)
     require_index("get", index, len(items))
@@ -278,6 +289,7 @@ BUILTINS = {
     "input": read_input,
     "push": list_push,
     "insert": list_insert,
+    "delete_at": list_delete_at,
     "get": list_get,
     "set": list_set,
 }
@@ -292,6 +304,7 @@ BUILTIN_ARITIES = {
     "ord": 1,
     "push": 2,
     "insert": 3,
+    "delete_at": 2,
     "get": 2,
     "set": 3,
     "fail": 1,
