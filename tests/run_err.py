@@ -209,6 +209,18 @@ def test_ord_errors():
     raises("builtin 'ord' expects 1 argument", 'x = ord("a", "b")')
 
 
+def test_insert_errors():
+    raises("insert: index 2 out of range for length 1", "x = insert([1], 2, 9)")
+    raises("insert: index -1 out of range", "x = insert([1], -1, 9)")
+    raises("insert: index 1 out of range for length 0", "x = insert([], 1, 9)")
+    raises("builtin 'insert' expects a list", 'x = insert("ab", 0, 9)')
+    raises("builtin 'insert' expects a list", "x = insert(5, 0, 9)")
+    raises("builtin 'insert' expects an int index", 'x = insert([1], "0", 9)')
+    raises("builtin 'insert' expects an int index", "x = insert([1], 0.5, 9)")
+    raises("builtin 'insert' expects 3 arguments", "x = insert([1], 0)")
+    raises("builtin 'insert' expects 3 arguments", "x = insert([1], 0, 9, 9)")
+
+
 def test_subscript_errors():
     raises("char: index 4 out of range for length 4", 'x = "roly"[4]')
     raises("index -1 out of range", 'x = "roly"[-1]')
