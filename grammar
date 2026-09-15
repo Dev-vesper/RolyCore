@@ -4,8 +4,11 @@ import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT 
 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
-parameter           : IDENT ':' type ;
+parameter           : IDENT ( ':' type )? ;
 type                : 'int' | 'str' | 'bool' | 'list' | 'float' ;
+
+(* A ':' type annotation on a parameter is OPTIONAL and purely cosmetic —
+   never checked, anything is accepted at call time, exactly like Python. *)
 
 statement           : assignment
                     | compound_assignment

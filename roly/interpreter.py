@@ -82,7 +82,7 @@ class Interpreter:
                         f"'{statement.name}' is a builtin "
                         f"and cannot be redefined"
                     )
-                for param_name, _ in statement.params:
+                for param_name in statement.params:
                     if param_name in self.builtin_names:
                         raise RolyError(
                             f"parameter '{param_name}' of '{statement.name}' "
@@ -136,13 +136,13 @@ class Interpreter:
         return BUILTINS[name](*values)
 
     def invoke_function(self, name, function, args):
-        for (param_name, param_type), value in zip(function.params, args):
-            if type(value) is not param_type:
-                raise RolyError(
-                    f"argument '{param_name}' of '{name}' must be "
-                    f"{self.type_name(param_type)}, got {value!r}"
-                )
         if isinstance(function, NativeFn):
+            for (param_name, param_type), value in zip(function.params, args):
+                if type(value) is not param_type:
+                    raise RolyError(
+                        f"argument '{param_name}' of '{name}' must be "
+                        f"{self.type_name(param_type)}, got {value!r}"
+                    )
             return function.callable(self, *args)
         if self.call_depth >= MAX_CALL_DEPTH:
             raise RolyError(
@@ -150,7 +150,7 @@ class Interpreter:
                 f"(possible runaway recursion)"
             )
 
-        frame = dict(zip([n for n, _ in function.params], args))
+        frame = dict(zip(function.params, args))
         module_fn = self.module_context is not None
         self.locals_stack.append(frame)
         self.module_frames.append(module_fn)

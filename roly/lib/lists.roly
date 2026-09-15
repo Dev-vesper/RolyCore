@@ -1,4 +1,4 @@
-fn sum_list(l: list) {
+fn sum_list(l) {
     s = 0
     i = 0
     while (i < len(l)) {
@@ -8,7 +8,7 @@ fn sum_list(l: list) {
     return s
 }
 
-fn max_list(l: list) {
+fn max_list(l) {
     if (len(l) == 0) {
         return fail("max_list: list must not be empty")
     }
@@ -23,7 +23,7 @@ fn max_list(l: list) {
     return m
 }
 
-fn min_list(l: list) {
+fn min_list(l) {
     if (len(l) == 0) {
         return fail("min_list: list must not be empty")
     }
@@ -38,7 +38,7 @@ fn min_list(l: list) {
     return m
 }
 
-fn sublist(l: list, start: int, end: int) {
+fn sublist(l, start, end) {
     a = start
     b = end
     if (a < 0) {

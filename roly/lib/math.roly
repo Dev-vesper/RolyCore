@@ -1,25 +1,25 @@
-fn abs(n: int) {
+fn abs(n) {
     if (n < 0) {
         return -n
     }
     return n
 }
 
-fn min(a: int, b: int) {
+fn min(a, b) {
     if (a < b) {
         return a
     }
     return b
 }
 
-fn max(a: int, b: int) {
+fn max(a, b) {
     if (a > b) {
         return a
     }
     return b
 }
 
-fn clamp(n: int, lo: int, hi: int) {
+fn clamp(n, lo, hi) {
     if (lo > hi) {
         return fail("clamp: lo must not exceed hi")
     }
@@ -32,11 +32,11 @@ fn clamp(n: int, lo: int, hi: int) {
     return n
 }
 
-fn mod(n: int, d: int) {
+fn mod(n, d) {
     return n - n / d * d
 }
 
-fn gcd(a: int, b: int) {
+fn gcd(a, b) {
     if (a < 0) {
         a = -a
     }
@@ -51,7 +51,7 @@ fn gcd(a: int, b: int) {
     return a
 }
 
-fn lcm(a: int, b: int) {
+fn lcm(a, b) {
     g = gcd(a, b)
     if (g == 0) {
         return 0
@@ -63,7 +63,7 @@ fn lcm(a: int, b: int) {
     return r
 }
 
-fn isqrt(n: int) {
+fn isqrt(n) {
     if (n < 0) {
         return fail("isqrt: n must be non-negative")
     }
@@ -79,7 +79,7 @@ fn isqrt(n: int) {
     return x
 }
 
-fn is_prime(n: int) {
+fn is_prime(n) {
     if (n < 2) {
         return FALSE
     }

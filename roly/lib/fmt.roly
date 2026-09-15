@@ -1,6 +1,6 @@
 !import math {mod}
 
-fn digit_char(d: int) {
+fn digit_char(d) {
     if (d < 0) {
         return fail("digit_char: d must be between 0 and 15")
     }
@@ -28,7 +28,7 @@ fn digit_char(d: int) {
     return "f"
 }
 
-fn to_base(n: int, base: int) {
+fn to_base(n, base) {
     if (base < 2) {
         return fail("to_base: base must be between 2 and 16")
     }
@@ -53,15 +53,15 @@ fn to_base(n: int, base: int) {
     return r
 }
 
-fn binary(n: int) {
+fn binary(n) {
     return to_base(n, 2)
 }
 
-fn hex(n: int) {
+fn hex(n) {
     return to_base(n, 16)
 }
 
-fn pad(n: int, w: int) {
+fn pad(n, w) {
     s = ""
     m = n
     target = w
@@ -78,7 +78,7 @@ fn pad(n: int, w: int) {
     return s + str(m)
 }
 
-fn group(n: int) {
+fn group(n) {
     if (n == 0) {
         return "0"
     }
@@ -97,7 +97,7 @@ fn group(n: int) {
     return s + str(m) + r
 }
 
-fn roman(n: int) {
+fn roman(n) {
     if (n < 1) {
         return fail("roman: n must be between 1 and 3999")
     }

@@ -127,7 +127,7 @@ class Return:
 @dataclass(slots=True)
 class FnDef:
     name: str
-    params: "list[tuple[str, type]]"
+    params: "list[str]"
     body: "Block"
 
 

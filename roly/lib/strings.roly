@@ -1,4 +1,4 @@
-fn char_upper(c: str) {
+fn char_upper(c) {
     if (c == "a") { return "A" }
     if (c == "b") { return "B" }
     if (c == "c") { return "C" }
@@ -28,7 +28,7 @@ fn char_upper(c: str) {
     return c
 }
 
-fn char_lower(c: str) {
+fn char_lower(c) {
     if (c == "A") { return "a" }
     if (c == "B") { return "b" }
     if (c == "C") { return "c" }
@@ -58,7 +58,7 @@ fn char_lower(c: str) {
     return c
 }
 
-fn upper(s: str) {
+fn upper(s) {
     r = ""
     i = 0
     while (i < len(s)) {
@@ -68,7 +68,7 @@ fn upper(s: str) {
     return r
 }
 
-fn lower(s: str) {
+fn lower(s) {
     r = ""
     i = 0
     while (i < len(s)) {
@@ -78,7 +78,7 @@ fn lower(s: str) {
     return r
 }
 
-fn trim(s: str) {
+fn trim(s) {
     a = 0
     b = len(s)
     while (a < b) {
@@ -102,7 +102,7 @@ fn trim(s: str) {
     return r
 }
 
-fn starts_with(s: str, prefix: str) {
+fn starts_with(s, prefix) {
     if (len(prefix) > len(s)) {
         return FALSE
     }
@@ -116,7 +116,7 @@ fn starts_with(s: str, prefix: str) {
     return TRUE
 }
 
-fn ends_with(s: str, suffix: str) {
+fn ends_with(s, suffix) {
     ls = len(s)
     lf = len(suffix)
     if (lf > ls) {
@@ -132,7 +132,7 @@ fn ends_with(s: str, suffix: str) {
     return TRUE
 }
 
-fn index_from(s: str, sub: str, start: int) {
+fn index_from(s, sub, start) {
     if (start < 0) {
         start = 0
     }
@@ -166,15 +166,15 @@ fn index_from(s: str, sub: str, start: int) {
     return -1
 }
 
-fn index_of(s: str, sub: str) {
+fn index_of(s, sub) {
     return index_from(s, sub, 0)
 }
 
-fn contains(s: str, sub: str) {
+fn contains(s, sub) {
     return index_of(s, sub) != -1
 }
 
-fn count_sub(s: str, sub: str) {
+fn count_sub(s, sub) {
     if (len(sub) == 0) {
         return 0
     }
@@ -187,7 +187,7 @@ fn count_sub(s: str, sub: str) {
     return c
 }
 
-fn reverse_str(s: str) {
+fn reverse_str(s) {
     r = ""
     i = len(s) - 1
     while (i >= 0) {
@@ -197,7 +197,7 @@ fn reverse_str(s: str) {
     return r
 }
 
-fn substr(s: str, start: int, end: int) {
+fn substr(s, start, end) {
     a = start
     b = end
     if (a < 0) {

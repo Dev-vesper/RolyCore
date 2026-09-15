@@ -307,17 +307,17 @@ class Parser:
         if not self.check(T.RPAREN):
             first = self.parse_parameter()
             params.append(first)
-            seen.add(first[0])
+            seen.add(first)
             while self.check(T.COMMA):
                 self.advance()
                 name = self.current()
                 param = self.parse_parameter()
-                if param[0] in seen:
+                if param in seen:
                     raise ParseError(
-                        f"duplicate parameter '{param[0]}'",
+                        f"duplicate parameter '{param}'",
                         name,
                     )
-                seen.add(param[0])
+                seen.add(param)
                 params.append(param)
         self.match(T.RPAREN, "')' or ','")
 
@@ -344,16 +344,17 @@ class Parser:
 
     def parse_parameter(self):
         name_token = self.match(T.IDENT, "a parameter name")
-        self.match(T.COLON, "':'")
-        type_token = self.current()
-        if type_token.type not in PARAM_TYPES:
-            raise ParseError(
-                f"unknown type {self.describe(type_token)} "
-                f"(expected int, str, bool, list, or float)",
-                type_token,
-            )
-        self.advance()
-        return (name_token.value, PARAM_TYPES[type_token.type])
+        if self.check(T.COLON):
+            self.advance()
+            type_token = self.current()
+            if type_token.type not in PARAM_TYPES:
+                raise ParseError(
+                    f"unknown type {self.describe(type_token)} "
+                    f"(expected int, str, bool, list, or float)",
+                    type_token,
+                )
+            self.advance()
+        return name_token.value
 
     def parse_block(self):
         self.enter()
