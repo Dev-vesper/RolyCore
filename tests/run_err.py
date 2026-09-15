@@ -221,6 +221,18 @@ def test_insert_errors():
     raises("builtin 'insert' expects 3 arguments", "x = insert([1], 0, 9, 9)")
 
 
+def test_delete_at_errors():
+    raises("delete_at: index 1 out of range for length 1", "x = delete_at([1], 1)")
+    raises("delete_at: index -1 out of range", "x = delete_at([1], -1)")
+    raises("delete_at: index 0 out of range for length 0", "x = delete_at([], 0)")
+    raises("builtin 'delete_at' expects a list", 'x = delete_at("ab", 0)')
+    raises("builtin 'delete_at' expects a list", "x = delete_at(5, 0)")
+    raises("builtin 'delete_at' expects an int index", 'x = delete_at([1], "0")')
+    raises("builtin 'delete_at' expects an int index", "x = delete_at([1], 0.5)")
+    raises("builtin 'delete_at' expects 2 arguments", "x = delete_at([1])")
+    raises("builtin 'delete_at' expects 2 arguments", "x = delete_at([1], 0, 9)")
+
+
 def test_subscript_errors():
     raises("char: index 4 out of range for length 4", 'x = "roly"[4]')
     raises("index -1 out of range", 'x = "roly"[-1]')
