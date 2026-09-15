@@ -111,8 +111,6 @@ def test_module_function_checks(tmp_path):
     write_module(tmp_path, "testme", "fn f (a: int, b: int) { return a }")
     raises("expects 2 arguments", "import testme x = testme.f(1)", tmp_path)
     raises("expects 2 arguments", "import testme {f} x = f(1)", tmp_path)
-    write_module(tmp_path, "testme", "fn f (a: int) { return a }")
-    raises("must be int", 'import testme x = testme.f("1")', tmp_path)
     write_module(tmp_path, "testme", "fn f () { a = 1 }")
     raises("did not return", "import testme x = testme.f()", tmp_path)
 

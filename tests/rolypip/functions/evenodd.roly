@@ -1,11 +1,11 @@
-fn even(n: int) {
+fn even(n) {
     if (n == 0) {
         return TRUE
     }
     return odd(n - 1)
 }
 
-fn odd (n: int) {
+fn odd (n) {
     if (n == 0) {
         return FALSE
     }

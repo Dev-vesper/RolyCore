@@ -23,10 +23,9 @@ def test_lib_guards_error():
 
 
 def test_lib_argument_types_checked():
-    raises("must be int", '!import math {abs} x = abs("-5")')
-    raises("must be str", "!import strings {upper} x = upper(42)")
-    raises("must be int", '!import strings {substr} x = substr("hi", "0", 1)')
-    raises("must be int", '!import strings {substr} x = substr("hi", "0", 1)')
+    raises("numeric operands", '!import math {abs} x = abs("-5")')
+    raises("expects a str or a list", "!import strings {upper} x = upper(42)")
+    raises("numeric operands", '!import strings {substr} x = substr("hi", "0", 1)')
     raises("must be str", "!import lists {join} x = join(list(), 5)")
     raises("must be list", "!import lists {reverse_list} x = reverse_list(5)")
 
@@ -182,32 +181,21 @@ def test_missing_lib_dir_errors(monkeypatch, tmp_path):
 
 
 def test_map_key_errors():
-    raises("map: key 'b' not found", '!import map {map_get} x = map_get(list(), "b")')
-    raises("map: key 8 not found", "!import map {map_get_i} x = map_get_i(list(), 8)")
-    raises("map: key 'b' not found", '!import map {map_del} x = map_del(list(), "b")')
-    raises("map: key 8 not found", "!import map {map_del_i} x = map_del_i(list(), 8)")
+    raises("map: key b not found", '!import map {map_get} x = map_get(list(), "b")')
+    raises("map: key 8 not found", "!import map {map_get} x = map_get(list(), 8)")
+    raises("map: key b not found", '!import map {map_del} x = map_del(list(), "b")')
+    raises(r"map: key \[1\] not found", "!import map {map_get} x = map_get(list(), [1])")
 
 
 def test_map_shape_validation_errors():
     raises("map: invalid map entry", '!import map {map_size} x = map_size([["h", "k"]])')
     raises(
         "map: invalid map entry",
-        '!import map {put_str} x = put_str([["h", "k", [1, 2]]], "k2", "v")',
+        '!import map {map_set} x = map_set([["h", "k", 1, 2]], "k2", 3)',
     )
     raises(
         "expects a list",
         '!import map {map_has} x = map_has(["x"], "k")',
-    )
-
-
-def test_map_box_errors():
-    raises(
-        "map: box must hold exactly one value",
-        '!import map {put, new_map} x = put(new_map(), "k", [1, 2])',
-    )
-    raises(
-        "map: box must hold exactly one value",
-        '!import map {put_i, new_map} x = put_i(new_map(), 3, list())',
     )
 
 

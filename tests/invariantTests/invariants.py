@@ -181,6 +181,16 @@ def test_function_laws():
         "fn quiet (n: int) { x = n * 2 }\nquiet(5)\nprint(\"ok\")",
         "ok",
     )
+    invariant(
+        "fn id (x) { return x }\n"
+        'print(id(7)) print(id("s")) print(id([1, TRUE])) print(id(1.5))',
+        '7\ns\n[1, True]\n1.5',
+    )
+    invariant(
+        'fn twice (n: int) { return n + n }\n'
+        'print(twice(3)) print(twice("ab")) print(twice(0.5))',
+        "6\nabab\n1.0",
+    )
 
 
 def test_metamorphic_transformations():
@@ -226,26 +236,40 @@ def test_library_invariants():
         "4",
     )
     invariant(
-        "!import map {new_map, put_int, map_get, map_size, map_keys,"
+        "!import map {new_map, map_set, map_get, map_size, map_keys,"
         " map_items, map_merge}\n"
         "a = new_map()\n"
-        'a = put_int(a, "x", 1)\n'
-        'a = put_int(a, "y", 2)\n'
-        'a = put_int(a, "z", 3)\n'
+        'a = map_set(a, "x", 1)\n'
+        'a = map_set(a, "y", 2)\n'
+        'a = map_set(a, "z", 3)\n'
         "b = new_map()\n"
-        'b = put_int(b, "z", 3)\n'
-        'b = put_int(b, "x", 1)\n'
-        'b = put_int(b, "y", 2)\n'
+        'b = map_set(b, "z", 3)\n'
+        'b = map_set(b, "x", 1)\n'
+        'b = map_set(b, "y", 2)\n'
         "print(map_equal(map_items(a), map_items(b)))\n"
         "print(map_equal(map_items(b), map_items(a)))\n"
         "print(map_size(a) == len(map_keys(a)))\n"
         'print(map_get(a, "x") == map_get(b, "x"))\n'
-        'a = put_int(a, "y", 9)\n'
+        'a = map_set(a, "y", 9)\n'
         "print(map_size(a))\n"
         "c = map_merge(a, b)\n"
         'print(map_get(c, "y"))\n'
         "print(map_size(c))",
         "True\nTrue\nTrue\nTrue\n3\n2\n3",
+    )
+    invariant(
+        "!import map {new_map, map_set, map_get, map_has, map_del}\n"
+        "m = new_map()\n"
+        'm = map_set(m, "name", "Ali")\n'
+        "m = map_set(m, 7, 49)\n"
+        'm = map_set(m, 1.5, "half")\n'
+        'print(map_get(m, "name"))\n'
+        "print(map_get(m, 7))\n"
+        'print(map_get(m, 1.5))\n'
+        'print(map_has(m, "7"))\n'
+        "m = map_del(m, 7)\n"
+        'print(map_has(m, 7) == FALSE)\n',
+        'Ali\n49\nhalf\nFalse\nTrue',
     )
 
 

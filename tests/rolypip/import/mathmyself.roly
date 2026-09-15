@@ -1,14 +1,14 @@
 !import math {isqrt}
 
-fn triple (n: int) {
+fn triple (n) {
     return n * 3
 }
 
-fn average (a: int, b: int) {
+fn average (a, b) {
     return (a + b) / 2
 }
 
-fn is_square (n: int) {
+fn is_square (n) {
     r = isqrt(n)
     return r * r == n
 }

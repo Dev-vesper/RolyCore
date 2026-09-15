@@ -1,4 +1,4 @@
-fn my_gcd (a: int, b: int) {
+fn my_gcd (a, b) {
     while (b != 0) {
         r = a - a / b * b
         a = b
@@ -7,11 +7,11 @@ fn my_gcd (a: int, b: int) {
     return a
 }
 
-fn banner (text: str) {
+fn banner (text) {
     print("=" + text + "=")
 }
 
-fn my_lcm (a: int, b: int) {
+fn my_lcm (a, b) {
     return a / my_gcd(a, b) * b
 }
 

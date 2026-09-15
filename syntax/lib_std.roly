@@ -1,7 +1,7 @@
 !import math {gcd, lcm, mod, isqrt}
 !import fmt {binary, hex, to_base, group, pad, roman}
 
-fn rep(s: str, n: int) {
+fn rep(s, n) {
     r = ""
     i = 0
     while (i < n) {
@@ -11,7 +11,7 @@ fn rep(s: str, n: int) {
     return r
 }
 
-fn fact(n: int) {
+fn fact(n) {
     r = 1
     i = 2
     while (i <= n) {

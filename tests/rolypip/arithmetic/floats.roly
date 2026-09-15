@@ -13,7 +13,7 @@ print(ratio)
 exact = 7.0 / 2
 print(exact)
 
-fn average (a: float, b: float) {
+fn average (a, b) {
     return (a + b) / 2
 }
 print(average(1.5, 2.5))

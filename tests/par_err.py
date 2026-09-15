@@ -105,7 +105,6 @@ def test_function_placement_errors():
 def test_function_parameter_errors():
     for source in [
         "fn f (a: print) { return a }",
-        "fn f (a) { return a }",
         "fn f (: int) { return 1 }",
         "fn f (a int) { return a }",
         "fn f ()",

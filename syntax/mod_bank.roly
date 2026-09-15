@@ -1,11 +1,11 @@
 balance = 100
 
-fn deposit (amount: int) {
+fn deposit (amount) {
     balance += amount
     return balance
 }
 
-fn withdraw (amount: int) {
+fn withdraw (amount) {
     if (amount > balance) {
         return -1
     }

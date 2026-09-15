@@ -2,7 +2,7 @@
 !import strings {reverse_str}
 !import fmt {group, hex, binary, pad, roman}
 
-fn rep(s: str, n: int) {
+fn rep(s, n) {
     r = ""
     i = 0
     while (i < n) {
@@ -12,7 +12,7 @@ fn rep(s: str, n: int) {
     return r
 }
 
-fn fact(n: int) {
+fn fact(n) {
     r = 1
     i = 2
     while (i <= n) {
@@ -22,7 +22,7 @@ fn fact(n: int) {
     return r
 }
 
-fn is_pal(n: int) {
+fn is_pal(n) {
     if (n < 0) {
         return FALSE
     }

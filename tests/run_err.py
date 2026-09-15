@@ -99,11 +99,10 @@ def test_float_builtin_errors():
     raises("cannot convert inf to int", 'x = int(float("1e999"))')
 
 
-def test_float_parameter_strictness():
-    raises("must be float", "fn h (x: float) { return x } x = h(3)")
-    raises("must be float", "fn h (x: float) { return x } x = h(TRUE)")
-    raises("must be int", "fn h (x: int) { return x } x = h(1.5)")
-    raises("must be int", "fn h (x: int) { return x } x = h(0.0)")
+def test_parameter_type_errors_surface_at_use_site():
+    raises("numeric operands", 'fn h (x) { return x + 0.5 } x = h("s")')
+    raises("numeric operands", 'fn h (x) { return x * 2 } x = h([1])')
+    raises("expects a str or a list", "fn h (x) { return len(x) } x = h(3)")
 
 
 def test_huge_int_meets_float():
@@ -158,14 +157,6 @@ def test_arity_checked_before_argument_effects():
             out=printed.append,
         )
     assert printed == []
-
-
-def test_function_argument_type_errors():
-    raises("argument 'a'.*must be int", 'fn f (a: int) { return a } x = f("s")')
-    raises("argument 'a'.*must be str", "fn f (a: str) { return a } x = f(1)")
-    raises("argument 'a'.*must be bool", "fn f (a: bool) { return a } x = f(1)")
-    raises("argument 'a'.*must be int", "fn f (a: int) { return a } x = f(1 == 1)")
-    raises("argument 'l'.*must be list", "fn f (l: list) { return l } x = f(5)")
 
 
 def test_function_must_return():
