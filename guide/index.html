@@ -670,7 +670,7 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
 
 <section id="stdlib">
     <h2>Standard Library</h2>
-    <p>The standard library lives in <code>roly/lib/</code> as five modules: <code>math</code>, <code>fmt</code>, <code>strings</code>, <code>lists</code>, and <code>thfile</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
+    <p>The standard library lives in <code>roly/lib/</code> as six modules: <code>math</code>, <code>fmt</code>, <code>strings</code>, <code>lists</code>, <code>map</code>, and <code>thfile</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
     <pre><code><span class="tok-kw">!import</span> math {gcd, mod}
 <span class="tok-kw">!import</span> fmt
 
@@ -746,6 +746,36 @@ print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
 print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
     <div class="note">The library holds only functions with real logic — one-liners are yours to write. A parity test is <code>n / 2 * 2 == n</code>, a palindrome check is <code>s == reverse_str(s)</code>, and factorial is a five-line loop. Most library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every one of them is a program you could have written yourself. Calls are checked at runtime exactly like your own functions: wrong argument count or type is an error. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>isqrt(-1)</code> — the function tells you what it expected.</div>
+
+    <h3>map</h3>
+    <p>A hash map over plain lists — there is no dict type in Roly, so a map is an ordinary list value you can print, pass around and compare. Keys are strings or integers; values can be anything.</p>
+    <table>
+        <tr><th>Function</th><th>Result</th></tr>
+        <tr><td>new_map()</td><td>an empty map</td></tr>
+        <tr><td>put_str(m, k, v) / put_int / put_bool / put_float / put_list</td><td>a new map with k set to v — the typed setters box the value for you</td></tr>
+        <tr><td>put(m, k, box) / put_i(m, k, box)</td><td>the general setters: str or int key, the value as a one-item list</td></tr>
+        <tr><td>map_get(m, k) / map_get_i(m, k)</td><td>the value at k — a missing key is an error; guard with map_has</td></tr>
+        <tr><td>map_has(m, k) / map_has_i(m, k)</td><td>TRUE when k is present</td></tr>
+        <tr><td>map_del(m, k) / map_del_i(m, k)</td><td>a new map without k — a missing key is an error</td></tr>
+        <tr><td>map_size(m)</td><td>the number of entries</td></tr>
+        <tr><td>map_keys(m) / map_values(m)</td><td>the keys / values as lists</td></tr>
+        <tr><td>map_items(m)</td><td>[[key, value], ...] — feeds straight into map_equal</td></tr>
+        <tr><td>map_merge(a, b)</td><td>the entries of both; on a shared key the right side wins</td></tr>
+        <tr><td>show(m)</td><td>a dict-style rendering: {name: Ali, age: 31}</td></tr>
+    </table>
+    <pre><code><span class="tok-kw">!import</span> map {new_map, put_str, put_int, put_bool, map_get, map_has, map_del, map_size, show}
+
+m = new_map()
+m = put_str(m, <span class="tok-str">"name"</span>, <span class="tok-str">"Ali"</span>)
+m = put_int(m, <span class="tok-str">"age"</span>, 31)
+m = put_bool(m, <span class="tok-str">"active"</span>, TRUE)
+
+<span class="tok-fn">print</span>(show(m))            <span class="tok-com">// {active: True, name: Ali, age: 31}</span>
+<span class="tok-fn">print</span>(map_get(m, <span class="tok-str">"age"</span>))     <span class="tok-com">// 31</span>
+<span class="tok-fn">print</span>(map_has(m, <span class="tok-str">"mail"</span>))    <span class="tok-com">// False</span>
+m = map_del(m, <span class="tok-str">"active"</span>)
+<span class="tok-fn">print</span>(map_size(m))          <span class="tok-com">// 2</span></code></pre>
+    <div class="note">Maps are immutable like every list — every put or map_del returns a new map, so rebind: <code>m = put_int(m, "age", 32)</code>. Setting an existing key replaces its value. Why the typed setters? Roly parameters are typed, so no single function can accept "any value" — <code>put_str</code>, <code>put_int</code>, <code>put_bool</code>, <code>put_float</code> and <code>put_list</code> wrap the value in a one-item box, and the general <code>put(m, k, box)</code> takes a box directly. Integer keys use the <code>_i</code> twins. <code>show</code> renders in the map's internal hash order, not key order — the order is stable for the same construction history. Feed <code>map_items(m)</code> into the <code>map_equal</code> built-in for order-independent comparison of two maps.</div>
 
     <h3>thfile</h3>
     <p>File operations. This is the one library module written natively — a Roly program cannot reach the outside world on its own. Everything is text, in UTF-8.</p>

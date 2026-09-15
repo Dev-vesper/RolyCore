@@ -28,7 +28,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
 | `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
 | `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 5 modules — 33 pure-Roly functions in math/fmt/strings/lists plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
+| `roly/lib/*.roly` | The standard library itself: 6 modules — 59 pure-Roly functions in math/fmt/strings/lists/map plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
@@ -316,6 +316,7 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `fmt.roly` (7) | `digit_char to_base binary hex pad group roman` |
 | `strings.roly` (13) | `char_upper char_lower upper lower trim starts_with ends_with index_from index_of contains count_sub reverse_str substr` |
 | `lists.roly` (4) | `sum_list max_list min_list sublist` |
+| `map.roly` (26) | internals `_hash _hash_i _lower_bound _find _put_h _validate`; public `new_map put put_i put_str put_int put_bool put_float put_list map_get map_get_i map_has map_has_i map_del map_del_i map_size map_keys map_values map_items show map_merge` |
 | `thfile.roly` (11 native) | `read write append delete exists size read_lines mkdir list_dir rename copy` |
 
 Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
@@ -346,8 +347,44 @@ surfaces bit-for-bit as before (the scan now admits floats alongside ints).
   errors — the guard makes it deterministic); `copy` overwrites (same on both).
 - `mkdir` is single-level (`parents=False`); `delete` is file-only.
 
+**map specifics** (the pure-Roly hash map — no dict type exists, a map IS a
+plain list value):
+
+- **Representation**: a list of `[hash, key, box]` entries kept sorted by
+  hash. Hash window is `[0, 1000003)`; djb2 (`h = h*33 + ord(c)` from 5381)
+  for str keys, `mod(n, 1000003)` for int keys — cross-type collisions are
+  resolved by key equality, never by the hash alone.
+- **Boxing**: values live in one-item lists because typed parameters cannot
+  accept "any value". The typed setters (`put_str`/`put_int`/`put_bool`/
+  `put_float`/`put_list`, all `k: str`) box `v` as `[v]`; the general
+  `put(m, k, box)` / `put_i(m, k, box)` take a pre-boxed value (int keys use
+  the `_i` twins — one family per key type is the price of typed params).
+  Getters unbox on the way out, so `map_get` returns the raw value.
+- **Lookup** is `_lower_bound` (binary search on stored hashes) + `_find`
+  (linear probing over the equal-hash chain). `_put_h` upserts: `set` in
+  place on a key hit, otherwise `insert` at the lower bound — the array
+  stays hash-sorted with no re-sorting. `map_merge` is a single ordered walk
+  over both hash-sorted inputs (no rehashing; right side wins conflicts).
+- Every public function runs `_validate` first (shape: each entry a 3-item
+  list with a 1-item box — the `push` trick doubles as the type test). So
+  one put/get costs O(n) validation plus the O(log n) search; the language
+  has no cheaper mutation anyway (`insert`/`set`/`delete_at` all copy).
+- **Two-tier validation messages**: a wrong-*shape* list fails with
+  `map: invalid map entry`, but a non-list *element* surfaces push's own
+  `builtin 'push' expects a list, got ...` — there is no error-free
+  exact type test in pure Roly (15.58). Both are clean `RolyError`s.
+- `map_keys`/`map_values`/`map_items`/`show` follow the stored hash order —
+  deterministic for the same construction history, NOT key order.
+  `map_items` emits `[[k, v], ...]` exactly for the `map_equal` builtin.
+- Missing keys fail loud (`map: key 'x' not found`, `map: key 7 not found`
+  for int keys); guard with `map_has`/`map_has_i`. `show` renders
+  `{name: Ali, age: 31}` (keys and values both through `str()`, which is
+  why strings come out unquoted there — matches the user's requested
+  shape).
+
 **Lib files import each other with `!import`** — they are ordinary modules:
 - `fmt.roly` starts with `!import math {mod}`
+- `map.roly` starts with `!import math {mod}`
 - `math`, `strings`, `lists` are self-contained.
 
 Design rules:
@@ -799,6 +836,27 @@ ExprStmt — the line is read and discarded, matching Python. EOF must map
 to a `RolyError` (`input: end of input reached`), never a raw
 `EOFError` traceback.
 
+15.57 **`roly/lib/map.roly` carries engineering comments** — the ONE
+sanctioned exception to the comment-free convention (user grant
+2026-09-15): the file documents a data-structure simulation (hashing,
+probing, boxing) whose rationale is not derivable from reading the code,
+and it is the reference example of "a program a user could have written".
+Do not take this as license to comment other files — their "why" lives
+here.
+
+15.58 **There is no error-free exact type test in pure Roly** — `len`
+accepts str and list, `push`/`get` accept list only but *error* instead of
+returning false, and no builtin reports a value's type. The map's
+`_validate` therefore uses the `push` trick (push only accepts lists, so
+`len(push(x, 0))` both proves list-ness and measures length) and eats the
+two-tier message consequence: non-list elements surface push's message,
+wrong-shape lists get the map's own. Any future pure-Roly shape validation
+hits the same wall; the exact tests that exist are narrow probes
+(`v == TRUE` identifies bool, `v / 1 == v` numbers — the latter errors on
+bool/str/list and still cannot split int from float without
+`contains(".", str(v))`). If exact runtime type tests ever become
+load-bearing, the answer is a host builtin, not more probing.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -948,6 +1006,18 @@ to a `RolyError` (`input: end of input reached`), never a raw
   (`map_equal(a,b)` ≠ `map_equal(b,a)` on duplicate keys); the user
   supplied the comparison table proving consumed matching is the only
   symmetric, intuitive choice.
+- **Phase 36 (2026-09-15)** — the `map` library module (26 pure-Roly
+  functions): a hash map simulated over plain lists as `[[hash, key, box]]`
+  sorted by hash, djb2/`mod` hashing in a 1000003 window, lower-bound
+  binary search + linear probing over the collision chain, in-place upsert,
+  hash-reusing ordered merge (right wins) and push-trick shape validation.
+  Built on the five Phase 31–35 builtins (`ord`, `insert`, `delete_at`,
+  `concat`, `map_equal`) exactly as the user planned — they were added for
+  this module. Values are boxed in one-item lists because typed params
+  cannot take "any value" (the user's put/put_str sketch); int keys get the
+  `_i` family. `show` renders `{name: Ali, age: 31}` per the user's
+  requested shape. Engineering comments are allowed in map.roly only
+  (15.57).
 
 ## 17. Tests & Maintenance Rules
 
@@ -956,7 +1026,7 @@ to a `RolyError` (`input: end of input reached`), never a raw
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~140 tests.
+  every file. Currently 7 files / ~145 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
@@ -1033,7 +1103,8 @@ loop-compiled. Re-run the full suite and spot-check via the CLI.
 
 ### Conventions
 
-- No comments or docstrings in code — rationale lives here (15.40).
+- No comments or docstrings in code — rationale lives here (15.40). The
+  single exception: `roly/lib/map.roly` (15.57).
 - Commit style: grouped section commits, short sentence, no signature.
 - File extension `.roly`. Pipeline dependency is stdlib-only; pytest and
   PyInstaller are dev-only.
