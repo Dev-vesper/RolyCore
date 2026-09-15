@@ -28,7 +28,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
 | `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
 | `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 5 modules — 34 pure-Roly functions in math/fmt/strings/lists plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
+| `roly/lib/*.roly` | The standard library itself: 5 modules — 33 pure-Roly functions in math/fmt/strings/lists plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
@@ -280,7 +280,7 @@ Python exceptions through the compiled closures:
 | `list()` / `list(s)` | 0–1 | Empty list, or str → list of 1-char strings. |
 | `push(l, x)` | 2 | Returns NEW list. |
 | `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
-| `delete_at(l, i)` | 2 | Returns NEW list; 0-based, OOB errors like `get`. Duplicates the lib's pure-Roly `remove_at` — kept for symmetry with `insert`. |
+| `delete_at(l, i)` | 2 | Returns NEW list; 0-based, OOB errors like `get`. Replaced the lib's pure-Roly `remove_at` (deleted the same day). |
 | `get(l, i)` | 2 | 0-based, OOB error, no negatives. |
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
@@ -313,7 +313,7 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `math.roly` (9) | `abs min max clamp mod gcd lcm isqrt is_prime` |
 | `fmt.roly` (7) | `digit_char to_base binary hex pad group roman` |
 | `strings.roly` (13) | `char_upper char_lower upper lower trim starts_with ends_with index_from index_of contains count_sub reverse_str substr` |
-| `lists.roly` (5) | `sum_list max_list min_list sublist remove_at` |
+| `lists.roly` (4) | `sum_list max_list min_list sublist` |
 | `thfile.roly` (11 native) | `read write append delete exists size read_lines mkdir list_dir rename copy` |
 
 Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
@@ -927,10 +927,11 @@ to a `RolyError` (`input: end of input reached`), never a raw
   ("باید از 0 شروع بشه"). Replaced the guide's manual
   loop-based insertion example.
 - **Phase 33 (2026-09-15)** — `delete_at(l, i)` builtin (16th): drops the
-  element at a 0-based position, rest shift left. Overlaps the lib's
-  `remove_at` on purpose — the builtin is the direct counterpart of
-  `insert`, strict `get`-style bounds (no `i == len` here; there is
-  nothing to delete at the end position).
+  element at a 0-based position, rest shift left. Strict `get`-style
+  bounds (no `i == len` here; there is nothing to delete at the end
+  position). The lib's pure-Roly `remove_at` was deleted in the same
+  change (user decision) — `delete_at` fully replaces it; showcase,
+  lib_err and invariant references migrated.
 
 ## 17. Tests & Maintenance Rules
 
