@@ -105,6 +105,19 @@ def test_list_laws():
         '[1, "a"]\nTrue,b',
     )
     invariant("print([] == []) print(len([]) == 0)", "True\nTrue")
+    invariant(
+        'm1 = [["a", [1]], ["b", [2]]]\n'
+        'm2 = [["b", [2]], ["a", [1]]]\n'
+        "print(m1 == m2) print(map_equal(m1, m2))\n"
+        "print(map_equal(m1, m1))\n"
+        'print(map_equal([["x", [1]]], [["x", [1]], ["z", [3]]]))\n'
+        'print(map_equal([["x", [1]], ["y", [2]]], [["x", [1]], ["y", [99]]]))\n'
+        'print(map_equal([], []))\n'
+        'print(map_equal([["n", 1]], [["n", 1.0]]))\n'
+        'print(map_equal([[1, 2]], [["1", 2]]))\n'
+        'print(map_equal([["x", [1]], ["x", [2]]], [["x", [1]], ["x", [2]]]))',
+        "False\nTrue\nTrue\nFalse\nFalse\nTrue\nTrue\nFalse\nTrue",
+    )
 
 
 def test_boolean_laws():

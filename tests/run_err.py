@@ -242,6 +242,18 @@ def test_concat_errors():
     raises("builtin 'concat' expects 2 arguments", "x = concat([1], [2], [3])")
 
 
+def test_map_equal_errors():
+    raises("builtin 'map_equal' expects a list", "x = map_equal(1, [])")
+    raises("builtin 'map_equal' expects a list", 'x = map_equal([], "ab")')
+    raises("builtin 'map_equal' expects a list", "x = map_equal([1], 2)")
+    raises("is not a \\[key, value\\] pair", "x = map_equal([1], [])")
+    raises("is not a \\[key, value\\] pair", 'x = map_equal([["a"]], [])')
+    raises("is not a \\[key, value\\] pair", 'x = map_equal([], [["a", 1, 2]])')
+    raises("is not a \\[key, value\\] pair", 'x = map_equal(["ab"], [])')
+    raises("builtin 'map_equal' expects 2 arguments", "x = map_equal([])")
+    raises("builtin 'map_equal' expects 2 arguments", "x = map_equal([], [], [])")
+
+
 def test_subscript_errors():
     raises("char: index 4 out of range for length 4", 'x = "roly"[4]')
     raises("index -1 out of range", 'x = "roly"[-1]')
