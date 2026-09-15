@@ -28,7 +28,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
 | `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
 | `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 6 modules — 59 pure-Roly functions in math/fmt/strings/lists/map plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
+| `roly/lib/*.roly` | The standard library itself: 6 modules — 49 pure-Roly functions in math/fmt/strings/lists/map plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
@@ -160,8 +160,8 @@ ordering across types.
 **Truthiness.** `truthy()` (interpreter.py:348) accepts: `bool` → itself,
 `int`/`float` → `!= 0` (so `if (1)` is legal and true), anything else (str,
 list) → runtime error `condition must be a number, got {value!r}`. Note the
-asymmetry: ints are valid conditions but bools are NOT valid ints where
-types are declared.
+asymmetry: ints are valid conditions, but bools are NOT valid numbers where
+exact types still matter (arithmetic, NativeFn params).
 
 **Subscript desugaring.** `s[i]` is exactly `char(s, i)` and `l[i]` is
 exactly `get(l, i)` — same rules, same error messages. The compiler's
@@ -198,7 +198,7 @@ The compiler's fast path (§12) inlines this when `locals_stack` is empty.
 ## 6. Functions
 
 ```
-fn name (a: int, b: str) { ... return expr }
+fn name (a, b) { ... return expr }
 ```
 
 - Top-level only (like `import`). Bodies are blocks and cannot be empty
@@ -215,8 +215,14 @@ fn name (a: int, b: str) { ... return expr }
   fn visible to earlier statements too) raises
   `'{name}' is already a function name` in `Interpreter.assign`, on the
   global write path only (params/locals may shadow freely).
-- **Params**: typed `int`/`str`/`bool`/`list`/`float`; unknown type is a
-  parse error. Names must be unique and not keyword / builtin names —
+- **Params are bare names** — `FnDef.params` is `list[str]`, a call frame is
+  `dict(zip(params, args))`. Any value is accepted (Python duck typing);
+  a type mismatch surfaces at the first operation that needs the value
+  (`fn h (x) { return x + 0.5 } h("s")` → `operator '+' requires numeric
+  operands`). An optional `: type` annotation is allowed and PURELY
+  COSMETIC — parsed, validated to be one of the five type names (anything
+  else stays a parse error), then dropped; old annotated code runs
+  unchanged. Names must be unique and not keyword / builtin names —
   checked at registration with the matching message (§14).
 - **Invocation order** (`call_compiled` → `invoke_function`), in exact order:
   1. `count_step()` — a call is a step.
@@ -227,7 +233,10 @@ fn name (a: int, b: str) { ... return expr }
      argument is evaluated. Side effects in args must not run on arity
      errors (there is a regression test asserting `print` stays silent).
   4. Arguments evaluated left-to-right.
-  5. Per-param exact type checks (`argument 'a' of 'f' must be int, got ...`).
+  5. `NativeFn` ONLY: per-param exact type checks
+     (`argument 'a' of 'f' must be int, got ...`) — native functions are
+     host code that cannot duck-type safely. User functions skip this
+     step entirely.
   6. Depth check (200) → frame push (recording `module_frames`
      state) → body → `ReturnSignal` unwinding.
 - `MAX_CALL_DEPTH = 200` with `sys.setrecursionlimit(10000)` headroom for the
@@ -316,7 +325,7 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `fmt.roly` (7) | `digit_char to_base binary hex pad group roman` |
 | `strings.roly` (13) | `char_upper char_lower upper lower trim starts_with ends_with index_from index_of contains count_sub reverse_str substr` |
 | `lists.roly` (4) | `sum_list max_list min_list sublist` |
-| `map.roly` (26) | internals `_hash _hash_i _lower_bound _find _put_h _validate`; public `new_map put put_i put_str put_int put_bool put_float put_list map_get map_get_i map_has map_has_i map_del map_del_i map_size map_keys map_values map_items show map_merge` |
+| `map.roly` (16) | internals `_hash _lower_bound _find _put_h _validate`; public `new_map map_set map_get map_has map_del map_size map_keys map_values map_items map_merge show` |
 | `thfile.roly` (11 native) | `read write append delete exists size read_lines mkdir list_dir rename copy` |
 
 Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
@@ -350,25 +359,26 @@ surfaces bit-for-bit as before (the scan now admits floats alongside ints).
 **map specifics** (the pure-Roly hash map — no dict type exists, a map IS a
 plain list value):
 
-- **Representation**: a list of `[hash, key, box]` entries kept sorted by
-  hash. Hash window is `[0, 1000003)`; djb2 (`h = h*33 + ord(c)` from 5381)
-  for str keys, `mod(n, 1000003)` for int keys — cross-type collisions are
-  resolved by key equality, never by the hash alone.
-- **Boxing**: values live in one-item lists because typed parameters cannot
-  accept "any value". The typed setters (`put_str`/`put_int`/`put_bool`/
-  `put_float`/`put_list`, all `k: str`) box `v` as `[v]`; the general
-  `put(m, k, box)` / `put_i(m, k, box)` take a pre-boxed value (int keys use
-  the `_i` twins — one family per key type is the price of typed params).
-  Getters unbox on the way out, so `map_get` returns the raw value.
+- **Representation**: a list of `[hash, key, value]` entries kept sorted by
+  hash. Hash window is `[0, 1000003)`; the hash is djb2
+  (`h = h*33 + ord(c)` from 5381) over the key's `str()` rendering — so
+  EVERY value type can be a key, and key identity follows `str()`
+  (`7` ≠ `"7"`, `1` ≠ `1.0` — deliberate divergence from Python's
+  hash-equality; collisions are resolved by key equality, never by the
+  hash alone).
+- **No boxing**: values are stored as-is. Untyped params (§6) accept any
+  value, so the v1 box family (`put`/`put_i`/`put_str`/.../`map_get_i`/
+  `map_has_i`) collapsed into a single `map_set(m, k, v)` / `map_get(m, k)`
+  pair when params became duck-typed.
 - **Lookup** is `_lower_bound` (binary search on stored hashes) + `_find`
   (linear probing over the equal-hash chain). `_put_h` upserts: `set` in
   place on a key hit, otherwise `insert` at the lower bound — the array
   stays hash-sorted with no re-sorting. `map_merge` is a single ordered walk
   over both hash-sorted inputs (no rehashing; right side wins conflicts).
 - Every public function runs `_validate` first (shape: each entry a 3-item
-  list with a 1-item box — the `push` trick doubles as the type test). So
-  one put/get costs O(n) validation plus the O(log n) search; the language
-  has no cheaper mutation anyway (`insert`/`set`/`delete_at` all copy).
+  list — the `push` trick doubles as the type test). So one set/get costs
+  O(n) validation plus the O(log n) search; the language has no cheaper
+  mutation anyway (`insert`/`set`/`delete_at` all copy).
 - **Two-tier validation messages**: a wrong-*shape* list fails with
   `map: invalid map entry`, but a non-list *element* surfaces push's own
   `builtin 'push' expects a list, got ...` — there is no error-free
@@ -376,11 +386,11 @@ plain list value):
 - `map_keys`/`map_values`/`map_items`/`show` follow the stored hash order —
   deterministic for the same construction history, NOT key order.
   `map_items` emits `[[k, v], ...]` exactly for the `map_equal` builtin.
-- Missing keys fail loud (`map: key 'x' not found`, `map: key 7 not found`
-  for int keys); guard with `map_has`/`map_has_i`. `show` renders
-  `{name: Ali, age: 31}` (keys and values both through `str()`, which is
-  why strings come out unquoted there — matches the user's requested
-  shape).
+- Missing keys fail loud (`map: key b not found` — the key through
+  `str()`, unquoted, so list keys read `map: key [1] not found`); guard
+  with `map_has`. `show` renders `{name: Ali, age: 31}` (keys and values
+  both through `str()`, which is why strings come out unquoted there —
+  matches the user's requested shape).
 
 **Lib files import each other with `!import`** — they are ordinary modules:
 - `fmt.roly` starts with `!import math {mod}`
@@ -398,9 +408,9 @@ Design rules:
   to_base/roman/isqrt-style fns; `to_base` fails with
   "base must be between 2 and 16" outside that range.
 - Impossible-by-design in pure Roly: `divmod`, generic binary search,
-  sieves, arbitrary-element-typed helpers (typed params block
-  `contains`/`index_of_item` for lists — host-side candidates if ever
-  needed).
+  sieves. (The old "typed params block `contains`/`index_of_item` for
+  lists" limitation dissolved with duck-typed params — they are now
+  user-writable in the lib, but still excluded by the real-logic rule.)
 - **Lib call isolation** is the module isolation of §5/§11 — lib fns see
   their frame + their module's globals, never user globals.
 - `resolve_lib_dir()`: when frozen (`sys.frozen`), the lib folder is resolved
@@ -559,7 +569,9 @@ Message conventions that tests match on:
 - Honest value reads: `x = len` → `'len' is a builtin, not a value`;
   `x = f` → `'f' is a function, call it as f(...)`.
 - Arity: `function 'f' expects 2 arguments, got 1` (singular/plural handled).
-- Types: `argument 'a' of 'f' must be int, got '1'` (value repr'd).
+- NativeFn argument types: `argument 'a' of 'f' must be int, got '1'` (value
+  repr'd) — user functions never raise this; their type errors are the
+  operators'/builtins' own messages at the use site.
 - Modules: `no member 'x'`, `has no member 'x'` (brace), `is a function in
   module 'm'` / `is not a function in module 'm'`,
   `'m' is already imported` (import vs `!import` clash),
@@ -839,10 +851,10 @@ to a `RolyError` (`input: end of input reached`), never a raw
 15.57 **`roly/lib/map.roly` carries engineering comments** — the ONE
 sanctioned exception to the comment-free convention (user grant
 2026-09-15): the file documents a data-structure simulation (hashing,
-probing, boxing) whose rationale is not derivable from reading the code,
-and it is the reference example of "a program a user could have written".
-Do not take this as license to comment other files — their "why" lives
-here.
+probing, ordered merge) whose rationale is not derivable from reading the
+code, and it is the reference example of "a program a user could have
+written". Do not take this as license to comment other files — their "why"
+lives here.
 
 15.58 **There is no error-free exact type test in pure Roly** — `len`
 accepts str and list, `push`/`get` accept list only but *error* instead of
@@ -856,6 +868,17 @@ hits the same wall; the exact tests that exist are narrow probes
 bool/str/list and still cannot split int from float without
 `contains(".", str(v))`). If exact runtime type tests ever become
 load-bearing, the answer is a host builtin, not more probing.
+
+15.59 **Params duck-type, NativeFns do not** (Phase 37): user functions
+accept any value and let the body fail at the operation that needs it,
+but `invoke_function` still runs exact per-param checks on every
+`NativeFn` — `sort_list("ab")` errors at the call, while a pure-Roly
+`sum_list(["a"])` errors inside the loop. Both message families are
+pinned by tests; do not "unify" them: host code cannot duck-type safely,
+and lib guards depend on `fail()` inside the body. The annotation path
+is also two-headed: `parse_parameter` validates `: type` against the five
+known names (a typo like `: integr` stays a ParseError) and then drops
+it — annotations are decoration, and the AST carries bare names only.
 
 ## 16. Decision History & Evolutionary Phases
 
@@ -1018,6 +1041,19 @@ load-bearing, the answer is a host builtin, not more probing.
   `_i` family. `show` renders `{name: Ali, age: 31}` per the user's
   requested shape. Engineering comments are allowed in map.roly only
   (15.57).
+- **Phase 37 (2026-09-15)** — duck-typed parameters (user decision: params
+  accept anything, exactly like Python; the old strictness was a flaw, not
+  a feature). `FnDef.params` became `list[str]`; a frame is
+  `dict(zip(params, args))`. An optional `: type` annotation survives as
+  pure decoration — still validated to be one of the five type names
+  (unknown type stays a parse error), never enforced, old code runs
+  unchanged. Type errors now surface at use sites
+  (`operator '+' requires numeric operands`) instead of the call;
+  `NativeFn` params (lists natives, thfile) KEEP their strict checks —
+  host code cannot duck-type safely. map.roly collapsed the same day from
+  26 to 16 functions: no boxing needed, one `map_set(m, k, v)` for every
+  key/value type, hashing unified to djb2 over `str(key)` so every value
+  type can be a key (identity follows `str()`: `7` ≠ `"7"`, `1` ≠ `1.0`).
 
 ## 17. Tests & Maintenance Rules
 
