@@ -237,24 +237,11 @@ class Parser:
         self.match(T.RPAREN, "')'")
         self.bracket_depth -= 1
         then_block = self.parse_block()
-        elifs = []
         else_block = None
-        while self.check(T.ELSE):
+        if self.check(T.ELSE):
             self.advance()
-            if self.check(T.IF):
-                self.require_same_line()
-                self.advance()
-                self.require_same_line()
-                self.match(T.LPAREN, "'('")
-                self.bracket_depth += 1
-                elif_condition = self.parse_expression()
-                self.match(T.RPAREN, "')'")
-                self.bracket_depth -= 1
-                elifs.append((elif_condition, self.parse_block()))
-            else:
-                else_block = self.parse_block()
-                break
-        return If(condition, then_block, else_block, elifs or None)
+            else_block = self.parse_block()
+        return If(condition, then_block, else_block)
 
     def parse_break(self):
         token = self.advance()

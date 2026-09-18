@@ -267,10 +267,6 @@ def compile_statement(statement, interp):
     if isinstance(statement, If):
         condition = compile_expression(statement.condition)
         then_fn = compile_statement(statement.then_block, interp)
-        elifs = [
-            (compile_expression(c), compile_statement(b, interp))
-            for c, b in (statement.elifs or [])
-        ]
         else_fn = (
             compile_statement(statement.else_block, interp)
             if statement.else_block is not None
@@ -282,10 +278,6 @@ def compile_statement(statement, interp):
             if I.truthy(condition(I)):
                 then_fn(I)
                 return
-            for c, b in elifs:
-                if I.truthy(c(I)):
-                    b(I)
-                    return
             if else_fn is not None:
                 else_fn(I)
 

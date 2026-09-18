@@ -85,7 +85,6 @@ class If:
     condition: Expr
     then_block: "Block"
     else_block: "Block | None"
-    elifs: "list[tuple[Expr, 'Block']] | None" = None
 
 
 @dataclass(slots=True)
