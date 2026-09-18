@@ -236,10 +236,12 @@ class Parser:
         condition = self.parse_expression()
         self.match(T.RPAREN, "')'")
         self.bracket_depth -= 1
+        self.require_same_line()
         then_block = self.parse_block()
         else_block = None
         if self.check(T.ELSE):
             self.advance()
+            self.require_same_line()
             else_block = self.parse_block()
         return If(condition, then_block, else_block)
 
@@ -264,6 +266,7 @@ class Parser:
         self.match(T.RPAREN, "')'")
         self.bracket_depth -= 1
         self.loop_depth += 1
+        self.require_same_line()
         body = self.parse_block()
         self.loop_depth -= 1
         return While(condition, body)
@@ -287,6 +290,7 @@ class Parser:
 
     def parse_function(self):
         self.match(T.FN, "'fn'")
+        self.require_same_line()
         name_token = self.match(T.IDENT, "a function name")
         params = []
         seen = set()
@@ -312,6 +316,7 @@ class Parser:
         self.fn_depth += 1
         saved_loop_depth = self.loop_depth
         self.loop_depth = 0
+        self.require_same_line()
         body = self.parse_block()
         self.loop_depth = saved_loop_depth
         self.fn_depth -= 1
@@ -325,10 +330,14 @@ class Parser:
         if self.check(T.LBRACE):
             self.require_same_line()
             self.advance()
+            self.require_same_line()
             names = [self.match(T.IDENT, "a member name").value]
             while self.check(T.COMMA):
+                self.require_same_line()
                 self.advance()
+                self.require_same_line()
                 names.append(self.match(T.IDENT, "a member name").value)
+            self.require_same_line()
             self.match(T.RBRACE, "'}' or ','")
         return Import(name_token.value, names, from_lib)
 
