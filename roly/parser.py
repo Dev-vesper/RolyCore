@@ -200,15 +200,15 @@ class Parser:
             f"expected a statement, got {self.describe(self.current())}",
             self.current(),
         )
-
+    #
     def parse_assignment(self):
         name_token = self.advance()
-        if self.new_line():
+        token_type = self.current().type
+        if (token_type is T.ASSIGN or token_type in COMPOUND_OPS) and self.new_line():
             raise ParseError(
                 f"'=' must follow '{name_token.value}' on the same line",
                 self.current(),
             )
-        token_type = self.current().type
         if token_type is T.ASSIGN:
             self.advance()
             self.require_same_line()
