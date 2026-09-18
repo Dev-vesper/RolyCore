@@ -7,7 +7,7 @@ reference. The source code carries no comments or docstrings (project
 convention), so the "why" lives here — the file is public and tracked in the
 repository.
 
-Facts below were verified against the source on 2026-09-15. When this document
+Facts below were verified against the source on 2026-09-18. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -92,15 +92,21 @@ Assignment is a *statement*, never an expression. There are no `and`/`or`/`not`.
 **The one-line rule.** An operator (binary or compound-assign `=`) and its
 left-hand side must share a line. The parser tracks `prev_line` (line of the
 last consumed token) and calls `require_same_line()` before every operator,
-right operand, `[`, `(` and `.` — and after every statement keyword: the `(`
-that opens `if`/`while`/`print` and a function's parameter list must follow
-its keyword on the same line. That check is a no-op while `bracket_depth >
+right operand, `[`, `(` and `.` — and at every other binding site: the member
+name after `.`, the type after a parameter `:`, the module name after
+`import`/`!import` and its brace list, and the `if` after `else` must all
+stay on their line. After every statement keyword, the `(` that opens
+`if`/`while`/`print` and a function's parameter list must follow its keyword
+on the same line. That check is a no-op while `bracket_depth >
 0` — inside open `(` or `[` groups (call args, subscripts, parenthesized
 expressions, list literals, and the parens of `if`/`while`/`print`) newlines
 are free. The lexer itself skips all whitespace including newlines, so the
 whole rule lives in `Parser.new_line()`. Violations get one of two messages:
-`'=' must follow 'x' on the same line` for assignments, or
-`an expression cannot continue on the next line` for operators.
+`'=' must follow 'x' on the same line` — assignments, and only when an
+`=`/compound operator really sits on the next line — or `an expression
+cannot continue on the next line` for everything else; a lone identifier
+statement falls through to the rewind path's own `expected '=' or a
+compound assignment after 'x', or a call like x(...)` error.
 
 **Expression statements.** `parse_assignment` peeks a leading identifier; if
 no `=`/compound operator follows on the same line, it rewinds
@@ -281,7 +287,7 @@ Python exceptions through the compiled closures:
 |---|---|---|
 | `int(x)` | 1 | Strict grammar: optional sign + ASCII digits only — no whitespace, underscores, unicode digits. `int(TRUE)` → `1` allowed. Rejects lists. `int(float)` truncates toward zero; `int(inf)`/`int(nan)` → `cannot convert inf to int`. |
 | `float(x)` | 1 | float passes through; `int`/`bool` convert (`float(7)` → `7.0`). Strings follow Python's grammar minus the exotic spellings: optional sign, digits with optional dot on either side (`"1."`/`".5"` convert), optional exponent — no whitespace, underscores, `inf`/`nan` spellings. Rejects lists. |
-| `str(x)` | 1 | `str(TRUE)` → `"True"` (matches what `print` shows). Lists render Roly-style: `[1, "a"]` — string elements double-quoted, nested lists recursed, `"` escaped as `\"`. Floats render in Python's spelling (`1.5`, `inf`). |
+| `str(x)` | 1 | `str(TRUE)` → `"True"` (matches what `print` shows). Lists render Roly-style: `[1, "a"]` — string elements double-quoted and escaped with every Roly string escape (`\\`, `\"`, `\n`, `\t` — backslash FIRST so the added escapes don't re-escape; `_escape_for_list`), nested lists recursed. Floats render in Python's spelling (`1.5`, `inf`). |
 | `bool(x)` | 1 | Python-style truthiness: `""`/`0` → `FALSE`, non-empty str/int → `TRUE`. Rejects lists. |
 | `len(x)` | 1 | str or list; exact types. |
 | `char(s, i)` | 2 | Both args exact types (str, int); 0-based; OOB runtime error. |
@@ -1054,6 +1060,18 @@ it — annotations are decoration, and the AST carries bare names only.
   26 to 16 functions: no boxing needed, one `map_set(m, k, v)` for every
   key/value type, hashing unified to djb2 over `str(key)` so every value
   type can be a key (identity follows `str()`: `7` ≠ `"7"`, `1` ≠ `1.0`).
+- **Phase 38 (2026-09-18)** — hardening round: list rendering now emits
+  every Roly string escape. `to_str`'s list branch routes string elements
+  through `_escape_for_list` (`\\` first, then `\"`, `\n`, `\t`), so a
+  printed list holding tabs/newlines/backslashes stays one re-lexable line
+  instead of breaking the output (Phase 24 escaped `"` only). The one-line
+  rule was widened to the remaining binding sites — the `if` after `else`,
+  the module name after `import`/`!import`, the import brace list, the
+  member name after `.`, and the type after a parameter `:` — each pinned by
+  a par_err test; and a lone identifier statement now reports the
+  assignment fallback message instead of the misleading `'=' must follow`
+  one (that message fires only when an `=`/compound operator really sits on
+  the next line).
 
 ## 17. Tests & Maintenance Rules
 
