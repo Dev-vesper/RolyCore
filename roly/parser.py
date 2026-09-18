@@ -458,16 +458,18 @@ class Parser:
             if self.check(T.LPAREN):
                 self.require_same_line()
                 return self.parse_call_tail(token.value)
-            if self.check(T.DOT):
+        if self.check(T.DOT):
+            self.require_same_line()
+            self.advance()
+            self.require_same_line()
+            member = self.match(T.IDENT, "a member name after '.'")
+            if self.check(T.LPAREN):
                 self.require_same_line()
-                self.advance()
-                member = self.match(T.IDENT, "a member name after '.'")
-                if self.check(T.LPAREN):
-                    self.require_same_line()
-                    return ModuleCall(
-                        token.value, member.value, self.parse_arguments()
-                    )
-                return ModuleVar(token.value, member.value)
+                return ModuleCall(
+                    token.value, member.value, self.parse_arguments()
+                )
+            return ModuleVar(token.value, member.value) 
+            #
             return Var(token.value)
         if token.type in BUILTIN_NAMES:
             self.advance()
