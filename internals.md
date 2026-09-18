@@ -94,10 +94,13 @@ left-hand side must share a line. The parser tracks `prev_line` (line of the
 last consumed token) and calls `require_same_line()` before every operator,
 right operand, `[`, `(` and `.` — and at every other binding site: the member
 name after `.`, the type after a parameter `:`, the module name after
-`import`/`!import` and its brace list, and the `if` after `else` must all
-stay on their line. After every statement keyword, the `(` that opens
-`if`/`while`/`print` and a function's parameter list must follow its keyword
-on the same line. That check is a no-op while `bracket_depth >
+`import`/`!import` and its whole brace list (after `{`, around each `,`,
+before `}`), and the function name after `fn` must all stay on their line.
+After every statement keyword, the `(` that opens `if`/`while`/`print` and a
+function's parameter list must follow its keyword on the same line, and the
+`{` that opens a required block must sit on its introducer's line
+(`if (...)`, `else`, `while (...)`, `fn name(...)`) — a bare `{` statement,
+having no introducer, is exempt. That check is a no-op while `bracket_depth >
 0` — inside open `(` or `[` groups (call args, subscripts, parenthesized
 expressions, list literals, and the parens of `if`/`while`/`print`) newlines
 are free. The lexer itself skips all whitespace including newlines, so the
@@ -1098,6 +1101,11 @@ boundary, so a deduplicated key survives only in b's entry.
   field deleted), compiler branch, grammar, guide, the par_err pin
   (`expected '{', got 'if'`), and the rolypip/invariant programs that used
   ladders (rewritten as nested `else { if ... }`).
+- **Phase 41 (2026-09-18)** — parser same-line holes closed (the H1–H3
+  findings): a required block's `{` must sit on its introducer's line
+  (`if (...)`, `else`, `while (...)`, `fn name(...)`), a function name must
+  follow `fn`, and an import brace list must fit on one line; each pinned in
+  par_err, valid programs unaffected (bare `{` statements stay free).
 
 ## 17. Tests & Maintenance Rules
 
