@@ -360,3 +360,13 @@ def test_evaluation_order():
         'print(mark(1) < mark(2))',
         "m1\nm2\nTrue",
     )
+
+def test_list_string_escapes():
+    invariant(
+        'print(["a\\nb", "t\\tb", "b\\\\b", "q\\"q"])',
+        '["a\\nb", "t\\tb", "b\\\\b", "q\\"q"]',
+    )
+    invariant(
+        '!import lists {join}\nprint(join([["\\n"]], ","))',
+        '["\\n"]',
+    )

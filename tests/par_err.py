@@ -217,3 +217,34 @@ def test_error_positions():
 def test_error_message_mentions_location():
     with pytest.raises(ParseError, match="line 1"):
         parse("x =")
+
+
+def test_member_name_must_follow_dot_on_same_line():
+    for source in ["x = testme.\nvalue", "x = testme.\nbump()"]:
+        with pytest.raises(ParseError, match="cannot continue on the next line"):
+            parse(source)
+
+
+def test_else_if_must_be_same_line():
+    with pytest.raises(ParseError, match="cannot continue on the next line"):
+        parse("if (TRUE) { ... }\nelse\nif (FALSE) { ... }")
+
+
+def test_import_keyword_and_name_same_line():
+    for source in ["import\nmath", "!import\nmath", "import math\n{gcd}"]:
+        with pytest.raises(ParseError, match="cannot continue on the next line"):
+            parse(source)
+
+
+def test_annotation_must_be_same_line():
+    for source in [
+        "fn f (a:\nint) { return a }",
+        "fn f (a\n: int) { return a }",
+    ]:
+        with pytest.raises(ParseError, match="cannot continue on the next line"):
+            parse(source)
+
+
+def test_bare_identifier_error_message():
+    with pytest.raises(ParseError, match="expected '=' or a compound assignment"):
+        parse("x\ny = 5")
