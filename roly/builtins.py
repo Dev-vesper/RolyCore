@@ -8,6 +8,7 @@ DIGITS = "0123456789"
 
 _INF = float("inf")
 
+
 def _escape_for_list(text):
     return (
         text.replace("\\", "\\\\")
@@ -15,6 +16,7 @@ def _escape_for_list(text):
         .replace("\n", "\\n")
         .replace("\t", "\\t")
     )
+
 
 def to_int(value):
     if type(value) is int:
@@ -51,6 +53,7 @@ def to_str(value):
         ]
         return "[" + ", ".join(parts) + "]"
     return str(value)
+
 
 def to_bool(value):
     if type(value) is bool:
