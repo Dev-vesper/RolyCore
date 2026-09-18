@@ -227,7 +227,7 @@ class Parser:
                 name_token,
             )
         return ExprStmt(expr)
-
+    #
     def parse_if(self):
         self.match(T.IF, "'if'")
         self.require_same_line()
@@ -242,6 +242,7 @@ class Parser:
         while self.check(T.ELSE):
             self.advance()
             if self.check(T.IF):
+                self.require_same_line()
                 self.advance()
                 self.require_same_line()
                 self.match(T.LPAREN, "'('")
@@ -328,12 +329,14 @@ class Parser:
         self.loop_depth = saved_loop_depth
         self.fn_depth -= 1
         return FnDef(name_token.value, params, body)
-
+    #
     def parse_import(self, from_lib=False):
         self.match(T.IMPORT, "'import' after '!'" if from_lib else "'import'")
+        self.require_same_line()
         name_token = self.match(T.IDENT, "a module name")
         names = None
         if self.check(T.LBRACE):
+            self.require_same_line()
             self.advance()
             names = [self.match(T.IDENT, "a member name").value]
             while self.check(T.COMMA):
@@ -341,11 +344,13 @@ class Parser:
                 names.append(self.match(T.IDENT, "a member name").value)
             self.match(T.RBRACE, "'}' or ','")
         return Import(name_token.value, names, from_lib)
-
+    #
     def parse_parameter(self):
         name_token = self.match(T.IDENT, "a parameter name")
         if self.check(T.COLON):
+            self.require_same_line()
             self.advance()
+            self.require_same_line()
             type_token = self.current()
             if type_token.type not in PARAM_TYPES:
                 raise ParseError(
@@ -354,7 +359,7 @@ class Parser:
                     type_token,
                 )
             self.advance()
-        return name_token.value
+        return name_token.value 
 
     def parse_block(self):
         self.enter()
