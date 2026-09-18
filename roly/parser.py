@@ -200,7 +200,7 @@ class Parser:
             f"expected a statement, got {self.describe(self.current())}",
             self.current(),
         )
-    #
+
     def parse_assignment(self):
         name_token = self.advance()
         token_type = self.current().type
@@ -227,7 +227,7 @@ class Parser:
                 name_token,
             )
         return ExprStmt(expr)
-    #
+
     def parse_if(self):
         self.match(T.IF, "'if'")
         self.require_same_line()
@@ -329,7 +329,7 @@ class Parser:
         self.loop_depth = saved_loop_depth
         self.fn_depth -= 1
         return FnDef(name_token.value, params, body)
-    #
+
     def parse_import(self, from_lib=False):
         self.match(T.IMPORT, "'import' after '!'" if from_lib else "'import'")
         self.require_same_line()
@@ -344,7 +344,7 @@ class Parser:
                 names.append(self.match(T.IDENT, "a member name").value)
             self.match(T.RBRACE, "'}' or ','")
         return Import(name_token.value, names, from_lib)
-    #
+
     def parse_parameter(self):
         name_token = self.match(T.IDENT, "a parameter name")
         if self.check(T.COLON):
@@ -359,7 +359,7 @@ class Parser:
                     type_token,
                 )
             self.advance()
-        return name_token.value 
+        return name_token.value
 
     def parse_block(self):
         self.enter()
@@ -463,18 +463,17 @@ class Parser:
             if self.check(T.LPAREN):
                 self.require_same_line()
                 return self.parse_call_tail(token.value)
-        if self.check(T.DOT):
-            self.require_same_line()
-            self.advance()
-            self.require_same_line()
-            member = self.match(T.IDENT, "a member name after '.'")
-            if self.check(T.LPAREN):
+            if self.check(T.DOT):
                 self.require_same_line()
-                return ModuleCall(
-                    token.value, member.value, self.parse_arguments()
-                )
-            return ModuleVar(token.value, member.value) 
-            #
+                self.advance()
+                self.require_same_line()
+                member = self.match(T.IDENT, "a member name after '.'")
+                if self.check(T.LPAREN):
+                    self.require_same_line()
+                    return ModuleCall(
+                        token.value, member.value, self.parse_arguments()
+                    )
+                return ModuleVar(token.value, member.value)
             return Var(token.value)
         if token.type in BUILTIN_NAMES:
             self.advance()
