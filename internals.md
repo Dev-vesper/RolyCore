@@ -20,7 +20,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (16 entries), `TYPE_TOKENS` (int/str/bool/list/float). |
 | `roly/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
-| `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` carries a flat `elifs` list. |
+| `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
 | `roly/builtins.py` | The 18 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
@@ -116,7 +116,7 @@ lines, `1 + 2` alone is a parse error. This is also why the rewind exists:
 statement-level parsing must not consume the identifier before deciding.
 
 **Blocks are never empty.** `parse_block` rejects `{ }` immediately after
-the `{` with one message for every block kind (fn body, if/elif/else,
+the `{` with one message for every block kind (fn body, if/else,
 while, bare block). The grammar's `block` rule is `statement+`. The one
 exception: `{ ... }` — an ELLIPSIS token as the entire body marks the
 block as intentionally empty and compiles to `Block([])`.
@@ -276,10 +276,10 @@ Python exceptions through the compiled closures:
   not a runtime one.
 - `return` overrides both: raising `ReturnSignal` inside a loop inside a fn
   still exits the fn. Signal priority falls out of exception unwinding.
-- `if`/`elif` chains are flat: `If(cond, block, elifs=[(cond, block)...],
-  else_block)`. First-true wins, exactly one terminal `else`. Deliberately
-  NOT desugared into nested `If`s, so a long else-if ladder costs no parser
-  depth (the elifs list is consumed iteratively).
+- `if` is a two-branch node: `If(cond, then_block, else_block)` with one
+  optional `else`. There is no `else if` (removed 2026-09-18, user decision
+  — Phase 40): longer chains nest an `if` inside `else`, so a ladder now
+  costs real parser depth against MAX_NESTING = 100.
 
 ## 9. Builtins (18)
 
@@ -710,8 +710,10 @@ stack depth. Per-module interpreters would break this — rejected design.
 must produce a bool. `1 == 1 == 1` is `TRUE`; before the fix it silently
 evaluated `(1 == 1) == 1` → `FALSE`.
 
-15.28 `If.elifs` is a flat list by design — do not "clean it up" into
-nested `If`s; deep else-if ladders cost no parser depth this way.
+15.28 `else if` does NOT exist (removed 2026-09-18, user decision): `if`
+takes at most one optional `else` block and chains nest an `if` inside
+`else`. The flat `If.elifs` list from Phase 8 is gone with the syntax;
+nested ladders pay real parser depth against MAX_NESTING = 100.
 
 15.29 `break`/`continue` innermost-loop binding is a PARSE-time check
 (`loop_depth`), and `ReturnSignal` naturally overrides both during
@@ -915,6 +917,7 @@ boundary, so a deduplicated key survives only in b's entry.
   User decision: NO floats (reversed in Phase 30).
 - **Phase 7** — `tests/rolypip/` per-feature showcases.
 - **Phase 8** — else-if chains as a flat `elifs` list (depth-free).
+  (Reversed in Phase 40.)
 - **Phase 9** — standard library: auto-load, no import keyword, reserved
   names, `lib_depth` frame lock (after the `digit_sum` global-clobber bug).
 - **Phase 10** — string builtins `format`/`len`/`char`; `format` proven
@@ -1077,8 +1080,9 @@ boundary, so a deduplicated key survives only in b's entry.
   through `_escape_for_list` (`\\` first, then `\"`, `\n`, `\t`), so a
   printed list holding tabs/newlines/backslashes stays one re-lexable line
   instead of breaking the output (Phase 24 escaped `"` only). The one-line
-  rule was widened to the remaining binding sites — the `if` after `else`,
-  the module name after `import`/`!import`, the import brace list, the
+  rule was widened to the remaining binding sites — the `if` after `else`
+  (dropped with `else if` in Phase 40), the module name after
+  `import`/`!import`, the import brace list, the
   member name after `.`, and the type after a parameter `:` — each pinned by
   a par_err test; and a lone identifier statement now reports the
   assignment fallback message instead of the misleading `'=' must follow`
@@ -1088,6 +1092,12 @@ boundary, so a deduplicated key survives only in b's entry.
   now scans the full equal-hash chain in the right input, so colliding keys
   like `7`/`"7"` merge right-wins with no phantom extra entry; verified via
   CLI probes (collision pairs, disjoint and empty sides, 15-key overlap).
+- **Phase 40 (2026-09-18)** — `else if` removed (user decision): `if` takes
+  at most one optional `else` block; chains nest an `if` inside `else` and
+  pay real parser depth. Touched: parser (`parse_if`), `If` node (`elifs`
+  field deleted), compiler branch, grammar, guide, the par_err pin
+  (`expected '{', got 'if'`), and the rolypip/invariant programs that used
+  ladders (rewritten as nested `else { if ... }`).
 
 ## 17. Tests & Maintenance Rules
 

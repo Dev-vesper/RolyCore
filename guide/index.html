@@ -474,8 +474,8 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
 <section id="control">
     <h2>Control Flow</h2>
 
-    <h3>if / else if / else</h3>
-    <p>The condition is any expression in parentheses; the body is a braced block. <code>else if</code> chains freely, and one optional <code>else</code> ends the chain.</p>
+    <h3>if / else</h3>
+    <p>The condition is any expression in parentheses; the body is a braced block. One optional <code>else</code> block may follow.</p>
     <pre><code><span class="tok-kw">if</span> (x &gt; 10) {
     y = 1
 } <span class="tok-kw">else</span> {
@@ -484,12 +484,14 @@ l = append_nine(l)     <span class="tok-com">// [1, 2, 9] — the call alone wou
 
 <span class="tok-kw">if</span> (x == 1) {
     y = 10
-} <span class="tok-kw">else if</span> (x == 2) {
-    y = 20
 } <span class="tok-kw">else</span> {
-    y = 30
+    <span class="tok-kw">if</span> (x == 2) {
+        y = 20
+    } <span class="tok-kw">else</span> {
+        y = 30
+    }
 }</code></pre>
-    <div class="note">Branches are checked top to bottom — the first true condition wins, and later conditions are not evaluated at all. At most one <code>else</code>, at the end of the chain. A number condition works: zero is false, nonzero is true. A string condition is an error.</div>
+    <div class="note">Branches are checked top to bottom — the first true condition wins, and later conditions are not evaluated at all. There is no <code>else if</code>: longer chains nest an <code>if</code> inside the <code>else</code> block, as above. A number condition works: zero is false, nonzero is true. A string condition is an error.</div>
 
     <div class="note">Boolean literals are <code>TRUE</code> and <code>FALSE</code> — capital letters only. Lowercase <code>true</code> / <code>false</code> are ordinary identifiers (undefined variables).</div>
 
