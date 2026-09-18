@@ -223,13 +223,41 @@ def test_member_name_must_follow_dot_on_same_line():
             parse(source)
 
 
+def test_fn_name_must_follow_fn_on_same_line():
+    with pytest.raises(ParseError, match="cannot continue on the next line"):
+        parse("fn\nf () { return 1 }")
+
+
 def test_else_if_is_not_supported():
     with pytest.raises(ParseError, match="expected '\\{', got 'if'"):
         parse("if (TRUE) { x = 1 } else if (TRUE) { x = 2 }")
 
 
+def test_block_brace_follows_introducer_on_same_line():
+    for source in [
+        "if (TRUE)\n{ x = 1 }",
+        "if (TRUE) { x = 1 } else\n{ x = 2 }",
+        "while (TRUE)\n{ break }",
+        "fn f ()\n{ return 1 }",
+        "if (TRUE)\n{\nx = 1\n}",
+    ]:
+        with pytest.raises(ParseError, match="cannot continue on the next line"):
+            parse(source)
+
+
 def test_import_keyword_and_name_same_line():
     for source in ["import\nmath", "!import\nmath", "import math\n{gcd}"]:
+        with pytest.raises(ParseError, match="cannot continue on the next line"):
+            parse(source)
+
+
+def test_import_brace_list_stays_on_one_line():
+    for source in [
+        "!import math {\ngcd}",
+        "!import math {gcd,\nlcm}",
+        "!import math {gcd\n}",
+        "import math {gcd\n, lcm}",
+    ]:
         with pytest.raises(ParseError, match="cannot continue on the next line"):
             parse(source)
 
