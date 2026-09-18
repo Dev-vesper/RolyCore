@@ -62,7 +62,6 @@ def test_empty_block_errors():
     for source in [
         "fn f () { }", "fn f () { return 1 } fn g () { }",
         "if (TRUE) { }", "if (TRUE) { x = 1 } else { }",
-        "if (TRUE) { x = 1 } else if (TRUE) { }",
         "while (TRUE) { }", "{ }",
     ]:
         with pytest.raises(ParseError, match="a block cannot be empty"):
@@ -176,7 +175,6 @@ def test_operator_on_next_line_is_parse_error():
         "l = [1, 2] x = l\n[0]", "x = f\n(1)", "x =\n-2",
         "if\n(TRUE) { ... }", "while\n(TRUE) { break }", "print\n(1)",
         "fn f\n(a: int) { return a }",
-        "if (TRUE) { ... } else if\n(FALSE) { ... }",
     ]:
         with pytest.raises(ParseError, match="cannot continue on the next line"):
             parse(source)
@@ -225,9 +223,9 @@ def test_member_name_must_follow_dot_on_same_line():
             parse(source)
 
 
-def test_else_if_must_be_same_line():
-    with pytest.raises(ParseError, match="cannot continue on the next line"):
-        parse("if (TRUE) { ... }\nelse\nif (FALSE) { ... }")
+def test_else_if_is_not_supported():
+    with pytest.raises(ParseError, match="expected '\\{', got 'if'"):
+        parse("if (TRUE) { x = 1 } else if (TRUE) { x = 2 }")
 
 
 def test_import_keyword_and_name_same_line():

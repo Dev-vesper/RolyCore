@@ -73,7 +73,7 @@ def test_condition_type_errors():
     raises("condition must be a number", "if (list()) { x = 1 }")
     raises(
         "condition must be a number",
-        'if (FALSE) { y = 1 } else if ("yes") { y = 2 }',
+        'if (FALSE) { y = 1 } else { if ("yes") { y = 2 } }',
     )
 
 

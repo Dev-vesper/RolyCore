@@ -149,8 +149,8 @@ def test_control_flow():
         "True",
     )
     invariant(
-        "x = 2\nif (x < 1) { print(\"low\") } else if (x < 5) { print(\"mid\") } "
-        "else { print(\"high\") }",
+        "x = 2\nif (x < 1) { print(\"low\") } else { if (x < 5) { "
+        "print(\"mid\") } else { print(\"high\") } }",
         "mid",
     )
     invariant(
