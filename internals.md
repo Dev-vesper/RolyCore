@@ -380,7 +380,10 @@ plain list value):
   (linear probing over the equal-hash chain). `_put_h` upserts: `set` in
   place on a key hit, otherwise `insert` at the lower bound — the array
   stays hash-sorted with no re-sorting. `map_merge` is a single ordered walk
-  over both hash-sorted inputs (no rehashing; right side wins conflicts).
+  over both hash-sorted inputs (no rehashing; right side wins conflicts),
+  and its duplicate check scans the WHOLE equal-hash chain in the right
+  input — checking only the first same-hash entry missed colliding keys
+  deeper in the run (`7` vs `"7"`), fixed 2026-09-18 (15.60).
 - Every public function runs `_validate` first (shape: each entry a 3-item
   list — the `push` trick doubles as the type test). So one set/get costs
   O(n) validation plus the O(log n) search; the language has no cheaper
@@ -886,6 +889,15 @@ is also two-headed: `parse_parameter` validates `: type` against the five
 known names (a typo like `: integr` stays a ParseError) and then drops
 it — annotations are decoration, and the AST carries bare names only.
 
+15.60 **`map_merge`'s duplicate check is chain-wide, not first-entry**
+(fixed 2026-09-18): entries sort by stored hash and `7` vs `"7"` collide
+(both render through `str()`), so a right-side key match must scan the
+entire equal-hash run — the first-entry version kept BOTH keys and the left
+value won (`map_get` returned a's value with the phantom pair still in the
+map), violating the documented right-wins merge. The fixed walk emits a's
+non-duplicate entries in place and defers the whole b run to the next hash
+boundary, so a deduplicated key survives only in b's entry.
+
 ## 16. Decision History & Evolutionary Phases
 
 - **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
@@ -1072,6 +1084,10 @@ it — annotations are decoration, and the AST carries bare names only.
   assignment fallback message instead of the misleading `'=' must follow`
   one (that message fires only when an `=`/compound operator really sits on
   the next line).
+- **Phase 39 (2026-09-18)** — `map_merge` fix (15.60): duplicate detection
+  now scans the full equal-hash chain in the right input, so colliding keys
+  like `7`/`"7"` merge right-wins with no phantom extra entry; verified via
+  CLI probes (collision pairs, disjoint and empty sides, 15-key overlap).
 
 ## 17. Tests & Maintenance Rules
 

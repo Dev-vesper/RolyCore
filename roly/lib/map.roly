@@ -14,7 +14,7 @@
 // lower bound as the insertion point, so the array stays sorted by hash
 // without any re-sorting. map_merge walks both hash-sorted inputs in one
 // ordered pass — no rehashing; on a key present in both sides, the right
-// side wins.
+// side wins, matched against the whole equal-hash run in b.
 //
 // Every public function validates the map's shape first: each entry must be
 // a 3-item list. push() only accepts lists, so the length check doubles as
@@ -189,7 +189,8 @@ fn show (m) {
 }
 
 // ordered merge over the two hash-sorted inputs; the right side wins on
-// shared keys
+// shared keys. A key match scans the whole equal-hash chain in b, not just
+// its first entry — colliding keys (7 vs "7") can sit anywhere in the run.
 fn map_merge (a, b) {
     _validate(a)
     _validate(b)
@@ -198,31 +199,27 @@ fn map_merge (a, b) {
     j = 0
     while (i < len(a)) {
         ha = get(get(a, i), 0)
-        drain = TRUE
-        while (drain) {
-            if (j >= len(b)) {
-                drain = FALSE
+        while (j < len(b)) {
+            if (get(get(b, j), 0) < ha) {
+                r = push(r, get(b, j))
+                j += 1
             } else {
-                if (get(get(b, j), 0) < ha) {
-                    r = push(r, get(b, j))
-                    j += 1
-                } else {
-                    drain = FALSE
-                }
+                break
             }
         }
         dup = FALSE
-        if (j < len(b)) {
-            if (get(get(b, j), 0) == ha) {
-                if (get(get(b, j), 1) == get(get(a, i), 1)) {
-                    dup = TRUE
-                }
+        k = j
+        while (k < len(b)) {
+            if (get(get(b, k), 0) != ha) {
+                break
             }
+            if (get(get(b, k), 1) == get(get(a, i), 1)) {
+                dup = TRUE
+                break
+            }
+            k += 1
         }
-        if (dup) {
-            r = push(r, get(b, j))
-            j += 1
-        } else {
+        if (dup == FALSE) {
             r = push(r, get(a, i))
         }
         i += 1
