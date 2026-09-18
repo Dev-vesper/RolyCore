@@ -1106,6 +1106,11 @@ boundary, so a deduplicated key survives only in b's entry.
   (`if (...)`, `else`, `while (...)`, `fn name(...)`), a function name must
   follow `fn`, and an import brace list must fit on one line; each pinned in
   par_err, valid programs unaffected (bare `{` statements stay free).
+- **Phase 42 (2026-09-18)** — grammar spec corrections: the comparison rule
+  is `( comparison_op additive )*`, not `+` — a bare additive has always
+  been a valid expression (zero comparison ops) — fixed in both the
+  `grammar` file and the guide's embedded copy, whose `if_statement` rule
+  also dropped its stale `else if` alternative left from Phase 40.
 
 ## 17. Tests & Maintenance Rules
 

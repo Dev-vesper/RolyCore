@@ -42,7 +42,7 @@ block               : '{' statement+ '}' | '{' '...' '}' ;
 (* '...' is only legal as the entire body of an otherwise-empty block. *)
 
 expression          : comparison ;
-comparison          : additive ( comparison_op additive )+ ;
+comparison          : additive ( comparison_op additive )* ;
 comparison_op       : '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;

@@ -908,7 +908,7 @@ assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
 compound_op         : '+=' | '-=' | '*=' | '/=' ;
 
-if_statement        : 'if' '(' expression ')' block ( 'else' 'if' '(' expression ')' block )* ( 'else' block )? ;
+if_statement        : 'if' '(' expression ')' block ( 'else' block )? ;
 while_statement     : 'while' '(' expression ')' block ;
 print_statement     : 'print' '(' expression ')' ;
 
@@ -922,7 +922,7 @@ block               : '{' statement+ '}' | '{' '...' '}' ;
 (* '...' is only legal as the entire body of an otherwise-empty block. *)
 
 expression          : comparison ;
-comparison          : additive ( comparison_op additive )+ ;
+comparison          : additive ( comparison_op additive )* ;
 comparison_op       : '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
