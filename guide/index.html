@@ -618,7 +618,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>insert()</code>, <code>delete_at()</code>, <code>concat()</code>, <code>map_equal()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
+    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, <code>chr()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>insert()</code>, <code>delete_at()</code>, <code>concat()</code>, <code>map_equal()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 z = int(3.9)        <span class="tok-com">// 3 — floats truncate toward zero</span>
@@ -632,6 +632,7 @@ b = bool(3)         <span class="tok-com">// TRUE — zero is false, nonzero is 
 n = len("hello")    <span class="tok-com">// 5</span>
 c = char("hello", 1) <span class="tok-com">// "e" — indexes start at 0</span>
 k = ord("e")        <span class="tok-com">// 101 — the code of a single character</span>
+k2 = chr(101)       <span class="tok-com">// "e" — the character for a code; the inverse of ord</span>
 f = format("{} + {} = {}", 1, 2, 3)  <span class="tok-com">// "1 + 2 = 3"</span>
 
 name = <span class="tok-fn">input</span>("name? ")  <span class="tok-com">// prints the prompt, reads one line — a str</span>
@@ -645,6 +646,7 @@ age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? ")
         <tr><td>len(s)</td><td>str, list</td><td>int — length of the string or list</td></tr>
         <tr><td>char(s, i)</td><td>str, int</td><td>str — the single character at position i, 0-based; <code>s[i]</code> is the same thing</td></tr>
         <tr><td>ord(c)</td><td>str</td><td>int — the Unicode code point of the single character c; the empty string or more than one character is an error</td></tr>
+        <tr><td>chr(n)</td><td>int</td><td>str — the single character with code point n; a negative value, a value above 1114111, or a surrogate code point (55296–57343) is an error</td></tr>
         <tr><td>list() / list(s)</td><td>nothing, or a str</td><td>list — the empty list, or the string's characters in order</td></tr>
         <tr><td>push(l, x)</td><td>list, any value</td><td>list — a new list with x appended</td></tr>
         <tr><td>insert(l, i, x)</td><td>list, int, any value</td><td>list — a new list with x placed at position i; 0 prepends, <code>len(l)</code> appends, the rest shift right</td></tr>
@@ -963,7 +965,7 @@ arguments           : expression ( ',' expression )* ;
 
 </div>
 <script>
-    const counts = { keywords: 16, builtins: 18 };
+    const counts = { keywords: 16, builtins: 19 };
     document.querySelectorAll("[data-count]").forEach(el => {
         el.textContent = counts[el.dataset.count];
     });

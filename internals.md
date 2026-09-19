@@ -22,7 +22,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 18 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
+| `roly/builtins.py` | The 19 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
 | `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
@@ -284,7 +284,7 @@ Python exceptions through the compiled closures:
   — Phase 40): longer chains nest an `if` inside `else`, so a ladder now
   costs real parser depth against MAX_NESTING = 100.
 
-## 9. Builtins (18)
+## 9. Builtins (19)
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -295,6 +295,7 @@ Python exceptions through the compiled closures:
 | `len(x)` | 1 | str or list; exact types. |
 | `char(s, i)` | 2 | Both args exact types (str, int); 0-based; OOB runtime error. |
 | `ord(c)` | 1 | Exact str type; must be exactly one character (empty or longer → error). Returns the Unicode code point — the inverse of indexing a single char out. |
+| `chr(n)` | 1 | Exact int type (bools rejected like every numeric argument). The single character with code point `n` — the inverse of `ord`. A negative value, a value above `0x10FFFF`, or a surrogate (`0xD800`–`0xDFFF`) is a clean error; the surrogate guard exists because a lone surrogate would blow up at output time with a Python `UnicodeEncodeError`. |
 | `list()` / `list(s)` | 0–1 | Empty list, or str → list of 1-char strings. |
 | `push(l, x)` | 2 | Returns NEW list. |
 | `insert(l, i, x)` | 3 | Returns NEW list; 0-based, i may equal len (append), OOB errors like `get`. |
@@ -357,8 +358,19 @@ surfaces bit-for-bit as before (the scan now admits floats alongside ints).
 - Every value is UTF-8 text; mutations return `TRUE`; every failure raises
   `RolyError` (fail-loud — `op: cannot <action> '<path>': <os reason>`, reason
   lowercased); `exists` never fails.
+- **All four text I/O natives open with `newline=""`** (Phase 43): `read`,
+  `write`, `append` and `read_lines` are byte-faithful, so `\r\n` and lone
+  `\r` survive a read→write round-trip instead of being folded to `\n` by
+  Python's universal-newline translation. `size` is still a raw byte count
+  (`stat().st_size`), so `size(f)` and `len(read(f))` legitimately differ for
+  multi-byte UTF-8 and for CRLF files — they measure different things.
+  The entry-file and module-load reads in `roly.py`/`interpreter.py` are
+  NOT part of this and still use universal newlines (a raw CR inside a
+  source string literal therefore becomes a line break → `unterminated
+  string`; harmless in practice, and CRLF source files normalize cleanly).
 - `read_lines` splits on `\n`, strips one trailing `\r` per line and drops one
-  trailing empty line; empty file → `[]`. A file that is not valid UTF-8
+  trailing empty line; a lone `\r` is content, not a line break (the rule is
+  "splits on `\n`"). Empty file → `[]`. A file that is not valid UTF-8
   raises `read: cannot read '<path>': the file is not valid UTF-8 text`
   (never a Python traceback — `UnicodeDecodeError` has no `strerror`).
 - `rename` refuses when dst exists (POSIX would silently replace, Windows
@@ -1022,6 +1034,7 @@ boundary, so a deduplicated key survives only in b's entry.
   mismatches).
 - **Phase 31 (2026-09-15)** — `ord(c)` builtin (14th): the Unicode code
   point of a single character, the inverse of `char`-style indexing.
+  (Its own inverse, `chr`, arrived in Phase 43.)
   Strict: a non-str argument or a str of length ≠ 1 is an error. The
   guide's keyword/builtin counts are no longer hardcoded per spot — a
   tiny script at the end of `guide/index.html` fills
@@ -1111,6 +1124,22 @@ boundary, so a deduplicated key survives only in b's entry.
   been a valid expression (zero comparison ops) — fixed in both the
   `grammar` file and the guide's embedded copy, whose `if_statement` rule
   also dropped its stale `else if` alternative left from Phase 40.
+- **Phase 43 (2026-09-18)** — two findings from a /tmp bug-hunt round
+  (JSON parser + `let x: int = 32` lexer/parser written in Roly, the
+  programs live outside the repo):
+  1. `chr(n)` builtin (19th), the missing inverse of `ord`. Until now a
+     pure-Roly program could read a code point out of a string but never
+     build one back, so a JSON decoder could not turn `\b`/`\f`/`\r`/
+     `\uXXXX` into characters (and the lexer's `\" \\ \n \t`-only escape
+     set means those characters cannot be written as literals either).
+     Exact int (bools rejected), range `0..0x10FFFF`, surrogates rejected
+     with a clean error.
+  2. thfile `read`/`write`/`append`/`read_lines` now open with
+     `newline=""` — they were using Python's universal-newline translation,
+     so `read`→`write` silently dropped CR bytes (a 6-byte CRLF file came
+     back as 4 bytes) while `size`/`copy` stayed byte-based. `size` remains
+     a byte count, so `size(f) != len(read(f))` for CRLF or multi-byte
+     files is expected, not a bug (see the thfile specifics above).
 
 ## 17. Tests & Maintenance Rules
 

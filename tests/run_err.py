@@ -200,6 +200,18 @@ def test_ord_errors():
     raises("builtin 'ord' expects 1 argument", 'x = ord("a", "b")')
 
 
+def test_chr_errors():
+    raises("builtin 'chr' expects an int", "x = chr(TRUE)")
+    raises("builtin 'chr' expects an int", 'x = chr("a")')
+    raises("builtin 'chr' expects an int", "x = chr(1.5)")
+    raises("builtin 'chr' expects an int", "x = chr([1])")
+    raises("chr: code point -1 out of range", "x = chr(-1)")
+    raises("chr: code point 1114112 out of range", "x = chr(1114112)")
+    raises("chr: code point 55296 is a surrogate", "x = chr(55296)")
+    raises("builtin 'chr' expects 1 argument", "x = chr()")
+    raises("builtin 'chr' expects 1 argument", "x = chr(65, 66)")
+
+
 def test_insert_errors():
     raises("insert: index 2 out of range for length 1", "x = insert([1], 2, 9)")
     raises("insert: index -1 out of range", "x = insert([1], -1, 9)")

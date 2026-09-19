@@ -67,14 +67,16 @@ def _resolve_path(I, path):
 
 def native_read(I, path):
     try:
-        return _resolve_path(I, path).read_text(encoding="utf-8")
+        with _resolve_path(I, path).open("r", encoding="utf-8", newline="") as handle:
+            return handle.read()
     except (OSError, UnicodeDecodeError) as error:
         _io_fail("read", f"read '{path}'", error)
 
 
 def native_write(I, path, content):
     try:
-        _resolve_path(I, path).write_text(content, encoding="utf-8")
+        with _resolve_path(I, path).open("w", encoding="utf-8", newline="") as handle:
+            handle.write(content)
     except OSError as error:
         _io_fail("write", f"write '{path}'", error)
     return True
@@ -82,7 +84,7 @@ def native_write(I, path, content):
 
 def native_append(I, path, content):
     try:
-        with _resolve_path(I, path).open("a", encoding="utf-8") as handle:
+        with _resolve_path(I, path).open("a", encoding="utf-8", newline="") as handle:
             handle.write(content)
     except OSError as error:
         _io_fail("append", f"append to '{path}'", error)
@@ -110,7 +112,8 @@ def native_size(I, path):
 
 def native_read_lines(I, path):
     try:
-        content = _resolve_path(I, path).read_text(encoding="utf-8")
+        with _resolve_path(I, path).open("r", encoding="utf-8", newline="") as handle:
+            content = handle.read()
     except (OSError, UnicodeDecodeError) as error:
         _io_fail("read_lines", f"read '{path}'", error)
     if content == "":

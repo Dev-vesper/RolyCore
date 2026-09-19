@@ -146,6 +146,16 @@ def text_ord(s):
     return ord(s)
 
 
+def text_chr(n):
+    if type(n) is not int:
+        raise RolyError(f"builtin 'chr' expects an int, got {n!r}")
+    if n < 0 or n > 0x10FFFF:
+        raise RolyError(f"chr: code point {n} out of range")
+    if 0xD800 <= n <= 0xDFFF:
+        raise RolyError(f"chr: code point {n} is a surrogate")
+    return chr(n)
+
+
 def fail(message):
     if type(message) is not str:
         raise RolyError(f"builtin 'fail' expects a str, got {message!r}")
@@ -323,6 +333,7 @@ BUILTINS = {
     "len": text_len,
     "char": text_char,
     "ord": text_ord,
+    "chr": text_chr,
     "format": format_text,
     "fail": fail,
     "input": read_input,
@@ -343,6 +354,7 @@ BUILTIN_ARITIES = {
     "len": 1,
     "char": 2,
     "ord": 1,
+    "chr": 1,
     "push": 2,
     "insert": 3,
     "delete_at": 2,
