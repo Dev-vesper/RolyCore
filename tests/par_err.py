@@ -116,7 +116,7 @@ def test_function_parameter_errors():
 def test_unknown_type_message():
     with pytest.raises(
         ParseError,
-        match=r"unknown type 'double' \(expected int, str, bool, list, or float\)",
+        match=r"unknown type 'double' \(expected int, str, bool, list, float, or file\)",
     ):
         parse("fn f (a: double) { return a }")
 
@@ -157,7 +157,7 @@ def test_malformed_float_literals_rejected():
 def test_type_names_are_not_values():
     for source in [
         "x = int", "print(str)", "x = list", "fn f (list: int) { return list }",
-        "x = float",
+        "x = float", "x = file", "print(file)", "fn f (file: int) { return file }",
     ]:
         with pytest.raises(ParseError):
             parse(source)

@@ -28,7 +28,7 @@ def test_import_parse_errors():
         "while (TRUE) { import testme }",
         "x = testme.print", "x = testme.while", "x = testme.fn",
         "testme.users = 5", "testme.users += 1",
-        "x = a.b.c", "x = f(1).y", "x = testme.",
+        "x = testme.",
         "!import", "!import 5",
         "!import testme {}", "!import testme {users,}",
         "if (TRUE) { !import testme }",
@@ -75,7 +75,7 @@ def test_importing_entry_file_errors(tmp_path):
 
 def test_use_before_import_errors(tmp_path):
     write_module(tmp_path, "testme", "a = 1")
-    raises("is not imported", "x = testme.a import testme", tmp_path)
+    raises("undefined variable 'testme'", "x = testme.a import testme", tmp_path)
 
 
 def test_missing_member_errors(tmp_path):

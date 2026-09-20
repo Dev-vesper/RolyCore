@@ -199,26 +199,9 @@ def test_map_shape_validation_errors():
     )
 
 
-def test_thfile_errors(tmp_path):
-    raises("cannot read", '!import thfile {read} x = read("nope.txt")', base_dir=tmp_path)
-    raises("cannot delete", '!import thfile {delete} delete("nope.txt")', base_dir=tmp_path)
-    raises("cannot get the size", '!import thfile {size} x = size("nope.txt")', base_dir=tmp_path)
-    raises("read_lines", '!import thfile {read_lines} x = read_lines("nope.txt")', base_dir=tmp_path)
-    raises("cannot make directory", '!import thfile {mkdir} mkdir("no/deep")', base_dir=tmp_path)
-    raises("cannot list", '!import thfile {list_dir} x = list_dir("nope")', base_dir=tmp_path)
-    raises("cannot rename", '!import thfile {rename} rename("a.txt", "b.txt")', base_dir=tmp_path)
-    raises("cannot copy", '!import thfile {copy} copy("a.txt", "b.txt")', base_dir=tmp_path)
-    raises("has no member 'nope'", "!import thfile {nope}")
-    raises("has no member 'nope'", "!import thfile thfile.nope()")
+def test_thfile_module_is_gone():
+    raises("library 'thfile' not found", "!import thfile")
     raises("module 'thfile' not found", "import thfile")
-
-
-def test_thfile_types_and_guards(tmp_path):
-    raises("must be str", '!import thfile {read} x = read(42)', base_dir=tmp_path)
-    raises("expects 2 arguments", '!import thfile {copy} x = copy("a")', base_dir=tmp_path)
-    (tmp_path / "a.txt").write_text("a", encoding="utf-8")
-    (tmp_path / "b.txt").write_text("b", encoding="utf-8")
-    raises("already exists", '!import thfile {rename} rename("a.txt", "b.txt")', base_dir=tmp_path)
 
 
 def test_native_module_reimport_from_second_importer(tmp_path):
@@ -231,31 +214,5 @@ def test_native_module_reimport_from_second_importer(tmp_path):
         "import helper {shout}\n"
         "print(shout([1, 2, 3]))\n"
         "print(sort_list([3, 1]))",
-        base_dir=tmp_path,
-    )
-    (tmp_path / "filehelper.roly").write_text(
-        "!import thfile {exists}\nfn probe (p: str) {\n    return exists(p)\n}\n",
-        encoding="utf-8",
-    )
-    run_source(
-        "!import thfile {write, delete}\n"
-        "import filehelper {probe}\n"
-        "write(\"t.txt\", \"x\")\n"
-        "print(probe(\"t.txt\"))\n"
-        "delete(\"t.txt\")",
-        base_dir=tmp_path,
-    )
-
-
-def test_thfile_binary_read_errors(tmp_path):
-    (tmp_path / "blob.bin").write_bytes(b"\xff\xfe\x00abc")
-    raises(
-        "not valid UTF-8 text",
-        '!import thfile {read} x = read("blob.bin")',
-        base_dir=tmp_path,
-    )
-    raises(
-        "not valid UTF-8 text",
-        '!import thfile {read_lines} x = read_lines("blob.bin")',
         base_dir=tmp_path,
     )

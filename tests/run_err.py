@@ -267,6 +267,151 @@ def test_subscript_errors():
     raises("expects a list", "x = TRUE[0]")
 
 
+def test_open_and_dir_builtin_errors(tmp_path):
+    raises("builtin 'open' expects a str path", 'x = open(1, "r")', base_dir=tmp_path)
+    raises("builtin 'open' expects a str mode", 'x = open("a.txt", 1)', base_dir=tmp_path)
+    raises("builtin 'open' expects 2 arguments", 'x = open("a.txt")', base_dir=tmp_path)
+    raises('mode must be "r", "w" or "a"', 'x = open("a.txt", "b")', base_dir=tmp_path)
+    raises('mode must be "r", "w" or "a"', 'x = open("a.txt", "rw")', base_dir=tmp_path)
+    raises("cannot open 'nope.txt'", 'x = open("nope.txt", "r")', base_dir=tmp_path)
+    raises("builtin 'mkdir' expects a str path", "x = mkdir(1)", base_dir=tmp_path)
+    raises("cannot make directory 'no/deep'", 'x = mkdir("no/deep")', base_dir=tmp_path)
+    raises("builtin 'list_dir' expects a str path", "x = list_dir(1)", base_dir=tmp_path)
+    raises("cannot list 'nope'", 'x = list_dir("nope")', base_dir=tmp_path)
+    raises("builtin", "mkdir = 5")
+    raises("builtin", "fn list_dir () { return 1 }")
+    raises("builtin", "fn f (open: int) { return open }")
+
+
+def test_file_method_errors(tmp_path):
+    raises(
+        "method 'read' expects a file handle",
+        'x = "a.txt".read()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'write' expects a file handle",
+        "n = 5 x = n.write(1)",
+        base_dir=tmp_path,
+    )
+    raises(
+        "file has no method 'nope'",
+        'f = open("a.txt", "w") x = f.nope()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'read' expects no arguments",
+        'f = open("a.txt", "w") x = f.read(1)',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'write' expects 1 argument",
+        'f = open("a.txt", "w") f.write()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'write' expects 1 argument",
+        'f = open("a.txt", "w") f.write("a", "b")',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'write' expects a str",
+        'f = open("a.txt", "w") f.write(1)',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'seek' expects an int offset",
+        'f = open("a.txt", "w") f.seek("0")',
+        base_dir=tmp_path,
+    )
+    raises(
+        "seek: offset -1 out of range",
+        'f = open("a.txt", "w") f.seek(-1)',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'rename' expects a str path",
+        'f = open("a.txt", "w") f.rename(1)',
+        base_dir=tmp_path,
+    )
+    raises(
+        "method 'copy' expects a str path",
+        'f = open("a.txt", "w") f.copy(1)',
+        base_dir=tmp_path,
+    )
+    raises(
+        r"'read' is a method, call it as file\(\"a.txt\"\).read\(\)",
+        'f = open("a.txt", "w") x = f.read',
+        base_dir=tmp_path,
+    )
+
+
+def test_closed_file_method_errors(tmp_path):
+    for source in [
+        'x = f.read()', 'f.write("x")', 'x = f.tell()', "f.seek(0)",
+        "x = f.read_lines()",
+    ]:
+        raises(
+            "file is closed",
+            'f = open("a.txt", "w") f.close() ' + source,
+            base_dir=tmp_path,
+        )
+
+
+def test_path_method_errors(tmp_path):
+    raises(
+        "delete: cannot delete 'a.txt'",
+        'f = open("a.txt", "w") f.close() f.delete() f.delete()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "cannot get the size",
+        'f = open("a.txt", "w") f.delete() x = f.size()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "cannot rename",
+        'f = open("a.txt", "w") f.delete() f.rename("b.txt")',
+        base_dir=tmp_path,
+    )
+    raises(
+        "cannot copy",
+        'f = open("a.txt", "w") f.delete() f.copy("b.txt")',
+        base_dir=tmp_path,
+    )
+    raises(
+        "rename: 'b.txt' already exists",
+        'f = open("a.txt", "w") g = open("b.txt", "w") f.rename("b.txt")',
+        base_dir=tmp_path,
+    )
+
+
+def test_file_read_utf8_errors(tmp_path):
+    (tmp_path / "blob.bin").write_bytes(b"\xff\xfe\x00abc")
+    raises(
+        "not valid UTF-8 text",
+        'f = open("blob.bin", "r") x = f.read()',
+        base_dir=tmp_path,
+    )
+    raises(
+        "not valid UTF-8 text",
+        'f = open("blob.bin", "r") x = f.read_lines()',
+        base_dir=tmp_path,
+    )
+
+
+def test_file_method_arity_checked_before_argument_effects(tmp_path):
+    printed = []
+    with pytest.raises(RolyError, match="expects 1 argument"):
+        run_source(
+            'fn g () { print(42) return "x" } f = open("a.txt", "w")'
+            ' x = f.write(g(), "y")',
+            base_dir=tmp_path,
+            out=printed.append,
+        )
+    assert printed == []
+
+
 def test_unknown_operator_fails_to_compile():
     with pytest.raises(RolyError, match="unknown operator"):
         compile_expression(BinOp("%", Num(1), Num(2)))

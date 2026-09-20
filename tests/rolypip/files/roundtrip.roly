@@ -1,0 +1,33 @@
+fn save (h: file, text: str) {
+    return h.write(text)
+}
+
+f = open("notes.txt", "w")
+print(f)
+print(save(f, "line 1\n"))
+f.write("line 2\n")
+f.seek(0)
+print(f.read_lines())
+print(f.size())
+f.close()
+
+g = open("notes.txt", "r")
+print(g.read())
+print(g.tell())
+g.close()
+
+f.copy("backup.txt")
+print(list_dir("."))
+
+h = open("backup.txt", "r")
+print(h.read())
+print(f == f)
+print(f == g)
+h.delete()
+
+f.rename("renamed.txt")
+print(f)
+f.delete()
+print(f.exists())
+print(g.exists())
+print(list_dir("."))
