@@ -3,13 +3,21 @@ import sys
 from pathlib import Path
 
 from roly.ast import FnDef
-from roly.builtins import BUILTINS, BUILTIN_ARITIES, list_get, text_char
+from roly.builtins import (
+    BUILTINS,
+    BUILTIN_ARITIES,
+    BUILTINS_WITH_INTERP,
+    _io_reason,
+    list_get,
+    text_char,
+)
 from roly.compiler import compile_statement
 from roly.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
 from roly.runtime import (
     MISSING,
+    FileHandle,
     ModuleAlias,
     ModuleEntry,
     ModuleFunctionRef,
@@ -133,6 +141,8 @@ class Interpreter:
                 f"argument{'s' if arity != 1 else ''}, got {len(arg_fns)}"
             )
         values = [arg_fn(self) for arg_fn in arg_fns]
+        if name in BUILTINS_WITH_INTERP:
+            return BUILTINS[name](self, *values)
         return BUILTINS[name](*values)
 
     def invoke_function(self, name, function, args):
@@ -242,7 +252,7 @@ class Interpreter:
             except (OSError, UnicodeDecodeError) as error:
                 raise RolyError(
                     f"cannot read {kind} '{module_name}': "
-                    f"{stdlib._io_reason(error)}"
+                    f"{_io_reason(error)}"
                 )
             try:
                 tokens = Lexer(source).tokenize()
@@ -357,6 +367,7 @@ class Interpreter:
             bool: "bool",
             list: "list",
             float: "float",
+            FileHandle: "file",
         }[param_type]
 
     def truthy(self, value):

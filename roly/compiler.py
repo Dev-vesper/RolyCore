@@ -16,8 +16,7 @@ from roly.ast import (
     If,
     Import,
     ListLit,
-    ModuleCall,
-    ModuleVar,
+    Member,
     Neg,
     Num,
     Print,
@@ -27,7 +26,7 @@ from roly.ast import (
     Var,
     While,
 )
-from roly.builtins import roly_equal, to_str
+from roly.builtins import checked_method, member_value, roly_equal, to_str
 from roly.errors import RolyError
 from roly.runtime import (
     BreakSignal,
@@ -209,14 +208,49 @@ def compile_expression(node, discard=False):
             return True
 
         return f_chain
-    if isinstance(node, ModuleVar):
-        module = node.module
-        name = node.name
+    if isinstance(node, Member):
+        chain = []
+        item = node
+        while isinstance(item, Member):
+            chain.append((item.name, item.args))
+            item = item.base
+        chain.reverse()
+        owner = item.name if isinstance(item, Var) else None
+        base_fn = compile_expression(item)
+        steps = [
+            (
+                name,
+                [compile_expression(arg) for arg in args]
+                if args is not None
+                else None,
+            )
+            for name, args in chain
+        ]
 
-        def f_module_var(I):
-            return I.read_module_var(module, name)
+        def f_member_chain(I):
+            pending = steps
+            if owner is not None and owner in I.modules:
+                name, args = steps[0]
+                if args is None:
+                    value = I.read_module_var(owner, name)
+                else:
+                    value = I.call_module_compiled(owner, name, args)
+                    if value is MISSING and not discard:
+                        raise RolyError(
+                            f"function '{name}' did not return a value"
+                        )
+                pending = steps[1:]
+            else:
+                value = base_fn(I)
+            for name, args in pending:
+                if args is None:
+                    member_value(value, name, repr(value))
+                I.count_step()
+                impl = checked_method(value, name, len(args))
+                value = impl(value, *[arg_fn(I) for arg_fn in args])
+            return value
 
-        return f_module_var
+        return f_member_chain
     if isinstance(node, Call):
         name = node.name
         args = [compile_expression(arg) for arg in node.args]
@@ -228,18 +262,6 @@ def compile_expression(node, discard=False):
             return v
 
         return f_call
-    if isinstance(node, ModuleCall):
-        module = node.module
-        name = node.name
-        args = [compile_expression(arg) for arg in node.args]
-
-        def f_module_call(I):
-            v = I.call_module_compiled(module, name, args)
-            if v is MISSING and not discard:
-                raise RolyError(f"function '{name}' did not return a value")
-            return v
-
-        return f_module_call
     raise RolyError(f"cannot evaluate {node!r}")
 
 

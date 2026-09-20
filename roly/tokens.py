@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from roly.runtime import FileHandle
+
 
 class T(Enum):
     INT = auto()
@@ -20,6 +22,7 @@ class T(Enum):
     BOOL_TYPE = auto()
     LIST_TYPE = auto()
     FLOAT_TYPE = auto()
+    FILE_TYPE = auto()
     TRUE = auto()
     FALSE = auto()
     IMPORT = auto()
@@ -75,6 +78,7 @@ KEYWORDS = {
     "bool": T.BOOL_TYPE,
     "list": T.LIST_TYPE,
     "float": T.FLOAT_TYPE,
+    "file": T.FILE_TYPE,
     "TRUE": T.TRUE,
     "FALSE": T.FALSE,
     "import": T.IMPORT,
@@ -86,4 +90,5 @@ TYPE_TOKENS = {
     T.BOOL_TYPE: bool,
     T.LIST_TYPE: list,
     T.FLOAT_TYPE: float,
+    T.FILE_TYPE: FileHandle,
 }

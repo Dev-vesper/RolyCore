@@ -14,6 +14,25 @@ class ReturnSignal(Exception):
         self.value = value
 
 
+class FileHandle:
+    __slots__ = ("path", "name", "base", "stream")
+
+    def __init__(self, path, name, base, stream):
+        self.path = path
+        self.name = name
+        self.base = base
+        self.stream = stream
+
+    def __repr__(self):
+        text = (
+            self.name.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+            .replace("\t", "\\t")
+        )
+        return f'file("{text}")'
+
+
 class ModuleEntry:
     def __init__(self, name, path, globals, functions, imports, from_lib=False):
         self.name = name

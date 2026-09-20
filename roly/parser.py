@@ -14,8 +14,7 @@ from roly.ast import (
     If,
     Import,
     ListLit,
-    ModuleCall,
-    ModuleVar,
+    Member,
     Neg,
     Num,
     Print,
@@ -55,14 +54,6 @@ MULTIPLICATIVE_OPS = {
 }
 
 MAX_NESTING = 100
-
-PARAM_TYPES = {
-    T.INT_TYPE: int,
-    T.STR_TYPE: str,
-    T.BOOL_TYPE: bool,
-    T.LIST_TYPE: list,
-    T.FLOAT_TYPE: float,
-}
 
 BUILTIN_NAMES = {
     T.INT_TYPE: "int",
@@ -220,7 +211,9 @@ class Parser:
             return CompoundAssign(name_token.value, op, self.parse_expression())
         self.pos -= 1
         expr = self.parse_expression()
-        if not isinstance(expr, (Call, ModuleCall)):
+        if not isinstance(expr, Call) and not (
+            isinstance(expr, Member) and expr.args is not None
+        ):
             raise ParseError(
                 f"expected '=' or a compound assignment after "
                 f"'{name_token.value}', or a call like {name_token.value}(...)",
@@ -348,10 +341,10 @@ class Parser:
             self.advance()
             self.require_same_line()
             type_token = self.current()
-            if type_token.type not in PARAM_TYPES:
+            if type_token.type not in TYPE_TOKENS:
                 raise ParseError(
                     f"unknown type {self.describe(type_token)} "
-                    f"(expected int, str, bool, list, or float)",
+                    f"(expected int, str, bool, list, float, or file)",
                     type_token,
                 )
             self.advance()
@@ -427,14 +420,24 @@ class Parser:
 
     def parse_primary(self):
         node = self.parse_atom()
-        while self.check(T.LBRACKET):
+        while self.check(T.LBRACKET) or self.check(T.DOT):
             self.require_same_line()
+            if self.check(T.LBRACKET):
+                self.advance()
+                self.bracket_depth += 1
+                index = self.parse_expression()
+                self.match(T.RBRACKET, "']'")
+                self.bracket_depth -= 1
+                node = Subscript(node, index)
+                continue
             self.advance()
-            self.bracket_depth += 1
-            index = self.parse_expression()
-            self.match(T.RBRACKET, "']'")
-            self.bracket_depth -= 1
-            node = Subscript(node, index)
+            self.require_same_line()
+            member = self.match(T.IDENT, "a member name after '.'")
+            if self.check(T.LPAREN):
+                self.require_same_line()
+                node = Member(node, member.value, self.parse_arguments())
+            else:
+                node = Member(node, member.value, None)
         return node
 
     def parse_atom(self):
@@ -459,18 +462,13 @@ class Parser:
             if self.check(T.LPAREN):
                 self.require_same_line()
                 return self.parse_call_tail(token.value)
-            if self.check(T.DOT):
-                self.require_same_line()
-                self.advance()
-                self.require_same_line()
-                member = self.match(T.IDENT, "a member name after '.'")
-                if self.check(T.LPAREN):
-                    self.require_same_line()
-                    return ModuleCall(
-                        token.value, member.value, self.parse_arguments()
-                    )
-                return ModuleVar(token.value, member.value)
             return Var(token.value)
+        if token.type is T.FILE_TYPE:
+            raise ParseError(
+                "'file' is a type, not a value — open(path, mode) "
+                "returns a file handle",
+                token,
+            )
         if token.type in BUILTIN_NAMES:
             self.advance()
             if self.check(T.LPAREN):
