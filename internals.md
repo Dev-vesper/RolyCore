@@ -7,7 +7,7 @@ reference. The source code carries no comments or docstrings (project
 convention), so the "why" lives here — the file is public and tracked in the
 repository.
 
-Facts below were verified against the source on 2026-09-18. When this document
+Facts below were verified against the source on 2026-09-20. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -17,18 +17,18 @@ and the code disagree, the code wins — then fix this document.
 | Path | Responsibility |
 |---|---|
 | `roly.py` | CLI entry point. `run file.roly` / `exec "code"`. Prints only program `print()` output; errors go to stderr as `error: {msg}` with exit code 1. Handles `BrokenPipeError` by redirecting stdout to devnull. |
-| `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (16 entries), `TYPE_TOKENS` (int/str/bool/list/float). |
+| `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (17 entries), `TYPE_TOKENS` (int/str/bool/list/float/file). |
 | `roly/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
-| `roly/ast.py` | 13 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. |
+| `roly/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. `Member` is the single dot-access node (module member and built-in method alike). |
 | `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
-| `roly/builtins.py` | The 19 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `roly_equal`, `format_text`, list primitives. |
-| `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the native implementations (3 for `lists`, 11 for `thfile`), and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
+| `roly/builtins.py` | The 22 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `BUILTINS_WITH_INTERP` (the three that need the interpreter), the file-handle methods (`FILE_METHODS`/`FILE_METHOD_ARITIES`, `checked_method`, `member_value`), the `_io_reason`/`_io_fail` pair, `roly_equal`, `format_text`, list primitives. |
+| `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the 3 native `lists` implementations, and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
-| `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
+| `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`), the `FileHandle` value type, and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
 | `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
 | `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 6 modules — 49 pure-Roly functions in math/fmt/strings/lists/map plus the thfile anchor (all-native, no Roly code) — imported explicitly with `!import`. |
+| `roly/lib/*.roly` | The standard library itself: 5 modules — 49 pure-Roly functions in math/fmt/strings/lists/map — imported explicitly with `!import`. |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
@@ -65,15 +65,15 @@ stack) was deleted in the 2026-09-12 performance pass. Do not resurrect it.
 program     : (import | fn-decl | statement)*
 statement   : assignment | compound-assign | if | while | print
             | break | continue | return | block
-            | expression-statement        (call or module-call ONLY)
+            | expression-statement        (call or member-call ONLY)
 expression  : comparison (flat chain of >1 comparison op allowed)
 comparison  : additive ((== != < <= > >=) additive)*
 additive    : multiplicative ((+|-) multiplicative)*     ← iterative spine
 multiplicative: unary ((*|/) unary)*                     ← iterative spine
 unary       : '-' unary | primary
-primary     : atom ('[' expression ']')*                 ← iterative postfix
+primary     : atom ('[' expression ']' | '.' IDENT call?)*  ← iterative postfix
 atom        : INT | FLOAT | STRING | TRUE | FALSE | list-literal
-            | IDENT call? | IDENT '.' IDENT call? | builtin-call
+            | IDENT call? | builtin-call
             | '-' atom | '(' expression ')'
 ```
 
@@ -85,7 +85,7 @@ Precedence, loosest to tightest:
 | 2 | `+ -` | numeric operands (int/float) or str+str for `+` |
 | 3 | `* /` | `/` floors two ints, true division when either side is a float |
 | 4 | unary `-` | `-a[0]` is `Neg(Subscript)` — postfix beats unary |
-| 5 | postfix `()` `[]` `.` | call, subscript, module access; chains freely: `f()[0].x[1]` |
+| 5 | postfix `()` `[]` `.` | call, subscript, member access; chains freely: `f()[0].x[1]`, `open("a", "r").read()` |
 
 Assignment is a *statement*, never an expression. There are no `and`/`or`/`not`.
 
@@ -113,10 +113,11 @@ compound assignment after 'x', or a call like x(...)` error.
 
 **Expression statements.** `parse_assignment` peeks a leading identifier; if
 no `=`/compound operator follows on the same line, it rewinds
-(`self.pos -= 1`) and re-parses as an expression. Only `Call` and
-`ModuleCall` nodes survive as statements — `f()` and `mod.f()` are legal
-lines, `1 + 2` alone is a parse error. This is also why the rewind exists:
-statement-level parsing must not consume the identifier before deciding.
+(`self.pos -= 1`) and re-parses as an expression. Only `Call` nodes and
+`Member` nodes *with* arguments survive as statements — `f()` and `mod.f()`
+are legal lines, `1 + 2` and a bare `mod.f` / `f.read` are parse errors. This
+is also why the rewind exists: statement-level parsing must not consume the
+identifier before deciding.
 
 **Blocks are never empty.** `parse_block` rejects `{ }` immediately after
 the `{` with one message for every block kind (fn body, if/else,
@@ -133,7 +134,7 @@ without `;`; it is pure sugar for one-liners and `exec`.
 
 ## 4. Values & Type System
 
-Five value types, period: `int`, `str`, `bool`, `list`, `float`.
+Six value types, period: `int`, `str`, `bool`, `list`, `float`, `file`.
 
 - **int** is Python `int` (unbounded; `sys.set_int_max_str_digits(0)` lifts
   the print limit). `/` floors two ints, true division when either side is
@@ -159,12 +160,23 @@ Five value types, period: `int`, `str`, `bool`, `list`, `float`.
 - **list** is Python `list` but **immutable by discipline**: `push`/`set`
   return *new* lists and callers must rebind (`l = push(l, x)`). `l[i] = x`
   is a parse error and will stay one. No aliasing is possible in user code.
+- **file** is `runtime.FileHandle` — an *open* or closed stream plus its
+  path. Only `open(path, mode)` creates one (§9); it is a full value type:
+  storable in lists, assignable, passable to functions, accepted by a
+  `: file` annotation (cosmetic like every annotation), rendered as
+  `file("path")` by `print`/`str`/`format`/list rendering (via the
+  `to_str` fallback to `__repr__`). Equality is **identity** — both
+  `roly_equal`'s strict-type fallback (`type(l) is type(r) and l == r`) and
+  Python's default `==` give object identity, so two handles on the same
+  path are different values. GC-wise a handle holds a Python file object
+  and can never point back at a list, so the no-cycles assumption (§13)
+  survives.
 
 **Equality.** `==`/`!=` route through `roly_equal` — recursive structural
 comparison where numbers compare by value across int and float
 (`1 == 1.0`, `[1] == [1.0]`), everything else requires strict per-element
-types: `[TRUE] != [1]`, `[[1,2]]` compares element-wise. There is no
-ordering across types.
+types: `[TRUE] != [1]`, `[[1,2]]` compares element-wise, and file handles
+compare by identity. There is no ordering across types.
 
 **Truthiness.** `truthy()` (interpreter.py:348) accepts: `bool` → itself,
 `int`/`float` → `!= 0` (so `if (1)` is legal and true), anything else (str,
@@ -229,7 +241,7 @@ fn name (a, b) { ... return expr }
   a type mismatch surfaces at the first operation that needs the value
   (`fn h (x) { return x + 0.5 } h("s")` → `operator '+' requires numeric
   operands`). An optional `: type` annotation is allowed and PURELY
-  COSMETIC — parsed, validated to be one of the five type names (anything
+  COSMETIC — parsed, validated to be one of the six type names (anything
   else stays a parse error), then dropped; old annotated code runs
   unchanged. Names must be unique and not keyword / builtin names —
   checked at registration with the matching message (§14).
@@ -284,7 +296,7 @@ Python exceptions through the compiled closures:
   — Phase 40): longer chains nest an `if` inside `else`, so a ladder now
   costs real parser depth against MAX_NESTING = 100.
 
-## 9. Builtins (19)
+## 9. Builtins (22) & File Methods
 
 | Name | Arity | Behavior notes |
 |---|---|---|
@@ -307,11 +319,18 @@ Python exceptions through the compiled closures:
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
 | `input(prompt)` | 1 | Prompt must be a str (required). Wraps Python's `input()`: writes the prompt to the REAL stdout, reads one line, returns it as a str with the trailing newline stripped. EOF → `input: end of input reached`. Always returns str — `int(input(...))` is the sanctioned numeric read. |
 | `format(...)` | variadic | `{}` sequential and `{n}` reusable positional placeholders; `{{`/`}}` escapes; mixing auto and manual numbering is an error; messages match Python's `str.format` word-for-word. |
+| `open(path, mode)` | 2 | Opens a file and returns a `file` handle. Mode is `"r"` (must exist), `"w"` (create/truncate), `"a"` (create, writes always append). Relative paths resolve against the entry program's directory. Needs the interpreter (path base) — see `BUILTINS_WITH_INTERP`. |
+| `mkdir(path)` | 1 | Single-level directory creation (`parents=False`); `TRUE` on success, `mkdir: cannot make directory '<path>': <reason>` otherwise. |
+| `list_dir(path)` | 1 | Sorted list of the entry names in a directory; `list_dir: cannot list '<path>': <reason>` otherwise. |
 
 Dispatch rules that matter:
 
 - `BUILTIN_ARITIES` drives arity checks; an **absent entry means variadic**
   (`format`, `list`). Arity is checked before arguments are evaluated.
+- `BUILTINS_WITH_INTERP = {"open", "mkdir", "list_dir"}` — those three are
+  called `BUILTINS[name](self, *values)`; every other builtin gets values
+  only. Anything needing run context (here `I.entry_base_dir`) must come
+  through that first argument (the same rule as `NativeFn`, 15.52).
 - In the parser, `TYPE_TOKENS` + `(` parse as builtin calls in `parse_atom`;
   bare `x = int` is a parse error (same treatment as a keyword).
 - Reading a builtin as a value fails honestly: `x = len` → `'len' is a
@@ -319,6 +338,56 @@ Dispatch rules that matter:
 - `format` is a host builtin on purpose: it was proven unwritable in pure
   Roly (no string disassembly + fixed typed arity). `len`/`char` are the two
   primitives that make every other string algorithm pure-Roly-expressible.
+
+**File handles and methods** (Phase 44 — replaced the `thfile` module).
+
+`f = open("a.txt", "w")` returns the one handle that owns the whole
+lifecycle. Eleven methods, all dispatched through `checked_method`:
+
+| Method | Arity | Behavior notes |
+|---|---|---|
+| `f.read()` | 0 | Everything from the current position to EOF, decoded UTF-8. Position ends at EOF; a second `read()` returns `""`. |
+| `f.read_lines()` | 0 | Same as `read` then split: on `\n`, one trailing `\r` per line dropped, one trailing empty line dropped. Empty text → `[]`. |
+| `f.write(s)` | 1 | Encodes UTF-8, writes at the position, advances, **flushes immediately** (so `copy`/`size`/another process see the bytes), returns `TRUE`. |
+| `f.seek(i)` | 1 | Absolute 0-based **byte** offset; negative is `seek: offset -1 out of range`. Seeking past EOF is allowed (Python semantics). Returns `TRUE`. |
+| `f.tell()` | 0 | Current byte offset. |
+| `f.close()` | 0 | Closes the stream. Idempotent — closing twice is a no-op, not an error. Returns `TRUE`. |
+| `f.exists()` | 0 | Path exists — works after close. |
+| `f.size()` | 0 | `stat().st_size` — a raw **byte** count, so `size(f) != len(f.read())` for multi-byte UTF-8 or CRLF (they measure different things). |
+| `f.rename(dst)` | 1 | Refuses when dst exists (`rename: 'b.txt' already exists`); moves the handle onto the new path, so `f.name`/`f.path` follow and `print(f)` shows the new name. |
+| `f.copy(dst)` | 1 | `shutil.copyfile` — overwrites an existing dst (unlike rename). Works while the handle is open (every write is already flushed). |
+| `f.delete()` | 0 | Closes the stream first, then unlinks — deterministic on Windows too. |
+
+- **Stream model**: opened in *binary* mode (`r`→`rb+`, `w`→`wb+`, `a`→`ab+`)
+  and encoded/decoded per operation, so `tell`/`seek` are honest byte
+  offsets rather than opaque text cookies. The mode decides only whether the
+  file must exist, is truncated, or appends (`a` = `O_APPEND`: writes land at
+  EOF no matter where the position was seeked); the stream itself is
+  unified, so `read` and `write` both work in every mode. A mid-character
+  seek makes the next read a decode failure — the honest
+  `read: cannot read 'f': the file is not valid UTF-8 text`.
+- **After `close`** the path methods (`exists`, `size`, `rename`, `copy`,
+  `delete`) still work and the value still prints; the stream methods raise
+  `file is closed`. `rename`/`delete` close an open stream for you first.
+- **Handles are path-bound snapshots**, not shared state: `f` and `g` opened
+  on the same file are independent values (`f == g` is `FALSE` — identity),
+  each with its own position; `f.delete()` leaves `g` open.
+- **Error order** is receiver → method exists → arity → argument types, and
+  arity is checked *before* the arguments evaluate (the effect-free-arity
+  contract, 15.12). Inside a method the closed check precedes the argument
+  type check.
+- Messages: `method 'read' expects a file handle, got 'a.txt'`,
+  `file has no method 'nope'`, `method 'write' expects 1 argument, got 0`,
+  `method 'read' expects no arguments, got 1`,
+  `method 'write' expects a str, got 1`, `file is closed`.
+- A bare member read is always an error:
+  `'read' is a method, call it as file("a.txt").read()` — the receiver is
+  rendered with `to_str`, so a variable makes no difference to the wording
+  and the message stays true for arbitrary receiver expressions.
+- Absolute paths pass through; relative ones resolve against the entry
+  program's directory (`I.entry_base_dir`, never the swapped `base_dir`).
+  Directory creation has no undo (`delete` is file-only), so the rolypip
+  showcase exercises `list_dir` but not `mkdir`.
 
 ## 10. Standard Library
 
@@ -336,46 +405,34 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `strings.roly` (13) | `char_upper char_lower upper lower trim starts_with ends_with index_from index_of contains count_sub reverse_str substr` |
 | `lists.roly` (4) | `sum_list max_list min_list sublist` |
 | `map.roly` (16) | internals `_hash _lower_bound _find _put_h _validate`; public `new_map map_set map_get map_has map_del map_size map_keys map_values map_items map_merge show` |
-| `thfile.roly` (11 native) | `read write append delete exists size read_lines mkdir list_dir rename copy` |
 
-Plus **14 native functions** (`NativeFn` in stdlib.py): the 3 `lists` members
-`sort_list`/`join`/`reverse_list` (injected for speed, §10 rules below), and the
-entire `thfile` module — file I/O is impossible in pure Roly, so all eleven of
-its functions are native. `native_sort_list` scans for non-number elements
-first purely so `join`'s `operator '+' requires numeric operands` error
-surfaces bit-for-bit as before (the scan now admits floats alongside ints).
+Plus **3 native functions** (`NativeFn` in stdlib.py): the `lists` members
+`sort_list`/`join`/`reverse_list`, injected for speed. `native_sort_list`
+scans for non-number elements first purely so `join`'s
+`operator '+' requires numeric operands` error surfaces bit-for-bit as
+before (the scan admits floats alongside ints).
 
-**thfile specifics** (file operations):
+**File I/O lives in the core** (Phase 44): `open`/`mkdir`/`list_dir` are
+builtins and the operations are methods, so no import is needed for files.
+The semantics are documented in §9 (file handles and methods); two design
+points worth the "why" here:
 
-- `NativeFn` callables receive the interpreter first — the call shape in
-  `invoke_function` is `function.callable(self, *args)` — because thfile needs
-  `I.entry_base_dir` to resolve relative paths.
-- `entry_base_dir` is captured once in `Interpreter.__init__` and NEVER swapped
-  during module loading; `base_dir` itself points into `roly/lib/` while a
-  module fn runs (the classic trap — see 15.52).
-- Relative paths resolve against the entry program's directory (cwd for inline
-  `exec`); absolute paths pass through.
-- Every value is UTF-8 text; mutations return `TRUE`; every failure raises
-  `RolyError` (fail-loud — `op: cannot <action> '<path>': <os reason>`, reason
-  lowercased); `exists` never fails.
-- **All four text I/O natives open with `newline=""`** (Phase 43): `read`,
-  `write`, `append` and `read_lines` are byte-faithful, so `\r\n` and lone
-  `\r` survive a read→write round-trip instead of being folded to `\n` by
-  Python's universal-newline translation. `size` is still a raw byte count
-  (`stat().st_size`), so `size(f)` and `len(read(f))` legitimately differ for
-  multi-byte UTF-8 and for CRLF files — they measure different things.
-  The entry-file and module-load reads in `roly.py`/`interpreter.py` are
-  NOT part of this and still use universal newlines (a raw CR inside a
-  source string literal therefore becomes a line break → `unterminated
-  string`; harmless in practice, and CRLF source files normalize cleanly).
-- `read_lines` splits on `\n`, strips one trailing `\r` per line and drops one
-  trailing empty line; a lone `\r` is content, not a line break (the rule is
-  "splits on `\n`"). Empty file → `[]`. A file that is not valid UTF-8
-  raises `read: cannot read '<path>': the file is not valid UTF-8 text`
-  (never a Python traceback — `UnicodeDecodeError` has no `strerror`).
-- `rename` refuses when dst exists (POSIX would silently replace, Windows
-  errors — the guard makes it deterministic); `copy` overwrites (same on both).
-- `mkdir` is single-level (`parents=False`); `delete` is file-only.
+- The stream is opened in **binary mode** and encoded/decoded per operation
+  instead of using Python's text mode with `newline=""` (the Phase 43 fix
+  for the old natives). Binary is what makes `seek`/`tell` mean *bytes*
+  rather than opaque text cookies, and byte-faithful CRLF round-trips fall
+  out for free. `size` stays `stat().st_size`, a byte count, so
+  `size(f) != len(f.read())` for CRLF or multi-byte UTF-8 is expected —
+  they measure different things.
+- Decode failures are still the clean
+  `read: cannot read '<name>': the file is not valid UTF-8 text`
+  (`_io_reason`), and every failure is a `RolyError`, never a Python
+  traceback.
+- The **source** reads are a different code path and still use universal
+  newlines: the entry read in `roly.py` and `load_module` in the interpreter.
+  A raw CR inside a source string literal therefore becomes a line break →
+  `unterminated string` (harmless in practice, and CRLF source files
+  normalize cleanly). Only file-handle I/O is byte-faithful.
 
 **map specifics** (the pure-Roly hash map — no dict type exists, a map IS a
 plain list value):
@@ -462,13 +519,13 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   resolves ONLY `base_dir`. Neither falls back to the other. A program may
   not take the same name from both sources: `import math` + `!import math`
   → `'math' is already imported` (tracked via `ModuleEntry.from_lib`).
-- For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`, `thfile`), the
+- For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`), the
   natives are injected into the module's function table right after a FRESH
   load only — never on a `module_cache` hit (the 2026-09-13 bug-hunt: a second
   importer re-injected into the same entry and died on the `defined twice`
   guard). The guard itself still protects against a lib file defining a fn
-  with a native's name. For `thfile` the anchor file holds only a comment —
-  the injected natives ARE the module.
+  with a native's name. A native-only module needs an anchor `.roly` file in
+  `roly/lib/` (comment-only is fine) or `!import` cannot find it (15.53).
 - Everything else about a lib module is plain module behavior:
 - **Braces never restrict.** All members are always reachable as
   `name.member` with or without braces; braces additionally bind the listed
@@ -497,6 +554,16 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   the ref). Builtins are excluded from membership. Qualified access is
   read-only (`testme.x = 5` is a *parse* error); parens decide var read vs
   call (`testme.x` vs `testme.x()`).
+- **`.` is resolved at RUN time, not parse time** (Phase 44). The parser
+  cannot know what a name means — `import` may sit below the expression, and
+  a fn body parses before later imports — so `a.b` is one `Member` node and
+  the compiler's `f_member_chain` decides: a **plain name that is currently
+  an imported module** takes the module path (`read_module_var` /
+  `call_module_compiled`, all messages unchanged), everything else is a
+  built-in method on the value. Consequence, accepted on purpose: `x = m.a`
+  with an *unimported* `m` is now `undefined variable 'm'` (it used to be
+  `module 'm' is not imported`) — the honest message for `f.read`-style
+  typos, since the name might just as well have been a variable.
 - **Top-level prints are discarded on load** (`out=_silent_out` swap) but
   later calls print normally.
 - **Errors**: load-time errors are wrapped `error in module 'x': ...`
@@ -504,7 +571,7 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   raw. Not-found is `module 'x' not found (looked for {path})` vs
   `library 'x' not found (looked for {path})`. Unreadable or non-UTF-8
   source is `cannot read module 'x': {reason}` with the reason from
-  `stdlib._io_reason` (15.55). Qualified module calls count steps.
+  `builtins._io_reason` (15.55). Qualified module calls count steps.
 - **Brace binding mechanics**:
   - Variables → `ModuleAlias(entry, name)` in the importer's globals,
     dereferenced LIVE on every read — the importer sees later module
@@ -539,9 +606,9 @@ speedup on the arith benchmark.
   left-leaning *iterative* spines and postfix subscript chains the same way.
   A naive compiler would emit nested closures — one Python frame per term —
   and a 10,000-term flat expression then dies with `RecursionError` at run
-  time. `f_binchain` (BinOp) and `f_subchain` (Subscript) are accumulator
-  loops instead. Any new left-associative or postfix construct MUST follow
-  this pattern.
+  time. `f_binchain` (BinOp), `f_subchain` (Subscript) and `f_member_chain`
+  (Member) are accumulator loops instead. Any new left-associative or
+  postfix construct MUST follow this pattern.
 - **Var fast path**: when `locals_stack` is empty (top level / module top
   level), `f_var` reads `I.globals.get(name, MISS)` and unwraps `ModuleAlias`
   inline in a small loop; anything else defers to `I.lookup`. `MISS` is a
@@ -570,7 +637,7 @@ spot-checks guard.
 | Parser nesting | `MAX_NESTING = 100` | parser `enter`/`leave` on every recursive descent path (expressions AND blocks). Deep *flat* expressions don't hit it (iterative spines); deep *parenthesized* ones do. |
 | Steps | `DEFAULT_MAX_STEPS = 10_000_000` | `count_step()` at the head of every compiled statement closure, plus one per call. A `Block` counts per execution, so a while body counts once per iteration. Modules share the single budget. |
 | Call depth | `MAX_CALL_DEPTH = 200` | frame push check; `sys.setrecursionlimit(10000)` gives the closure stack headroom; `run_source` wraps any residual `RecursionError` into the clean depth message. |
-| GC | disabled during run | `gc.disable()` on entry, restored after. Safe ONLY because Roly values cannot form reference cycles (no mutable lists, no first-class functions). Revisit if either ever changes. |
+| GC | disabled during run | `gc.disable()` on entry, restored after. Safe ONLY because Roly values cannot form reference cycles (no mutable lists, no first-class functions; a `FileHandle` only points at its path strings and its Python stream, never back at a list). Revisit if any of that changes. |
 
 Other tunings: `@dataclass(slots=True)` on all AST nodes,
 `sys.set_int_max_str_digits(0)`. (The gc collect/freeze after lib load was
@@ -600,9 +667,15 @@ Message conventions that tests match on:
   module 'm'` / `is not a function in module 'm'`,
   `'m' is already imported` (import vs `!import` clash),
   `library 'x' not found (looked for {path})`.
-- File reads (CLI entry + module loads + thfile): `cannot read ...: {reason}`
-  from `stdlib._io_reason` — strerror with the first letter lowercased, or
-  `the file is not valid UTF-8 text` for decode failures.
+- File reads (CLI entry + module loads + `FileHandle.read`/`read_lines`):
+  `cannot read ...: {reason}` from `builtins._io_reason` — strerror with the
+  first letter lowercased, or `the file is not valid UTF-8 text` for decode
+  failures. The helper lives in `builtins.py` because it is the lowest module
+  both `interpreter.py` and `roly.py` can import.
+- Methods: `expects a file handle`, `file has no method 'x'`,
+  `'x' is a method, call it as {owner}.x()` — receiver, method-exists, arity
+  and then argument types, in that order. Stream methods add
+  `file is closed`; `open` adds `mode must be "r", "w" or "a"`.
 
 The CLI renders any of them as `error: {msg}` on stderr, exit 1. Only
 `print()` output ever reaches stdout.
@@ -620,13 +693,17 @@ construct without touching `bracket_depth` silently changes line rules
 inside it.
 
 15.3 `parse_assignment` rewinds with `self.pos -= 1` when a leading
-identifier isn't followed by `=`. This rewind is why only `Call`/`ModuleCall`
-can be expression statements — the decision happens after a peek, and the
-statement whitelist is enforced there.
+identifier isn't followed by `=`. This rewind is why the statement whitelist
+lives after the peek — only a `Call` or a `Member` with a non-None `args`
+list may stand as an expression statement.
 
 15.4 Builtin call parsing keys off `TYPE_TOKENS`/`BUILTIN_NAMES` + `(` in
 `parse_atom`. A new builtin that is also a type name needs `TYPE_TOKENS`
-membership too, or `x = int`-style parse handling diverges.
+membership too, or `x = int`-style parse handling diverges. Type names are
+not values: the `file` token in an expression slot is a parse error
+(`'file' is a type, not a value — open(path, mode) returns a file handle`);
+the annotation check also reads `TYPE_TOKENS`, so a new type name is one
+edit in `tokens.py` plus whatever the parser needs.
 
 15.5 Python's `bool ⊂ int` trap: all pipeline type checks are exact
 (`type(v) is not t`). `TRUE` is not an `int` argument, nor a `float`
@@ -665,10 +742,10 @@ silently loosens.
 evaluated*. `test_module_arity_checked_before_argument_effects` pins this —
 side-effecting args must not fire on arity errors.
 
-15.13 **BinOp spines and Subscript chains must compile to loop-based
-closures** (`f_binchain`/`f_subchain`). Nested closures = RecursionError on
-long flat expressions at run time, far from the cause. This is the single
-most important compiler invariant.
+15.13 **BinOp spines, Subscript chains and Member chains must compile to
+loop-based closures** (`f_binchain`/`f_subchain`/`f_member_chain`). Nested
+closures = RecursionError on long flat expressions at run time, far from the
+cause. This is the single most important compiler invariant.
 
 15.14 `fn_compiled` is keyed by `id(FnDef)`; the `(fn, body)` tuple holds a
 strong ref so ids can't be recycled; hits require `cached[0] is function`.
@@ -799,11 +876,11 @@ when a user file and a lib module share a name: the second import raises
 module that calls a lib fn must `!import` it itself — lib cross-deps are
 declared at the top of the lib files (`fmt` → `math {mod}`).
 
-15.46 Native fns (`sort_list`/`join`/`reverse_list`, the `thfile` set) are
-injected into the module after load and ONLY on the `from_lib` path AND only
-on a fresh load — a `module_cache` hit must not re-inject (the double-import
-bug). A user module named `lists` gets nothing, and a collision with a fn the
-module itself defined raises "defined twice".
+15.46 Native fns (`sort_list`/`join`/`reverse_list`) are injected into the
+`lists` module after load and ONLY on the `from_lib` path AND only on a
+fresh load — a `module_cache` hit must not re-inject (the double-import
+bug). A user module named `lists` gets nothing, and a collision with a fn
+the module itself defined raises "defined twice".
 
 15.47 `stdlib.LIB_DIR` is read at `!import` time, never captured at Python
 import time — that is what makes the missing-lib-dir test monkeypatchable.
@@ -831,22 +908,27 @@ every branch (statement, fn, import) — that single point is what makes
 `fn f () { ... }; x = 1` and `import a; import b` work while trailing
 `;` fails. There is no empty statement: `;` alone or `;;` is an error.
 
-15.52 **Native fns receive the interpreter**: the `NativeFn` call in
-`invoke_function` is `function.callable(self, *args)`. Anything needing
-run context (path base, limits) must come through that `I` — never from a
-module-level capture. `thfile` resolves relative paths against
-`I.entry_base_dir`, which is captured once in `__init__` and never swapped;
-using `I.base_dir` instead would resolve user paths into `roly/lib/`
-whenever a module fn is on the stack, because `load_module`/`run_in_module`
-swap `base_dir` to the module's own directory.
+15.52 **Host functions receive the interpreter**: the `NativeFn` call in
+`invoke_function` and the `BUILTINS_WITH_INTERP` dispatch in the builtin
+call path (`BUILTINS[name](self, *values)` for `open`/`mkdir`/`list_dir`)
+both hand over the running `I`. Anything needing run context (path base,
+limits) must come through that `I` — never from a module-level capture.
+User file paths resolve against `I.entry_base_dir`, captured once in
+`__init__` and never swapped; using `I.base_dir` instead would resolve user
+paths into `roly/lib/` whenever a module fn is on the stack, because
+`load_module`/`run_in_module` swap `base_dir` to the module's own directory.
+Builtins without that membership set keep the plain `BUILTINS[name](*values)`
+shape.
 
-15.53 **Adding a native module** (the thfile pattern): implementations live
+15.53 **Adding a native module** (the `lists` pattern): implementations live
 in `roly/stdlib.py` next to the other natives (user rule 2026-09-13: fold
 features into existing files, do not create new Python modules), registered
 in `NATIVE_MODULE_FNS`, plus an anchor `.roly` file in `roly/lib/` that can
 be empty or comment-only — the module does not exist for `!import` without
 the anchor. Arity/type checks come free through `NativeFn.params`. Errors
-must be `RolyError`s carrying the full path, not Python tracebacks.
+must be `RolyError`s carrying the full path, not Python tracebacks. FILE I/O
+is deliberately NOT in this shape — it is core builtins plus methods (§9),
+which is why `thfile` no longer exists.
 
 15.54 **The two tables make every bind site a dual check**: functions and
 variables live in separate dicts, and any code path that writes into one
@@ -859,10 +941,10 @@ one-line globals lookup in the fn branch, not a redesign.
 15.55 **`UnicodeDecodeError` is a `ValueError`, not an `OSError`**: every
 site that decodes a user file must catch it explicitly, or a non-UTF-8
 file leaks a raw Python traceback. Three sites, one shared reason helper
-(`stdlib._io_reason`): the CLI entry read (`roly.py`), module loads
-(`load_module`), and thfile `read`/`read_lines`. Reusing the helper also
-lowercases strerror everywhere, so read errors match the language's
-lowercase message style.
+(`builtins._io_reason`): the CLI entry read (`roly.py`), module loads
+(`load_module`), and the file methods `read`/`read_lines`. Reusing the
+helper also lowercases strerror everywhere, so read errors match the
+language's lowercase message style.
 
 15.56 **`input` bypasses `out` on purpose**: the prompt is written by
 Python's `input()` to the REAL stdout, not through the interpreter's
@@ -902,7 +984,7 @@ but `invoke_function` still runs exact per-param checks on every
 `sum_list(["a"])` errors inside the loop. Both message families are
 pinned by tests; do not "unify" them: host code cannot duck-type safely,
 and lib guards depend on `fail()` inside the body. The annotation path
-is also two-headed: `parse_parameter` validates `: type` against the five
+is also two-headed: `parse_parameter` validates `: type` against the six
 known names (a typo like `: integr` stays a ParseError) and then drops
 it — annotations are decoration, and the AST carries bare names only.
 
@@ -914,6 +996,35 @@ value won (`map_get` returned a's value with the phantom pair still in the
 map), violating the documented right-wins merge. The fixed walk emits a's
 non-duplicate entries in place and defers the whole b run to the next hash
 boundary, so a deduplicated key survives only in b's entry.
+
+15.61 **`.` is resolved at RUN time, not parse time** (Phase 44): the parser
+cannot know whether `m.x` is a module member or a built-in method — a fn
+body parses before any later `import` runs. `f_member_chain` therefore keys
+on `owner in I.modules` (a plain-name base that is currently a module alias)
+and routes to `read_module_var`/`call_module_compiled`; everything else goes
+through `member_value`/`checked_method`. Consequence, accepted and pinned:
+`x = m.a` on a name that was never imported is now `undefined variable 'm'`
+(it used to say `module 'm' is not imported`). Do not "fix" the parser into
+a static resolution — a body defined before its import must keep working.
+
+15.62 **File handles are path-bound, stream-backed snapshots**: the
+`FileHandle` carries `path`/`name`/`base` plus an optional Python stream.
+`close()` drops the stream but leaves the path methods alive; `rename`
+rebinds `path`/`name` so the same handle keeps addressing the (moved) file,
+and any OTHER handle still points at the old path. `open` always creates
+the file in `"w"`/`"a"` — there is no "only if missing" mode, so `exists()`
+before a write-mode open is always FALSE after it. `delete`/`rename`/`size`
+work on closed handles; `read`/`write`/`seek`/`tell`/`read_lines` do not.
+There is no `rmdir` — `mkdir` is create-only and that is the whole
+directory surface.
+
+15.63 **`close()` is idempotent and `delete()` closes first** (Phase 44
+decisions): calling `close()` twice is legal — no error, no state change —
+and `delete()` silently closes an open stream before unlinking so a handle
+never leaks a file descriptor. `seek` and `tell` are BYTE offsets (Python
+parity), so `tell()` after a multi-byte write is the encoded length, and a
+seek into the middle of a UTF-8 character surfaces the honest decode error
+on the next read rather than being rounded.
 
 ## 16. Decision History & Evolutionary Phases
 
@@ -1003,7 +1114,8 @@ boundary, so a deduplicated key survives only in b's entry.
   name`, completing the collision matrix (15.54).
 - **Phase 28 (2026-09-14)** — bug-hunt round 2, second fix: non-UTF-8 entry
   files and module files leaked raw Python tracebacks (both read sites
-  caught only `OSError`). Both now go through `stdlib._io_reason` —
+  caught only `OSError`). Both now go through `stdlib._io_reason` (moved to
+  `builtins._io_reason` in Phase 44) —
   `the file is not valid UTF-8 text` — and the CLI's read errors are
   lowercase like every other Roly error (15.55).
 - **Phase 29 (2026-09-15)** — `input(prompt)` builtin (12th): Python-style
@@ -1082,7 +1194,7 @@ boundary, so a deduplicated key survives only in b's entry.
   accept anything, exactly like Python; the old strictness was a flaw, not
   a feature). `FnDef.params` became `list[str]`; a frame is
   `dict(zip(params, args))`. An optional `: type` annotation survives as
-  pure decoration — still validated to be one of the five type names
+  pure decoration — still validated to be one of the six type names
   (unknown type stays a parse error), never enforced, old code runs
   unchanged. Type errors now surface at use sites
   (`operator '+' requires numeric operands`) instead of the call;
@@ -1139,7 +1251,22 @@ boundary, so a deduplicated key survives only in b's entry.
      so `read`→`write` silently dropped CR bytes (a 6-byte CRLF file came
      back as 4 bytes) while `size`/`copy` stayed byte-based. `size` remains
      a byte count, so `size(f) != len(read(f))` for CRLF or multi-byte
-     files is expected, not a bug (see the thfile specifics above).
+     files is expected, not a bug (see the file-handle specifics in §9).
+- **Phase 44 (2026-09-20)** — built-in METHODS (user request): file handling
+  without an import. Rethought from the user's decisions: a sixth value type
+  `file` (a `FileHandle` from `open(path, mode)` — `"r"`/`"w"`/`"a"`, one
+  read/write stream, byte `tell`/`seek`), 11 methods via `.` (`read`
+  `read_lines` `write` `seek` `tell` `close` + path methods `exists` `size`
+  `rename` `copy` `delete`), and `open`/`mkdir`/`list_dir` as global builtins
+  (19 → 22). The `thfile` module was DELETED — its 11 operations all have a
+  new home, and `: file` became a valid (decorative) annotation. Dot access
+  is now ONE runtime-resolved node: `Member` replaced `ModuleVar`/`ModuleCall`
+  and `f_member_chain` picks module vs method per call (15.61); `x = m.a` on
+  an unimported name now reports `undefined variable`. Equality between
+  handles is identity; `print(f)` renders `file("a.txt")`; method calls
+  count a step. This is the phase where `builtins.py` took over
+  `_io_reason`/`_io_fail` (15.55) and `BUILTINS_WITH_INTERP` was introduced
+  (15.52).
 
 ## 17. Tests & Maintenance Rules
 
@@ -1148,7 +1275,7 @@ boundary, so a deduplicated key survives only in b's entry.
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~145 tests.
+  every file. Currently 7 files / ~153 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
@@ -1170,8 +1297,8 @@ boundary, so a deduplicated key survives only in b's entry.
 |---|---|
 | `lex_err.py` | lexer errors (bad chars, unterminated strings, bad escapes) |
 | `par_err.py` | parse errors (structure, nesting, one-line rule, reserved words) |
-| `run_err.py` | runtime errors (types, division, undefined names, limits, builtins) |
-| `lib_err.py` | lib rejections (guards, types, arity), `!import` errors, unimported-use errors, thfile errors |
+| `run_err.py` | runtime errors (types, division, undefined names, limits, builtins, file handles and their methods) |
+| `lib_err.py` | lib rejections (guards, types, arity), `!import` errors, unimported-use errors |
 | `mod_err.py` | module errors (circular, members, collisions, isolation, wrapping) |
 | `cli_err.py` | CLI surface errors (bad usage, missing files) |
 | `smoke.py` | every showcase program runs clean |
@@ -1181,11 +1308,27 @@ boundary, so a deduplicated key survives only in b's entry.
 
 1. Implementation + `BUILTINS` entry in `roly/builtins.py`.
 2. Arity in `BUILTIN_ARITIES` — or deliberately absent if variadic.
-3. If type-like: `TYPE_TOKENS` in `roly/tokens.py` + parser atom handling.
-4. Name-collision sweep: keywords, lib files, and `fn <name>` across tests/,
+3. If it needs the interpreter (path bases, limits), add it to
+   `BUILTINS_WITH_INTERP` and give it the `(I, *values)` shape (15.52).
+4. If type-like: `TYPE_TOKENS` in `roly/tokens.py` + parser atom handling.
+5. Name-collision sweep: keywords, lib files, and `fn <name>` across tests/,
    syntax/, tests/rolypip/ (the `fn get`/`fn set` incident).
-5. Error-path test appended to the matching `*_err.py` file.
-6. Guide entry.
+6. Error-path test appended to the matching `*_err.py` file.
+7. Guide entry.
+
+### Adding a method — checklist
+
+1. Implementation in `roly/builtins.py` with the `(handle, *args)` shape —
+   the handle is always the first parameter; error messages name the method
+   (`method 'x' expects ...`), never the receiver type only.
+2. Register in `FILE_METHODS` and `FILE_METHOD_ARITIES`; the arity table is
+   checked before arguments are evaluated (15.12), so a wrong arity must not
+   reach the body.
+3. Type checks inside the body are exact (`type(v) is not str`), and any
+   stream access starts with `_require_stream` so `file is closed` wins over
+   argument-type errors.
+4. Error-path test in `run_err.py` (the file-method family).
+5. Guide entry + the `grammar` member-call rule if the call shape changed.
 
 ### Adding a lib function — checklist
 
@@ -1221,7 +1364,8 @@ second evaluator to forget — the compiler is the only consumer.
 
 Steps counted once per statement execution; arity before argument
 evaluation; compound-assign order; byte-identical error messages; spines
-loop-compiled. Re-run the full suite and spot-check via the CLI.
+(BinOp, Subscript, Member) loop-compiled. Re-run the full suite and
+spot-check via the CLI.
 
 ### Conventions
 
@@ -1238,7 +1382,7 @@ loop-compiled. Re-run the full suite and spot-check via the CLI.
 resolution works. Only program `print()` output goes to stdout; errors print
 `error: {msg}` to stderr and exit 1; entry-file read failures (missing,
 unreadable, non-UTF-8) print `error: cannot read '{file}': {reason}` via
-`stdlib._io_reason`; `BrokenPipeError` is swallowed by
+`builtins._io_reason`; `BrokenPipeError` is swallowed by
 redirecting stdout to devnull (safe `| head` usage).
 
 **Build** (`python build.py [--clean]`): thin argparse over `builder/` —

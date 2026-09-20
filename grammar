@@ -5,7 +5,7 @@ import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
 parameter           : IDENT ( ':' type )? ;
-type                : 'int' | 'str' | 'bool' | 'list' | 'float' ;
+type                : 'int' | 'str' | 'bool' | 'list' | 'float' | 'file' ;
 
 (* A ':' type annotation on a parameter is OPTIONAL and purely cosmetic —
    never checked, anything is accepted at call time, exactly like Python. *)
@@ -22,7 +22,7 @@ statement           : assignment
                     | expression_statement
                     ;
 
-expression_statement : call | module_call ;
+expression_statement : call | member_call ;
 
 assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
@@ -46,14 +46,17 @@ comparison          : additive ( comparison_op additive )* ;
 comparison_op       : '==' | '!=' | '<' | '>' | '<=' | '>=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
-primary             : atom ( '[' expression ']' )* ;
-atom                : INT | FLOAT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
+primary             : atom ( '[' expression ']' | '.' IDENT ( '(' arguments? ')' )? )* ;
+atom                : INT | FLOAT | STRING | TRUE | FALSE | IDENT | call | builtin_call | list_literal | '(' expression ')' ;
 list_literal        : '[' ( expression ( ',' expression )* )? ']' ;
 unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' | 'float' ) '(' arguments? ')' ;
-module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
-module_call         : IDENT '.' IDENT '(' arguments? ')' ;
+member_call         : primary '.' IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;
+
+(* A '.' access on a plain name is resolved at run time: an imported module
+   name means module access, anything else means a built-in method on the
+   value (file handles). Without '(' it reads, with '(' it calls. *)
 
 (* A NEWLINE inside an expression is only allowed while ( ) or [ ] are open. *)

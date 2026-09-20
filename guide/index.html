@@ -258,6 +258,7 @@ footer {
     <a href="#functions">Functions</a>
     <a href="#print">print</a>
     <a href="#builtins">Built-ins</a>
+    <a href="#files">Files</a>
     <a href="#stdlib">Library</a>
     <a href="#modules">Modules</a>
     <a href="#grammar">Grammar</a>
@@ -279,15 +280,16 @@ error: division by zero</code></pre>
 
 <section id="values">
     <h2>Values</h2>
-    <p>Roly has exactly five kinds of values:</p>
+    <p>Roly has exactly six kinds of values:</p>
     <ul>
         <li><b>Integers</b> — arbitrary size, written in decimal digits: <code>42</code>, <code>0</code>, <code>1234567</code></li>
         <li><b>Floats</b> — decimal fractions and exponent forms: <code>1.5</code>, <code>-0.25</code>, <code>2e3</code>, <code>1.5e-2</code>; binary IEEE-754 doubles with Python's arithmetic</li>
         <li><b>Booleans</b> — written <code>TRUE</code> and <code>FALSE</code>, always in capital letters; also produced by comparisons</li>
         <li><b>Strings</b> — double-quoted, may contain any characters: <code>"hello world"</code></li>
         <li><b>Lists</b> — ordered sequences of values, built and read through built-ins: <code>[1, 2, 3]</code></li>
+        <li><b>Files</b> — handles on files on disk, returned by <code>open()</code>: <code>open("notes.txt", "w")</code></li>
     </ul>
-    <div class="note">Integers and floats mix freely in arithmetic and comparison — <code>1 + 0.5</code> is <code>1.5</code>, <code>1 == 1.0</code> is <code>True</code> — the result is a float as soon as one side is a float. Booleans never mix with arithmetic: <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Strings never convert implicitly: <code>"1" == 1</code> is simply <code>False</code>, and so is <code>TRUE == 1</code>.</div>
+    <div class="note">Integers and floats mix freely in arithmetic and comparison — <code>1 + 0.5</code> is <code>1.5</code>, <code>1 == 1.0</code> is <code>True</code> — the result is a float as soon as one side is a float. Booleans never mix with arithmetic: <code>x = 1 &lt; 2 y = x + 1</code> is a runtime error. Strings never convert implicitly: <code>"1" == 1</code> is simply <code>False</code>, and so is <code>TRUE == 1</code>. Files compare by identity: two handles on the same file are never equal, only <code>f == f</code> is <code>True</code>.</div>
 </section>
 
 <section id="variables">
@@ -564,7 +566,7 @@ x = add(2, 3)
 <span class="tok-fn">print</span>(greet(<span class="tok-str">"roly"</span>))</code></pre>
 
     <h3>Parameters</h3>
-    <p>Parameters take any value — nothing is checked at the door, exactly like Python. What the function does with a value decides whether it works: <code>add("a", "b")</code> is fine (string concatenation), <code>add("a", 1)</code> fails inside the body with <code>operator '+' requires numeric operands</code>. An optional type annotation — <code>fn add (a: int, b: int)</code> — is allowed and purely cosmetic: it is never enforced, and old annotated code keeps running. An annotation must still be one of the five type names; anything else is a parse error. No return type is declared.</p>
+    <p>Parameters take any value — nothing is checked at the door, exactly like Python. What the function does with a value decides whether it works: <code>add("a", "b")</code> is fine (string concatenation), <code>add("a", 1)</code> fails inside the body with <code>operator '+' requires numeric operands</code>. An optional type annotation — <code>fn add (a: int, b: int)</code> — is allowed and purely cosmetic: it is never enforced, and old annotated code keeps running. An annotation must still be one of the six type names (<code>int</code>, <code>str</code>, <code>bool</code>, <code>list</code>, <code>float</code>, <code>file</code>); anything else is a parse error. No return type is declared.</p>
 
     <h3>Scope</h3>
     <p>Each call gets its own local scope: parameters and assignments are local and disappear when the call ends. A function sees its own locals and the globals — nothing in between. One function cannot read or change the locals of the function that called it. Global variables are readable from inside functions, but assignments are always local — a function can never modify a global. A parameter may shadow a global.</p>
@@ -618,7 +620,7 @@ i = 3
 
 <section id="builtins">
     <h2>Built-ins</h2>
-    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, <code>chr()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>insert()</code>, <code>delete_at()</code>, <code>concat()</code>, <code>map_equal()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message.</p>
+    <p><span data-count="builtins"></span> built-in functions. The conversions — <code>int()</code>, <code>str()</code>, <code>bool()</code>, <code>float()</code> — are the sanctioned way to cross a type boundary. <code>len()</code>, <code>char()</code>, <code>ord()</code>, <code>chr()</code>, and <code>format()</code> inspect and build strings. <code>list()</code>, <code>push()</code>, <code>insert()</code>, <code>delete_at()</code>, <code>concat()</code>, <code>map_equal()</code>, <code>get()</code>, and <code>set()</code> build and read lists. <code>input()</code> reads a line from the user. <code>fail()</code> stops the program with a message. <code>open()</code>, <code>mkdir()</code>, and <code>list_dir()</code> reach the file system — see the Files section below.</p>
     <pre><code>x = int("42")        <span class="tok-com">// 42 — an optional + or - sign, then digits only</span>
 y = int(TRUE)       <span class="tok-com">// 1</span>
 z = int(3.9)        <span class="tok-com">// 3 — floats truncate toward zero</span>
@@ -658,10 +660,13 @@ age = <span class="tok-fn">int</span>(<span class="tok-fn">input</span>("age? ")
         <tr><td>format(fmt, ...)</td><td>str + any values</td><td>str — placeholders replaced, like Python's format</td></tr>
         <tr><td>input(prompt)</td><td>str</td><td>str — prints the prompt, reads one line from the user; the line is always a str, convert with <code>int()</code></td></tr>
         <tr><td>fail(msg)</td><td>str</td><td>never returns — stops the program with the message</td></tr>
+        <tr><td>open(path, mode)</td><td>str, str</td><td>a file handle — mode is <code>"r"</code> (the file must exist), <code>"w"</code> (create or empty), or <code>"a"</code> (create, writes go to the end); see Files below</td></tr>
+        <tr><td>mkdir(path)</td><td>str</td><td>TRUE — creates one directory; the parent must already exist</td></tr>
+        <tr><td>list_dir(path)</td><td>str</td><td>list — the names inside a directory, sorted</td></tr>
     </table>
     <div class="note"><code>input</code> requires its prompt — <code>input()</code> with no argument is an error. Called as a bare statement (<code>input("ask: ")</code> on its own line) it still reads a line and throws the answer away. When the input is closed — a piped program reaching its end — the error is <code>input: end of input reached</code>.</div>
     <div class="note"><code>int("abc")</code>, <code>int(" 42 ")</code>, and <code>int("1_000")</code> are runtime errors — the string must be an optional sign followed by decimal digits, nothing else. <code>float()</code> is strict the same way: <code>float(" 1.5")</code>, <code>float("1_0.5")</code>, <code>float("inf")</code>, and <code>float("nan")</code> are all errors, while <code>float("1.5")</code>, <code>float(".5")</code>, <code>float("1.")</code>, and <code>float("2e3")</code> convert. Conversion is explicit and total everywhere else: <code>"1" == 1</code> is still <code>False</code>, but <code>int("1") == 1</code> is <code>True</code>.</div>
-    <div class="note">Built-in names cannot be redefined — <code>len = 5</code> and <code>fn len (...)</code> are errors. The five conversion names are keywords in call position: <code>x = int</code> without parentheses is a parse error. <code>bool()</code> rejects lists — a list is never a condition.</div>
+    <div class="note">Built-in names cannot be redefined — <code>len = 5</code> and <code>fn len (...)</code> are errors. The five conversion names are keywords in call position: <code>x = int</code> without parentheses is a parse error (the type name <code>file</code> is the same — it is an annotation, never a value). <code>bool()</code> rejects lists — a list is never a condition.</div>
 
     <h3>format placeholders</h3>
     <p><code>{}</code> takes the next argument in order; <code>{0}</code>, <code>{1}</code> pick a position and may repeat. <code>{{</code> and <code>}}</code> produce literal braces. Mixing <code>{}</code> and <code>{n}</code> in one format string is an error, as is a placeholder without a matching argument.</p>
@@ -672,9 +677,52 @@ format("x={}!", TRUE)           <span class="tok-com">// "x=True!"</span></code>
     <div class="note">Values are converted the same way <code>str()</code> converts them. Extra arguments are ignored. There are no format specifications like <code>{:05d}</code> — compose with <code>pad()</code>, <code>group()</code>, or <code>binary()</code> from the library instead.</div>
 </section>
 
+<section id="files">
+    <h2>Files</h2>
+    <p><code>open(path, mode)</code> returns a file handle — a value you can store, pass to a function and print. A handle is a stream: it has a <em>position</em>, and reading and writing both happen at that position. Everything is text, in UTF-8.</p>
+    <pre><code>f = open("notes.txt", "w")   <span class="tok-com">// "w" creates or empties; "r" must exist; "a" appends</span>
+f.write(<span class="tok-str">"salam\n"</span>)          <span class="tok-com">// TRUE — writes at the position, then advances</span>
+f.seek(0)                    <span class="tok-com">// back to the start — a byte position, the same number tell gives</span>
+<span class="tok-fn">print</span>(f.read())             <span class="tok-com">// salam</span>
+<span class="tok-fn">print</span>(f.tell())             <span class="tok-com">// 6</span>
+f.close()                    <span class="tok-com">// the stream is closed; the path methods below still work</span>
+f.delete()</code></pre>
+    <table>
+        <tr><th>Method</th><th>Result</th></tr>
+        <tr><td>f.read()</td><td>everything from the position to the end of the file — at the end it is <code>""</code></td></tr>
+        <tr><td>f.read_lines()</td><td>the rest of the file as a list of lines, without the line breaks</td></tr>
+        <tr><td>f.write(s)</td><td>writes s at the position, then advances — TRUE; the bytes are on disk immediately</td></tr>
+        <tr><td>f.seek(i)</td><td>moves the position to byte i (0-based) — TRUE</td></tr>
+        <tr><td>f.tell()</td><td>the current byte position</td></tr>
+        <tr><td>f.close()</td><td>closes the stream — TRUE; closing again is fine</td></tr>
+        <tr><td>f.exists()</td><td>TRUE if the file is there</td></tr>
+        <tr><td>f.size()</td><td>the size in bytes</td></tr>
+        <tr><td>f.rename(dst)</td><td>moves the file to dst — TRUE; an existing dst is an error</td></tr>
+        <tr><td>f.copy(dst)</td><td>copies the file to dst, overwriting it if it exists — TRUE</td></tr>
+        <tr><td>f.delete()</td><td>removes the file — TRUE; an open stream is closed first</td></tr>
+    </table>
+    <div class="note">The mode decides only how the file opens: <code>"r"</code> requires it, <code>"w"</code> creates or empties it, <code>"a"</code> creates it and sends every write to the end. After that, reading and writing both work — a <code>"w"</code> handle can read what it just wrote. <code>write</code> flushes immediately, so <code>f.size()</code> right after it sees the new bytes.</div>
+    <pre><code><span class="tok-kw">!import</span> strings {upper}
+
+<span class="tok-kw">fn</span> save (h: file, text: str) {
+    <span class="tok-kw">return</span> h.write(upper(text))
+}
+
+g = open(<span class="tok-str">"data.txt"</span>, <span class="tok-str">"a"</span>)
+save(g, <span class="tok-str">"line\n"</span>)
+g.close()
+<span class="tok-fn">print</span>(g)                 <span class="tok-com">// file("data.txt")</span>
+<span class="tok-fn">print</span>(g.size())         <span class="tok-com">// 5</span>
+<span class="tok-fn">print</span>(list_dir(<span class="tok-str">"."</span>))     <span class="tok-com">// ["data.txt"] — a list, so index it: list_dir(".")[0]</span>
+g.delete()</code></pre>
+    <div class="note">Handles work by path: <code>rename</code> moves the handle onto the new name, so the same handle keeps working, while another handle on the old name does not. <code>exists</code>, <code>size</code>, <code>rename</code>, <code>copy</code> and <code>delete</code> keep working after <code>close</code>; the stream methods (<code>read</code>, <code>read_lines</code>, <code>write</code>, <code>seek</code>, <code>tell</code>) then stop with <code>file is closed</code>. Two handles on one file are independent — each has its own position, and <code>f == g</code> is <code>False</code>; only <code>f == f</code> is true.</div>
+    <div class="note">A relative path is relative to your program's file — run <code>roly run proj/app.roly</code> from anywhere and the files sit next to <code>app.roly</code>. Inline code (<code>roly exec</code>) uses the current directory instead. Absolute paths always go exactly where they say. Errors are loud: reading a missing file stops the program — check with <code>exists</code> first. <code>size</code> counts bytes while <code>read</code> returns characters, so the two differ for any non-ASCII text. <code>read_lines</code> splits on line breaks and drops one trailing empty line, so a file ending in a newline does not produce an empty last element. <code>rename</code> refuses to overwrite — <code>copy</code> does not.</div>
+    <div class="note"><code>file</code> is a type name: it may be written as a parameter annotation (<code>h: file</code>), like <code>int</code> or <code>str</code>, and it is never a value — <code>x = file</code> is a parse error. A bare method read is an error too: <code>x = f.read</code> says to call it as <code>f.read()</code>.</div>
+</section>
+
 <section id="stdlib">
     <h2>Standard Library</h2>
-    <p>The standard library lives in <code>roly/lib/</code> as six modules: <code>math</code>, <code>fmt</code>, <code>strings</code>, <code>lists</code>, <code>map</code>, and <code>thfile</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
+    <p>The standard library lives in <code>roly/lib/</code> as five modules: <code>math</code>, <code>fmt</code>, <code>strings</code>, <code>lists</code>, and <code>map</code>. Nothing loads on its own — a library module is brought in with <code>!import</code>, the exclamation mark marking the library that ships with Roly. Until you import it, its names simply do not exist: <code>gcd(48, 18)</code> is <code>undefined function 'gcd'</code>.</p>
     <pre><code><span class="tok-kw">!import</span> math {gcd, mod}
 <span class="tok-kw">!import</span> fmt
 
@@ -749,7 +797,7 @@ print(mod(-7, 3))          <span class="tok-com">// 2, floored like the division
 print(group(1234567))      <span class="tok-com">// 1,234,567</span>
 print(hex(255))            <span class="tok-com">// ff</span>
 print(roman(2026))         <span class="tok-com">// MMXXVI</span></code></pre>
-    <div class="note">The library holds only functions with real logic — one-liners are yours to write. A parity test is <code>n / 2 * 2 == n</code>, a palindrome check is <code>s == reverse_str(s)</code>, and factorial is a five-line loop. Most library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every one of them is a program you could have written yourself. Calls behave exactly like your own functions: the argument count is checked, values are not — a wrong type surfaces inside the body. The native functions (<code>sort_list</code>, <code>join</code>, <code>reverse_list</code>, and all of <code>thfile</code>) still check argument types at the door. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>isqrt(-1)</code> — the function tells you what it expected.</div>
+    <div class="note">The library holds only functions with real logic — one-liners are yours to write. A parity test is <code>n / 2 * 2 == n</code>, a palindrome check is <code>s == reverse_str(s)</code>, and factorial is a five-line loop. Most library functions are ordinary Roly code — open <code>roly/lib/</code> to read them; every one of them is a program you could have written yourself. Calls behave exactly like your own functions: the argument count is checked, values are not — a wrong type surfaces inside the body. The native functions (<code>sort_list</code>, <code>join</code>, <code>reverse_list</code>) still check argument types at the door. Library calls are isolated — they never read or change your variables, only their arguments. Out-of-range arguments are errors, not special values: there is no <code>isqrt(-1)</code> — the function tells you what it expected.</div>
 
     <h3>map</h3>
     <p>A hash map over plain lists — there is no dict type in Roly, so a map is an ordinary list value you can print, pass around and compare. Any value can be a key and any value can be stored; a key's identity follows its <code>str()</code> rendering, so <code>7</code> and <code>"7"</code> are different keys.</p>
@@ -779,35 +827,6 @@ m = map_set(m, <span class="tok-str">"active"</span>, TRUE)
 m = map_del(m, <span class="tok-str">"active"</span>)
 <span class="tok-fn">print</span>(map_size(m))          <span class="tok-com">// 2</span></code></pre>
     <div class="note">Maps are immutable like every list — every map_set or map_del returns a new map, so rebind: <code>m = map_set(m, "age", 32)</code>. Setting an existing key replaces its value. Internally the entries are kept sorted by the key's hash — <code>map_keys</code>, <code>map_values</code>, <code>map_items</code> and <code>show</code> render in that stored order, not key order; the order is stable for the same construction history. Feed <code>map_items(m)</code> into the <code>map_equal</code> built-in for order-independent comparison of two maps.</div>
-
-    <h3>thfile</h3>
-    <p>File operations. This is the one library module written natively — a Roly program cannot reach the outside world on its own. Everything is text, in UTF-8.</p>
-    <table>
-        <tr><th>Function</th><th>Result</th></tr>
-        <tr><td>read(path)</td><td>the whole file as a str</td></tr>
-        <tr><td>write(path, content)</td><td>creates or overwrites the file — TRUE</td></tr>
-        <tr><td>append(path, content)</td><td>adds content to the end, creating the file if needed — TRUE</td></tr>
-        <tr><td>read_lines(path)</td><td>the file as a list of lines, without the line breaks</td></tr>
-        <tr><td>delete(path)</td><td>removes a file — TRUE</td></tr>
-        <tr><td>exists(path)</td><td>TRUE if the file or directory exists</td></tr>
-        <tr><td>size(path)</td><td>the size in bytes</td></tr>
-        <tr><td>mkdir(path)</td><td>creates a directory — TRUE; the parent must already exist</td></tr>
-        <tr><td>list_dir(path)</td><td>the names in a directory, sorted, as a list</td></tr>
-        <tr><td>rename(src, dst)</td><td>renames a file — TRUE; an existing dst is an error</td></tr>
-        <tr><td>copy(src, dst)</td><td>copies a file, overwriting dst if it exists — TRUE</td></tr>
-    </table>
-    <pre><code><span class="tok-kw">!import</span> thfile {read, write, append, read_lines, exists, delete}
-
-<span class="tok-kw">if</span> (exists(<span class="tok-str">"log.txt"</span>)) {
-    <span class="tok-fn">delete</span>(<span class="tok-str">"log.txt"</span>)
-}
-<span class="tok-fn">write</span>(<span class="tok-str">"log.txt"</span>, <span class="tok-str">"start\n"</span>)
-<span class="tok-fn">append</span>(<span class="tok-str">"log.txt"</span>, <span class="tok-str">"entry 1\n"</span>)
-lines = read_lines(<span class="tok-str">"log.txt"</span>)
-<span class="tok-fn">print</span>(lines[0])              <span class="tok-com">// start</span>
-<span class="tok-fn">print</span>(<span class="tok-fn">len</span>(lines))           <span class="tok-com">// 2</span>
-<span class="tok-fn">print</span>(thfile.size(<span class="tok-str">"log.txt"</span>))  <span class="tok-com">// 14 — the name works too</span></code></pre>
-    <div class="note">A relative path is relative to your program's file — run <code>roly run proj/app.roly</code> from anywhere and the files sit next to <code>app.roly</code>. Inline code (<code>roly exec</code>) uses the current directory instead. Absolute paths always go exactly where they say. Errors are loud, like the rest of the library: reading a missing file stops the program — check with <code>exists</code> first. <code>read_lines</code> splits on line breaks and drops one trailing empty line, so a file ending in a newline does not produce an empty last element. <code>rename</code> refuses to overwrite — <code>copy</code> does not.</div>
 </section>
 
 <section id="modules">
@@ -830,7 +849,7 @@ print(strings.upper("hi"))  <span class="tok-com">// HI</span></code></pre>
         <li>a name may come from one source only — <code>import math</code> and <code>!import math</code> in one program is an error</li>
         <li><code>!</code> is allowed only right before <code>import</code>, on the same line, at the top level</li>
         <li><code>sort_list</code>, <code>join</code>, and <code>reverse_list</code> are members of the <code>lists</code> module, written natively for speed — <code>!import lists {sort_list}</code> brings them in</li>
-        <li>the whole <code>thfile</code> module is native — its file functions are the only library functions that could not have been written in Roly</li>
+        <li>file access is not part of the library at all — <code>open</code>, <code>mkdir</code> and <code>list_dir</code> are built-ins, and the rest is methods on a file handle (see Files above)</li>
     </ul>
 
     <h3>Bringing names in</h3>
@@ -845,6 +864,7 @@ w = hidden                <span class="tok-com">// error — only listed names c
 
     <h3>Members</h3>
     <p><code>testme.x</code> reads a variable; <code>testme.f(...)</code> calls a function — the parentheses decide, like everywhere else in Roly. Members are read-only from outside: an assignment like <code>testme.x = 5</code> is a parse error. A module function can change its own globals, and later reads see the new values.</p>
+    <div class="note">The dot works on any value, not just modules: on a file handle it means a method — <code>f.read()</code>, <code>f.close()</code>. The compiler decides at run time which one it is, so <code>m.x</code> with an unimported <code>m</code> reads the name as an ordinary variable and fails with <code>undefined variable 'm'</code>.</div>
     <pre><code>c = 0
 <span class="tok-kw">fn</span> bump () {
     c += 1
@@ -888,7 +908,7 @@ import_statement    : ( '!' 'import' | 'import' ) IDENT ( '{' IDENT ( ',' IDENT 
 function_declaration : 'fn' IDENT '(' parameters? ')' block ;
 parameters          : parameter ( ',' parameter )* ;
 parameter           : IDENT ( ':' type )? ;
-type                : 'int' | 'str' | 'bool' | 'list' | 'float' ;
+type                : 'int' | 'str' | 'bool' | 'list' | 'float' | 'file' ;
 
 (* A ':' type annotation on a parameter is optional and purely decorative — never checked. *)
 
@@ -904,7 +924,7 @@ statement           : assignment
                     | expression_statement
                     ;
 
-expression_statement : call | module_call ;
+expression_statement : call | member_call ;
 
 assignment          : IDENT '=' expression ;
 compound_assignment : IDENT compound_op expression ;
@@ -928,15 +948,18 @@ comparison          : additive ( comparison_op additive )* ;
 comparison_op       : '==' | '!=' | '&lt;' | '&gt;' | '&lt;=' | '&gt;=' ;
 additive            : multiplicative ( ( '+' | '-' ) multiplicative )* ;
 multiplicative      : unary ( ( '*' | '/' ) unary )* ;
-primary             : atom ( '[' expression ']' )* ;
-atom                : INT | FLOAT | STRING | TRUE | FALSE | IDENT | call | builtin_call | module_access | list_literal | '(' expression ')' ;
+primary             : atom ( '[' expression ']' | '.' IDENT ( '(' arguments? ')' )? )* ;
+atom                : INT | FLOAT | STRING | TRUE | FALSE | IDENT | call | builtin_call | list_literal | '(' expression ')' ;
 list_literal        : '[' ( expression ( ',' expression )* )? ']' ;
 unary               : '-' unary | primary ;
 call                : IDENT '(' arguments? ')' ;
 builtin_call        : ( 'int' | 'str' | 'bool' | 'list' | 'float' ) '(' arguments? ')' ;
-module_access       : IDENT '.' IDENT ( '(' arguments? ')' )? ;
-module_call         : IDENT '.' IDENT '(' arguments? ')' ;
+member_call         : primary '.' IDENT '(' arguments? ')' ;
 arguments           : expression ( ',' expression )* ;
+
+(* A '.' access on a plain name is resolved at run time: an imported module
+   name means module access, anything else means a built-in method on the
+   value (file handles). Without '(' it reads, with '(' it calls. *)
 
 (* A NEWLINE inside an expression is only allowed while ( ) or [ ] are open. *)</div>
 </section>
@@ -955,7 +978,7 @@ arguments           : expression ( ',' expression )* ;
         <tr><td>Statements</td><td>only calls may stand alone as statements; every other expression must be assigned, printed, or returned — and expressions cannot continue onto the next line</td></tr>
         <tr><td>Reserved names</td><td><span data-count="keywords"></span> keywords + <span data-count="builtins"></span> built-ins cannot be variable, function, or parameter names; standard library names only after they are imported with braces</td></tr>
         <tr><td>Scope</td><td>globals plus one local scope per function call; functions read their own locals and the globals, never another function's locals — assignments inside a function are always local (module functions update their own module's globals)</td></tr>
-        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, float, TRUE, FALSE, import</td></tr>
+        <tr><td>Keywords</td><td>if, else, while, print, break, continue, fn, return, int, str, bool, list, float, file, TRUE, FALSE, import</td></tr>
         <tr><td>Modules</td><td>loaded once per file, next to the importing file — or from the standard library with <code>!import</code>; circular imports are an error</td></tr>
     </table>
     <div class="note">Keywords are reserved: a variable named <code>print</code> or <code>if</code> is not allowed, but <code>printed</code> or <code>ifx</code> are ordinary names.</div>
@@ -965,7 +988,7 @@ arguments           : expression ( ',' expression )* ;
 
 </div>
 <script>
-    const counts = { keywords: 16, builtins: 19 };
+    const counts = { keywords: 17, builtins: 22 };
     document.querySelectorAll("[data-count]").forEach(el => {
         el.textContent = counts[el.dataset.count];
     });
