@@ -198,10 +198,13 @@ and postfix indexing works directly: `[10, 20][1]` is `20`.
 
 Three separate visibility rules stack:
 
-1. **User functions** see exactly two scopes: their own call frame and
-   globals. Never another function's locals. (History: the first
-   implementation was dynamically scoped — callees read and *wrote* caller
-   frames, causing silent clobbering. Redesigned 2026-09-10.)
+1. **User functions** read and write their own call frame, then the frames
+   captured lexically at their definition site (local fns only — §6), then
+   globals. Never the caller's frame. (History: the first implementation was
+   dynamically scoped — callees read and *wrote* caller frames, causing
+   silent clobbering. Redesigned 2026-09-10; the Phase 47 capture chain is
+   not that model, because it is fixed at the definition site, not the call
+   site.)
 2. **Lib functions** are module functions (imported via `!import`), so they
    see their own frame + their module's globals — never user globals. This
    module-machinery isolation replaced the old `lib_depth` frame lock, which
@@ -213,8 +216,9 @@ Three separate visibility rules stack:
    global from inside a user fn), while a module fn whose name exists in the
    module globals writes through to the module.
 
-Lookup order: frame → globals (with `ModuleAlias` unwrapping on read, §11).
-The compiler's fast path (§12) inlines this when `locals_stack` is empty.
+Lookup order: the frame chain — own frame, then captured frames innermost
+first — → globals (with `ModuleAlias` unwrapping on read, §11). The
+compiler's fast path (§12) inlines this when `locals_stack` is empty.
 
 ## 6. Functions
 
@@ -222,8 +226,10 @@ The compiler's fast path (§12) inlines this when `locals_stack` is empty.
 fn name (a, b) { ... return expr }
 ```
 
-- Top-level only (like `import`). Bodies are blocks and cannot be empty
-  (except the `{ ... }` placeholder).
+- Top level (like `import`) **or inside a function body at any block depth**
+  (`fn_depth > 0`); a top-level `if`/`while` block still refuses, because
+  pre-registration runs before conditions do. Bodies are blocks and cannot
+  be empty (except the `{ ... }` placeholder).
   `return expr` is optional — a fn that falls off the end returns the
   `MISSING` sentinel; using that result in an expression raises
   `did not return a value`, calling it as a statement line is fine.
@@ -236,6 +242,20 @@ fn name (a, b) { ... return expr }
   fn visible to earlier statements too) raises
   `'{name}' is already a function name` in `Interpreter.assign`, on the
   global write path only (params/locals may shadow freely).
+- **Local fns (Phase 47) bind at execution into the current frame.** A
+  nested `fn` statement stores a `LocalFn(function, chain)` wrapper in
+  `locals_stack[-1]`, where `chain` is the defining `frame_chain()` (its own
+  frame plus the chain below it). No hoist: a call above the definition line
+  is `undefined function`. `lookup`, `assign` and `call_compiled` walk the
+  chain innermost-first, so a local fn calls siblings, calls itself
+  (recursion) and reads AND writes the enclosing locals — lexical capture,
+  never dynamic. Naming inside the frame is strict: over a bound fn →
+  `function '{name}' already defined`, over a frame variable →
+  `'{name}' is already a variable name`, assigning over it →
+  `'{name}' is already a function name`; builtin and module names are
+  refused as usual. Global names may be shadowed (params already do).
+  Module fns are included — the chain holds frames only, so module globals
+  still resolve through the normal swap.
 - **Params are bare names** — `FnDef.params` is `list[str]`, a call frame is
   `dict(zip(params, args))`. Any value is accepted (Python duck typing);
   a type mismatch surfaces at the first operation that needs the value
@@ -249,7 +269,8 @@ fn name (a, b) { ... return expr }
   1. `count_step()` — a call is a step.
   2. Builtins checked FIRST (`BUILTINS` before the user fn table — a user
      cannot shadow a builtin at runtime, and defining one is rejected at
-     registration anyway).
+     registration anyway); then the frame chain for a `LocalFn` (so a local
+     fn shadows a global of the same name); then the global fn table.
   3. `check_arity` — on the *arg closures*, i.e. length only, BEFORE any
      argument is evaluated. Side effects in args must not run on arity
      errors (there is a regression test asserting `print` stays silent).
@@ -510,7 +531,8 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
 !import math {gcd}               !import strings    // from roly/lib/
 ```
 
-- `import` and `!import` are keywords, **top-level only**, like `fn`. The
+- `import` and `!import` are keywords, **top-level only** (stricter than
+  `fn`, which also nests inside function bodies — Phase 47). The
   `!` is allowed only immediately before `import`, on the same line; the
   parser enforces this with the same-line rule (`'import' must follow '!' on
   the same line`).
@@ -643,7 +665,7 @@ spot-checks guard.
 | Parser nesting | `MAX_NESTING = 100` | parser `enter`/`leave` on every recursive descent path (expressions AND blocks). Deep *flat* expressions don't hit it (iterative spines); deep *parenthesized* ones do. |
 | Steps | `DEFAULT_MAX_STEPS = 10_000_000` | `count_step()` at the head of every compiled statement closure, plus one per call. A `Block` counts per execution, so a while body counts once per iteration. Modules share the single budget. |
 | Call depth | `MAX_CALL_DEPTH = 200` | frame push check; `sys.setrecursionlimit(10000)` gives the closure stack headroom; `run_source` wraps any residual `RecursionError` into the clean depth message. |
-| GC | disabled during run | `gc.disable()` on entry, restored after. Safe ONLY because Roly values cannot form reference cycles (no mutable lists, no first-class functions; a `FileHandle` only points at its path strings and its Python stream, never back at a list). Revisit if any of that changes. |
+| GC | disabled during run | `gc.disable()` on entry, restored after. Values still cannot form cycles by themselves (no mutable lists, no first-class functions; a `FileHandle` only points at its path strings and its Python stream) with ONE exception: a `LocalFn` stored in a frame holds that frame chain, so a fn with captured locals is a real reference cycle — it stays uncollected for the rest of the run and is reclaimed when `run`'s `finally` re-enables GC. |
 
 Other tunings: `@dataclass(slots=True)` on all AST nodes,
 `sys.set_int_max_str_digits(0)`. (The gc collect/freeze after lib load was
@@ -831,9 +853,11 @@ the convention).
 15.33 `MAX_NESTING` guards recursive descent (parens/blocks), not flat
 spines. A 10k-term flat sum parses fine; `((((...))))` 101 deep does not.
 
-15.34 `gc.disable()` during runs is only sound because values can't form
-cycles. First-class functions or mutable lists would invalidate the
-assumption.
+15.34 `gc.disable()` during runs assumes values can't form cycles — true
+except for local fns (Phase 47): a `LocalFn` in a frame holds the frame
+chain, a cycle that survives the run until `run`'s `finally` re-enables GC
+(§13 table). First-class functions or mutable lists would break the
+assumption outright.
 
 15.35 Native lib fns (`sort_list`/`join`/`reverse_list`) must reproduce the
 old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list`
@@ -946,6 +970,9 @@ one-line globals lookup in the fn branch, not a redesign. The `modules`
 table is a third table under the same rule (Phase 45): the module name is
 bound only after `assign()`'s check would have refused it, so both bind
 sites — `assign()` and the import's name bind — do the cross-table lookup.
+Call frames are the fourth pairing under the same rule (Phase 47): a local
+fn and a frame variable cannot share a name, refused from both sides —
+binding and `assign()` walk the frame chain innermost-first.
 
 15.55 **`UnicodeDecodeError` is a `ValueError`, not an `OSError`**: every
 site that decodes a user file must catch it explicitly, or a non-UTF-8
@@ -1034,6 +1061,16 @@ never leaks a file descriptor. `seek` and `tell` are BYTE offsets (Python
 parity), so `tell()` after a multi-byte write is the encoded length, and a
 seek into the middle of a UTF-8 character surfaces the honest decode error
 on the next read rather than being rounded.
+
+15.64 Local fns (Phase 47) capture lexically at the definition site: the
+`LocalFn` wrapper stores the defining `frame_chain()` — own frame plus the
+chain below it, never the caller's frame. Binding happens when the
+statement executes (no hoist: a call above the line is `undefined
+function`), a frame name binds once (strict), and `lookup`/`assign`/
+`call_compiled` walk the chain innermost-first — reading a `LocalFn` as a
+value raises `'{name}' is a function, call it as {name}(...)`.
+`invoke_function` gained the `chain` argument; arity-before-args, step
+accounting and the depth-200 guard are shared with global fns.
 
 ## 16. Decision History & Evolutionary Phases
 
@@ -1294,6 +1331,20 @@ on the next read rather than being rounded.
   a hash bucket found by `str()` plus the `==` test inside the run, not
   "key identity follows `str()`" (§11 map bullet, Phase 37 note); the
   guide's `list("roly")` comment now shows `["r", "o", "l", "y"]`.
+- **Phase 47 (2026-09-21)** — local (nested) functions (user request): `fn`
+  is allowed inside a function body at any block depth (top-level blocks
+  still refuse; `import` stays top-level only). The definition statement
+  binds a `LocalFn(function, chain)` into the current frame, capturing the
+  defining `frame_chain()`; `lookup`, `assign` and a new `call_compiled`
+  frame path walk that chain innermost-first — full lexical capture
+  (enclosing locals read AND written, sibling calls, self-recursion,
+  two-level nesting) with globals still shadowable. Strict in-frame naming
+  mirrors the 15.54 dual check (both directions, plus builtin/module
+  names); GC note updated (15.34) — a bound local fn is a live frame cycle
+  reclaimed when the run ends. Touched: parser (placement check), runtime
+  (`LocalFn`), interpreter (`lexical_stack`, `frame_chain`, `local_fn`,
+  `bind_local_fn`, chain walks, `invoke_function(chain)`), compiler
+  (`f_fndef` binds), grammar, guide, syntax showcase, run_err pins.
 
 ## 17. Tests & Maintenance Rules
 

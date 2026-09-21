@@ -36,8 +36,12 @@ break_statement     : 'break' ;
 continue_statement  : 'continue' ;
 return_statement    : 'return' expression ;
 
-block               : '{' statement+ '}' | '{' '...' '}' ;
+block               : '{' body_statement+ '}' | '{' '...' '}' ;
+body_statement      : function_declaration | statement ;
 
+(* A function_declaration may sit at the top level or inside a function body
+   at any block depth. Inside a top-level if/while block it is a parse error —
+   top-level functions are pre-registered before execution. *)
 (* Statements are separated by newlines or a single ';' — a trailing ';' is an error. *)
 (* '...' is only legal as the entire body of an otherwise-empty block. *)
 

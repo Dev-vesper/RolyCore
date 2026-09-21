@@ -553,7 +553,7 @@ total = 0
 
 <section id="functions">
     <h2>Functions</h2>
-    <p>A function is declared with <code>fn</code>, a name, parameters, and a body that returns a value. Declarations are only allowed at the top level of a program.</p>
+    <p>A function is declared with <code>fn</code>, a name, parameters, and a body that returns a value. Declarations sit at the top level of a program — or inside a function body, where they define a local function.</p>
     <pre><code><span class="tok-kw">fn</span> add (a, b) {
     <span class="tok-kw">return</span> a + b
 }
@@ -565,11 +565,32 @@ total = 0
 x = add(2, 3)
 <span class="tok-fn">print</span>(greet(<span class="tok-str">"roly"</span>))</code></pre>
 
+    <h3>Local functions</h3>
+    <p>A <code>fn</code> inside another function's body defines a local function. It binds when its line runs — before that line the name does not exist yet — and it sees the enclosing function's locals (reading and writing them), its own parameters, and the globals. Siblings can call each other, and a local function can call itself.</p>
+    <pre><code><span class="tok-kw">fn</span> count_to (limit) {
+    total = 0
+    <span class="tok-kw">fn</span> add (v) { total += v <span class="tok-kw">return</span> total }
+    i = 1
+    <span class="tok-kw">while</span> (i &lt;= limit) {
+        add(i)
+        i += 1
+    }
+    <span class="tok-kw">return</span> total
+}
+
+<span class="tok-kw">fn</span> fact (k) {
+    <span class="tok-kw">fn</span> go (m) { <span class="tok-kw">if</span> (m &lt;= 1) { <span class="tok-kw">return</span> 1 } <span class="tok-kw">return</span> m * go(m - 1) }
+    <span class="tok-kw">return</span> go(k)
+}
+
+<span class="tok-fn">print</span>(count_to(4))   <span class="tok-com">// 10</span>
+<span class="tok-fn">print</span>(fact(5))       <span class="tok-com">// 120</span></code></pre>
+
     <h3>Parameters</h3>
     <p>Parameters take any value — nothing is checked at the door, exactly like Python. What the function does with a value decides whether it works: <code>add("a", "b")</code> is fine (string concatenation), <code>add("a", 1)</code> fails inside the body with <code>operator '+' requires numeric operands</code>. An optional type annotation — <code>fn add (a: int, b: int)</code> — is allowed and purely cosmetic: it is never enforced, and old annotated code keeps running. An annotation must still be one of the six type names (<code>int</code>, <code>str</code>, <code>bool</code>, <code>list</code>, <code>float</code>, <code>file</code>); anything else is a parse error. No return type is declared.</p>
 
     <h3>Scope</h3>
-    <p>Each call gets its own local scope: parameters and assignments are local and disappear when the call ends. A function sees its own locals and the globals — nothing in between. One function cannot read or change the locals of the function that called it. Global variables are readable from inside functions, but assignments are always local — a function can never modify a global. A parameter may shadow a global.</p>
+    <p>Each call gets its own local scope: parameters and assignments are local and disappear when the call ends. A function sees its own locals and the globals — nothing in between, except that a local function also sees the locals of the function it was defined in. One function cannot read or change the locals of the function that called it. Global variables are readable from inside functions, but assignments are always local — a function can never modify a global. A parameter may shadow a global.</p>
     <pre><code>g = 10
 <span class="tok-kw">fn</span> f (g) { <span class="tok-kw">return</span> g }  <span class="tok-com">// parameter shadows the global</span>
 x = f(2)          <span class="tok-com">// x is 2, g stays 10</span>
@@ -596,6 +617,7 @@ y = h()           <span class="tok-com">// y is 99, t stays 5 — assignments ar
         <li>values are not checked on the way in — a type mismatch surfaces inside the body, at the operation that needs the value</li>
         <li>parameter names must be unique, and cannot be keywords or built-in names — <code>fn f (len)</code> is an error</li>
         <li>redefining a function name is an error</li>
+        <li>a local function binds when its <code>fn</code> line runs — before that the name is undefined; its name cannot be redefined, and cannot be both a function and a local variable</li>
         <li>functions are not values — <code>x = f</code> does not work, only <code>f(...)</code>; a variable cannot take a function's name in either order — <code>fn f () { ... } f = 5</code> and <code>f = 5 fn f () { ... }</code> are both errors</li>
         <li><code>break</code> / <code>continue</code> inside a function body but outside a loop is a parse error</li>
     </ul>
