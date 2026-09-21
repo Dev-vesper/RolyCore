@@ -133,7 +133,7 @@ class Parser:
         statements = []
         while not self.check(terminator):
             if self.check(T.FN):
-                if terminator is not T.EOF:
+                if self.fn_depth == 0 and terminator is not T.EOF:
                     raise ParseError(
                         "function declarations are only allowed at top level",
                         self.current(),

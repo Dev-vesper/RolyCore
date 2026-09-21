@@ -57,3 +57,9 @@ class ModuleFunctionRef:
     @property
     def params(self):
         return self.function.params
+
+
+class LocalFn:
+    def __init__(self, function, chain):
+        self.function = function
+        self.chain = chain

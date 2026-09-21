@@ -366,6 +366,8 @@ def compile_statement(statement, interp):
 
         def f_fndef(I):
             I.count_step()
+            if I.locals_stack:
+                I.bind_local_fn(statement)
 
         return f_fndef
     if isinstance(statement, Import):

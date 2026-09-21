@@ -18,6 +18,7 @@ from roly.parser import ParseError, Parser
 from roly.runtime import (
     MISSING,
     FileHandle,
+    LocalFn,
     ModuleAlias,
     ModuleEntry,
     ModuleFunctionRef,
@@ -44,6 +45,7 @@ class Interpreter:
         self.steps = 0
         self.globals = {}
         self.locals_stack = []
+        self.lexical_stack = []
         self.functions = {}
         self.builtin_names = set(BUILTINS)
         self.out = out if out is not None else _stdout_print
@@ -66,6 +68,17 @@ class Interpreter:
         if self.locals_stack:
             return self.locals_stack[-1]
         return self.globals
+
+    def frame_chain(self):
+        if not self.locals_stack:
+            return ()
+        return (self.locals_stack[-1],) + self.lexical_stack[-1]
+
+    def local_fn(self, name):
+        for frame in self.frame_chain():
+            if name in frame and isinstance(frame[name], LocalFn):
+                return frame[name]
+        return None
 
     def run(self, program):
         gc_enabled = gc.isenabled()
@@ -102,6 +115,27 @@ class Interpreter:
         for statement in program.statements:
             compile_statement(statement, self)(self)
 
+    def bind_local_fn(self, statement):
+        name = statement.name
+        if name in self.builtin_names:
+            raise RolyError(
+                f"'{name}' is a builtin and cannot be redefined"
+            )
+        for param_name in statement.params:
+            if param_name in self.builtin_names:
+                raise RolyError(
+                    f"parameter '{param_name}' of '{name}' "
+                    f"is a builtin and cannot be redefined"
+                )
+        if name in self.modules:
+            raise RolyError(f"'{name}' is already imported")
+        frame = self.locals_stack[-1]
+        if name in frame:
+            if isinstance(frame[name], LocalFn):
+                raise RolyError(f"function '{name}' already defined")
+            raise RolyError(f"'{name}' is already a variable name")
+        frame[name] = LocalFn(statement, self.frame_chain())
+
     def compiled_body(self, function):
         cached = self.fn_compiled.get(id(function))
         if cached is not None and cached[0] is function:
@@ -114,6 +148,13 @@ class Interpreter:
         self.count_step()
         if name in BUILTINS:
             return self.call_builtin_compiled(name, arg_fns)
+        local = self.local_fn(name)
+        if local is not None:
+            self.check_arity(name, local.function, arg_fns)
+            args = [arg_fn(self) for arg_fn in arg_fns]
+            return self.invoke_function(
+                name, local.function, args, chain=local.chain
+            )
         if name not in self.functions:
             raise RolyError(f"undefined function '{name}'")
         function = self.functions[name]
@@ -145,7 +186,7 @@ class Interpreter:
             return BUILTINS[name](self, *values)
         return BUILTINS[name](*values)
 
-    def invoke_function(self, name, function, args):
+    def invoke_function(self, name, function, args, chain=()):
         if isinstance(function, NativeFn):
             for (param_name, param_type), value in zip(function.params, args):
                 if type(value) is not param_type:
@@ -164,6 +205,7 @@ class Interpreter:
         module_fn = self.module_context is not None
         self.locals_stack.append(frame)
         self.module_frames.append(module_fn)
+        self.lexical_stack.append(chain)
         self.call_depth += 1
         try:
             self.compiled_body(function)(self)
@@ -173,6 +215,7 @@ class Interpreter:
             self.call_depth -= 1
             self.locals_stack.pop()
             self.module_frames.pop()
+            self.lexical_stack.pop()
         return MISSING
 
     def execute_import(self, module_name, names, from_lib=False):
@@ -387,10 +430,14 @@ class Interpreter:
         return list_get(base, index)
 
     def lookup(self, name):
-        if self.locals_stack:
-            frame = self.locals_stack[-1]
+        for frame in self.frame_chain():
             if name in frame:
-                return frame[name]
+                value = frame[name]
+                if isinstance(value, LocalFn):
+                    raise RolyError(
+                        f"'{name}' is a function, call it as {name}(...)"
+                    )
+                return value
         if name in self.globals:
             return self.deref(self.globals[name])
         if name in self.builtin_names:
@@ -404,6 +451,12 @@ class Interpreter:
             raise RolyError(f"'{name}' is a builtin and cannot be redefined")
         if name in self.modules:
             raise RolyError(f"'{name}' is already imported")
+        for frame in self.frame_chain():
+            if name in frame:
+                if isinstance(frame[name], LocalFn):
+                    raise RolyError(f"'{name}' is already a function name")
+                frame[name] = value
+                return
         if self.locals_stack:
             frame = self.locals_stack[-1]
             if name in frame:
