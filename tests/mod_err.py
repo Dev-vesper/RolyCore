@@ -46,6 +46,27 @@ def test_import_and_lib_import_name_clash(tmp_path):
     raises("'math' is already imported", "!import math import math", tmp_path)
 
 
+def test_module_name_collisions(tmp_path):
+    write_module(tmp_path, "testme", "a = 1")
+    raises("'testme' is already imported", "import testme testme = 5", tmp_path)
+    raises(
+        "'testme' is already imported",
+        "import testme fn f () { testme = 5 return testme } f()",
+        tmp_path,
+    )
+    raises("'testme' is already a variable name", "testme = 5 import testme", tmp_path)
+    raises(
+        "'testme' is already a function name",
+        "fn testme () { return 1 } import testme",
+        tmp_path,
+    )
+    raises(
+        "'testme' is already a function name",
+        "import testme fn testme () { return 1 }",
+        tmp_path,
+    )
+
+
 def test_missing_module_errors(tmp_path):
     raises("not found", "import nope", tmp_path)
 
