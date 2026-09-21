@@ -519,6 +519,13 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   resolves ONLY `base_dir`. Neither falls back to the other. A program may
   not take the same name from both sources: `import math` + `!import math`
   → `'math' is already imported` (tracked via `ModuleEntry.from_lib`).
+- **A module name is a third table** (`modules`) and follows the 15.54
+  dual-check: it can never coexist with a value of the same name. Assigning
+  over an imported module (global or local) is `'{name}' is already
+  imported`; importing a name already bound as a value is `'{name}' is
+  already a variable name` / `'{name}' is already a function name` — in
+  both source orders, since `FnDef` pre-registration makes a later
+  `fn name` visible to an earlier `import name` line (Phase 45).
 - For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`), the
   natives are injected into the module's function table right after a FRESH
   load only — never on a `module_cache` hit (the 2026-09-13 bug-hunt: a second
@@ -936,7 +943,10 @@ table must first prove the name is absent from the other — `assign()` and
 fn pre-registration do this, and brace binding in `execute_import` must
 too (both directions, 2026-09-13 and 2026-09-14 split-brain fixes). The
 hole appears exactly where a bind bypasses `assign()`; the fix is a
-one-line globals lookup in the fn branch, not a redesign.
+one-line globals lookup in the fn branch, not a redesign. The `modules`
+table is a third table under the same rule (Phase 45): the module name is
+bound only after `assign()`'s check would have refused it, so both bind
+sites — `assign()` and the import's name bind — do the cross-table lookup.
 
 15.55 **`UnicodeDecodeError` is a `ValueError`, not an `OSError`**: every
 site that decodes a user file must catch it explicitly, or a non-UTF-8
@@ -1267,6 +1277,16 @@ on the next read rather than being rounded.
   count a step. This is the phase where `builtins.py` took over
   `_io_reason`/`_io_fail` (15.55) and `BUILTINS_WITH_INTERP` was introduced
   (15.52).
+- **Phase 45 (2026-09-21)** — module-name split-brain fix (bug hunt): a
+  plain `import mod` bound the name into the `modules` table only, so a
+  variable or function of the same name could coexist — bare `mod` read the
+  value while `mod.x` read the module. Both bind sites now cross-check the
+  third table: `assign()` (locals included) refuses a module name
+  (`'mod' is already imported`) and `execute_import` refuses a name already
+  bound as a value (`'mod' is already a variable name` / `... a function
+  name`, either source order — FnDef pre-registration makes a later
+  `fn mod` visible to an earlier `import mod` line). Pinned in mod_err,
+  guide bullet added, 15.54 extended to the third table.
 
 ## 17. Tests & Maintenance Rules
 

@@ -847,6 +847,7 @@ print(strings.upper("hi"))  <span class="tok-com">// HI</span></code></pre>
     <ul>
         <li><code>import math</code> looks only next to your file; <code>!import math</code> looks only in the library — neither falls back to the other</li>
         <li>a name may come from one source only — <code>import math</code> and <code>!import math</code> in one program is an error</li>
+        <li>a module's name is its own — it cannot also be a variable or a function: after <code>import testme</code>, <code>testme = 5</code> is an error, and so is importing a name you already use as a variable or function</li>
         <li><code>!</code> is allowed only right before <code>import</code>, on the same line, at the top level</li>
         <li><code>sort_list</code>, <code>join</code>, and <code>reverse_list</code> are members of the <code>lists</code> module, written natively for speed — <code>!import lists {sort_list}</code> brings them in</li>
         <li>file access is not part of the library at all — <code>open</code>, <code>mkdir</code> and <code>list_dir</code> are built-ins, and the rest is methods on a file handle (see Files above)</li>
