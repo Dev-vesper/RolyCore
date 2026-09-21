@@ -1,0 +1,26 @@
+fn count_to (limit) {
+    total = 0
+    fn add (v) { total += v return total }
+    i = 1
+    while (i <= limit) {
+        add(i)
+        i += 1
+    }
+    return total
+}
+
+fn fact (k) {
+    fn go (m) { if (m <= 1) { return 1 } return m * go(m - 1) }
+    return go(k)
+}
+
+fn make_pair () {
+    base = 10
+    fn left () { return base }
+    fn right () { return base + left() }
+    return right()
+}
+
+print(count_to(4))
+print(fact(5))
+print(make_pair())

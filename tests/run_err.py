@@ -47,6 +47,33 @@ def test_variable_cannot_shadow_function():
     )
 
 
+def test_local_function_errors():
+    raises(
+        "'g' is already a function name",
+        "fn outer () { fn g () { return 1 } g = 5 return g } outer()",
+    )
+    raises(
+        "'x' is already a variable name",
+        "fn outer () { x = 1 fn x () { return 2 } return x } outer()",
+    )
+    raises(
+        "function 'g' already defined",
+        "fn outer () { fn g () { return 1 } fn g () { return 2 } return g() } outer()",
+    )
+    raises(
+        "'len' is a builtin and cannot be redefined",
+        "fn outer () { fn len () { return 1 } return 1 } outer()",
+    )
+    raises(
+        r"'g' is a function, call it as g\(\.\.\.\)",
+        "fn outer () { fn g () { return 1 } return g } outer()",
+    )
+    raises(
+        "undefined function 'g'",
+        "fn outer () { return g() fn g () { return 1 } } outer()",
+    )
+
+
 def test_division_by_zero():
     raises("division by zero", "x = 5 / 0")
     raises("division by zero", "z = 0 y = 5 / z")
