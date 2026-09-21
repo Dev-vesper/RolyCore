@@ -274,8 +274,6 @@ one comparison operator appears. Evaluation (`f_chain`):
 
 - Pairs evaluate left-to-right and **short-circuit at the first false pair**
   (the shared operand is evaluated once, not twice).
-- Every pair must produce a bool — non-bool intermediate results raise
-  `comparison must produce a bool`.
 
 History: chains were the bug-hunt round 2 headline — `1 == 1 == 1` used to
 evaluate as `(1 == 1) == 1` → silently `False`. Chains are deliberate
@@ -318,7 +316,7 @@ Python exceptions through the compiled closures:
 | `set(l, i, x)` | 3 | Returns NEW list. |
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
 | `input(prompt)` | 1 | Prompt must be a str (required). Wraps Python's `input()`: writes the prompt to the REAL stdout, reads one line, returns it as a str with the trailing newline stripped. EOF → `input: end of input reached`. Always returns str — `int(input(...))` is the sanctioned numeric read. |
-| `format(...)` | variadic | `{}` sequential and `{n}` reusable positional placeholders; `{{`/`}}` escapes; mixing auto and manual numbering is an error; messages match Python's `str.format` word-for-word. |
+| `format(...)` | variadic | `{}` sequential and `{n}` reusable positional placeholders; `{{`/`}}` escapes; mixing auto and manual numbering is an error; error messages are Roly's own (`format: cannot mix '{}' and '{n}' placeholders`). |
 | `open(path, mode)` | 2 | Opens a file and returns a `file` handle. Mode is `"r"` (must exist), `"w"` (create/truncate), `"a"` (create, writes always append). Relative paths resolve against the entry program's directory. Needs the interpreter (path base) — see `BUILTINS_WITH_INTERP`. |
 | `mkdir(path)` | 1 | Single-level directory creation (`parents=False`); `TRUE` on success, `mkdir: cannot make directory '<path>': <reason>` otherwise. |
 | `list_dir(path)` | 1 | Sorted list of the entry names in a directory; `list_dir: cannot list '<path>': <reason>` otherwise. |
@@ -440,10 +438,11 @@ plain list value):
 - **Representation**: a list of `[hash, key, value]` entries kept sorted by
   hash. Hash window is `[0, 1000003)`; the hash is djb2
   (`h = h*33 + ord(c)` from 5381) over the key's `str()` rendering — so
-  EVERY value type can be a key, and key identity follows `str()`
-  (`7` ≠ `"7"`, `1` ≠ `1.0` — deliberate divergence from Python's
-  hash-equality; collisions are resolved by key equality, never by the
-  hash alone).
+  EVERY value type can be a key. Lookup mixes two layers: `_lower_bound`
+  finds the equal-hash run, then `_find` compares keys with `==`. Both must
+  agree for a hit, so `7`/`"7"` (same hash, `==` false) and `1`/`1.0`
+  (`==` true, different hashes `"1"`/`"1.0"`) are each distinct keys —
+  deliberate divergence from Python's hash-equality.
 - **No boxing**: values are stored as-is. Untyped params (§6) accept any
   value, so the v1 box family (`put`/`put_i`/`put_str`/.../`map_get_i`/
   `map_has_i`) collapsed into a single `map_set(m, k, v)` / `map_get(m, k)`
@@ -805,9 +804,8 @@ only active during the initial load run, not later calls.
 15.26 One interpreter, one budget: alternating main/module calls can't
 stack depth. Per-module interpreters would break this — rejected design.
 
-15.27 Comparison chains short-circuit at the first false PAIR and each pair
-must produce a bool. `1 == 1 == 1` is `TRUE`; before the fix it silently
-evaluated `(1 == 1) == 1` → `FALSE`.
+15.27 Comparison chains short-circuit at the first false PAIR. `1 == 1 == 1`
+is `TRUE`; before the fix it silently evaluated `(1 == 1) == 1` → `FALSE`.
 
 15.28 `else if` does NOT exist (removed 2026-09-18, user decision): `if`
 takes at most one optional `else` block and chains nest an `if` inside
@@ -825,9 +823,10 @@ is documented in the guide.
 15.31 `str(TRUE)` is `"True"` (capital), matching `print`'s output — Python
 parity, by decision.
 
-15.32 `format` cannot mix `{}` and `{0}`; escapes are `{{`/`}}`; messages
-mirror Python's `str.format` errors word-for-word. It is variadic —
-therefore ABSENT from `BUILTIN_ARITIES` (absent = variadic is the convention).
+15.32 `format` cannot mix `{}` and `{0}`; escapes are `{{`/`}}`; errors are
+Roly's own (`format: cannot mix '{}' and '{n}' placeholders`). It is
+variadic — therefore ABSENT from `BUILTIN_ARITIES` (absent = variadic is
+the convention).
 
 15.33 `MAX_NESTING` guards recursive descent (parens/blocks), not flat
 spines. A 10k-term flat sum parses fine; `((((...))))` 101 deep does not.
@@ -1212,7 +1211,7 @@ on the next read rather than being rounded.
   host code cannot duck-type safely. map.roly collapsed the same day from
   26 to 16 functions: no boxing needed, one `map_set(m, k, v)` for every
   key/value type, hashing unified to djb2 over `str(key)` so every value
-  type can be a key (identity follows `str()`: `7` ≠ `"7"`, `1` ≠ `1.0`).
+  type can be a key (hash by `str()`, equality by `==`: `7` ≠ `"7"`, `1` ≠ `1.0`).
 - **Phase 38 (2026-09-18)** — hardening round: list rendering now emits
   every Roly string escape. `to_str`'s list branch routes string elements
   through `_escape_for_list` (`\\` first, then `\"`, `\n`, `\t`), so a
@@ -1287,6 +1286,14 @@ on the next read rather than being rounded.
   name`, either source order — FnDef pre-registration makes a later
   `fn mod` visible to an earlier `import mod` line). Pinned in mod_err,
   guide bullet added, 15.54 extended to the third table.
+- **Phase 46 (2026-09-21)** — audit cleanup (bug hunt): the `f_chain` bool
+  check (`comparison must produce a bool`) was unreachable — all six
+  comparison ops return Python bools — so it is gone; §7 and 15.27 dropped
+  the claim. Doc corrections: format errors are Roly's own messages, not
+  Python `str.format` word-for-word (§10 table, 15.32); map key identity is
+  a hash bucket found by `str()` plus the `==` test inside the run, not
+  "key identity follows `str()`" (§11 map bullet, Phase 37 note); the
+  guide's `list("roly")` comment now shows `["r", "o", "l", "y"]`.
 
 ## 17. Tests & Maintenance Rules
 
