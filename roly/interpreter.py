@@ -179,6 +179,10 @@ class Interpreter:
         entry = self.modules.get(module_name)
         if entry is not None and entry.from_lib != from_lib:
             raise RolyError(f"'{module_name}' is already imported")
+        if module_name in self.functions:
+            raise RolyError(f"'{module_name}' is already a function name")
+        if module_name in self.globals:
+            raise RolyError(f"'{module_name}' is already a variable name")
         path = self.resolve_import_path(module_name, from_lib)
         if path in [p for _, p in self.loading]:
             chain = [n for n, _ in self.loading] + [module_name]
@@ -398,6 +402,8 @@ class Interpreter:
     def assign(self, name, value):
         if name in self.builtin_names:
             raise RolyError(f"'{name}' is a builtin and cannot be redefined")
+        if name in self.modules:
+            raise RolyError(f"'{name}' is already imported")
         if self.locals_stack:
             frame = self.locals_stack[-1]
             if name in frame:
