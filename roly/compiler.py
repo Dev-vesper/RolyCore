@@ -198,10 +198,6 @@ def compile_expression(node, discard=False):
             for op_fn, operand_fn in pairs:
                 right = operand_fn(I)
                 v = op_fn(I, left, right)
-                if type(v) is not bool:
-                    raise RolyError(
-                        f"comparison must produce a bool, got {v!r}"
-                    )
                 if not v:
                     return False
                 left = right
