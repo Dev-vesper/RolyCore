@@ -55,7 +55,7 @@ source ──lexer──▶ tokens ──parser──▶ AST ──compiler─�
   function table, modules, step counter) and all runtime errors (`RolyError`).
 
 The old tree-walking evaluator (`eval`/`exec_statement` with an explicit
-stack) was deleted in the 2026-09-12 performance pass. Do not resurrect it.
+stack) was deleted in the performance pass. Do not resurrect it.
 
 ## 3. Grammar & Precedence
 
@@ -206,9 +206,8 @@ Three separate visibility rules stack:
    captured lexically at their definition site (local fns only — §6), then
    globals. Never the caller's frame. (History: the first implementation was
    dynamically scoped — callees read and *wrote* caller frames, causing
-   silent clobbering. Redesigned 2026-09-10; the Phase 47 capture chain is
-   not that model, because it is fixed at the definition site, not the call
-   site.)
+   silent clobbering. The local-fn capture chain (§6) is not that model — it
+   is fixed at the definition site, not the call site.)
 2. **Lib functions** are module functions (imported via `!import`), so they
    see their own frame + their module's globals — never user globals. This
    module-machinery isolation replaced the old `lib_depth` frame lock, which
@@ -248,7 +247,7 @@ fn name (a, b) { ... return expr }
   fn visible to earlier statements too) raises
   `'{name}' is already a function name` in `Interpreter.assign`, on the
   global write path only (params/locals may shadow freely).
-- **Local fns (Phase 47) bind at execution into the current frame.** A
+- **Local fns bind at execution into the current frame.** A
   nested `fn` statement stores a `LocalFn(function, chain)` wrapper in
   `locals_stack[-1]`, where `chain` is the defining `frame_chain()` (its own
   frame plus the chain below it). No hoist: a call above the definition line
@@ -320,9 +319,9 @@ Python exceptions through the compiled closures:
 - `return` overrides both: raising `ReturnSignal` inside a loop inside a fn
   still exits the fn. Signal priority falls out of exception unwinding.
 - `if` is a two-branch node: `If(cond, then_block, else_block)` with one
-  optional `else`. There is no `else if` (removed 2026-09-18, user decision
-  — Phase 40): longer chains nest an `if` inside `else`, so a ladder now
-  costs real parser depth against MAX_NESTING = 100.
+  optional `else`. There is no `else if` (user decision): longer chains nest
+  an `if` inside `else`, so a ladder now costs real parser depth against
+  MAX_NESTING = 100.
 
 ## 9. Builtins (22) & File Methods
 
@@ -369,7 +368,7 @@ Dispatch rules that matter:
   Roly (no string disassembly + fixed typed arity). `len`/`char` are the two
   primitives that make every other string algorithm pure-Roly-expressible.
 
-**File handles and methods** (Phase 44 — replaced the `thfile` module).
+**File handles and methods** (they replaced the `thfile` module).
 
 `f = open("a.txt", "w")` returns the one handle that owns the whole
 lifecycle. Eleven methods, all dispatched through `checked_method`:
@@ -445,14 +444,14 @@ scans for non-number elements first purely so `join`'s
 `operator '+' requires numeric operands` error surfaces bit-for-bit as
 before (the scan admits floats alongside ints).
 
-**File I/O lives in the core** (Phase 44): `open`/`mkdir`/`list_dir` are
+**File I/O lives in the core**: `open`/`mkdir`/`list_dir` are
 builtins and the operations are methods, so no import is needed for files.
 The semantics are documented in §9 (file handles and methods); two design
 points worth the "why" here:
 
 - The stream is opened in **binary mode** and encoded/decoded per operation
-  instead of using Python's text mode with `newline=""` (the Phase 43 fix
-  for the old natives). Binary is what makes `seek`/`tell` mean *bytes*
+  instead of using Python's text mode with `newline=""` (which dropped CR
+  bytes). Binary is what makes `seek`/`tell` mean *bytes*
   rather than opaque text cookies, and byte-faithful CRLF round-trips fall
   out for free. `size` stays `stat().st_size`, a byte count, so
   `size(f) != len(f.read())` for CRLF or multi-byte UTF-8 is expected —
@@ -489,7 +488,7 @@ plain list value):
   over both hash-sorted inputs (no rehashing; right side wins conflicts),
   and its duplicate check scans the WHOLE equal-hash chain in the right
   input — checking only the first same-hash entry missed colliding keys
-  deeper in the run (`7` vs `"7"`), fixed 2026-09-18 (15.60).
+  deeper in the run (`7` vs `"7"`, 15.60).
 - Every public function runs `_validate` first (shape: each entry a 3-item
   list — the `push` trick doubles as the type test). So one set/get costs
   O(n) validation plus the O(log n) search; the language has no cheaper
@@ -516,7 +515,7 @@ Design rules:
 
 - **Only functions with real logic enter the library.** One-liners and
   classic teaching loops (`is_even`, `factorial`, `fibonacci`, `sign`,
-  `is_palindrome`, ...) were pruned 2026-09-12 — they are user-writable.
+  `is_palindrome`, ...) were pruned — they are user-writable.
 - Lib code reuses itself: `mod()` everywhere a remainder appears (gcd,
   is_prime, to_base, group); `pad` measures width with `len(str(m))`.
 - Invalid input → `fail("...")`, never a wrong answer. Guards exist on
@@ -546,7 +545,7 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
 ```
 
 - `import` and `!import` are keywords, **top-level only** (stricter than
-  `fn`, which also nests inside function bodies — Phase 47). The
+  `fn`, which also nests inside function bodies). The
   `!` is allowed only immediately before `import`, on the same line; the
   parser enforces this with the same-line rule (`'import' must follow '!' on
   the same line`).
@@ -560,10 +559,10 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   imported`; importing a name already bound as a value is `'{name}' is
   already a variable name` / `'{name}' is already a function name` — in
   both source orders, since `FnDef` pre-registration makes a later
-  `fn name` visible to an earlier `import name` line (Phase 45).
+  `fn name` visible to an earlier `import name` line.
 - For `!import` of a module in `NATIVE_MODULE_FNS` (i.e. `lists`), the
   natives are injected into the module's function table right after a FRESH
-  load only — never on a `module_cache` hit (the 2026-09-13 bug-hunt: a second
+  load only — never on a `module_cache` hit (a fixed bug: a second
   importer re-injected into the same entry and died on the `defined twice`
   guard). The guard itself still protects against a lib file defining a fn
   with a native's name. A native-only module needs an anchor `.roly` file in
@@ -596,7 +595,7 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   the ref). Builtins are excluded from membership. Qualified access is
   read-only (`testme.x = 5` is a *parse* error); parens decide var read vs
   call (`testme.x` vs `testme.x()`).
-- **`.` is resolved at RUN time, not parse time** (Phase 44). The parser
+- **`.` is resolved at RUN time, not parse time**. The parser
   cannot know what a name means — `import` may sit below the expression, and
   a fn body parses before later imports — so `a.b` is one `Member` node and
   the compiler's `f_member_chain` decides: a **plain name that is currently
@@ -855,9 +854,9 @@ stack depth. Per-module interpreters would break this — rejected design.
 15.27 Comparison chains short-circuit at the first false PAIR. `1 == 1 == 1`
 is `TRUE`; before the fix it silently evaluated `(1 == 1) == 1` → `FALSE`.
 
-15.28 `else if` does NOT exist (removed 2026-09-18, user decision): `if`
+15.28 `else if` does NOT exist (user decision): `if`
 takes at most one optional `else` block and chains nest an `if` inside
-`else`. The flat `If.elifs` list from Phase 8 is gone with the syntax;
+`else`. The flat `If.elifs` list is gone with the syntax;
 nested ladders pay real parser depth against MAX_NESTING = 100.
 
 15.29 `break`/`continue` innermost-loop binding is a PARSE-time check
@@ -886,7 +885,7 @@ fail, but only 98 nested `if` blocks inside a fn body — the innermost
 condition adds one level on top of the fn body's own block.
 
 15.34 `gc.disable()` during runs assumes values can't form cycles — true
-except for local fns (Phase 47): a `LocalFn` in a frame holds the frame
+except for local fns: a `LocalFn` in a frame holds the frame
 chain, a cycle that survives the run until `run`'s `finally` re-enables GC
 (§13 table). First-class functions or mutable lists would break the
 assumption outright.
@@ -896,7 +895,7 @@ old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list`
 non-number pre-scan exists so `join`'s `operator '+' requires numeric
 operands` fires exactly as before) AND OUTPUT (`native_join` renders
 elements through `to_str`, never Python `str` — Python renders `['a']`
-single-quoted where Roly renders `["a"]`; found in the 2026-09-13 bug-hunt).
+single-quoted where Roly renders `["a"]`).
 Changing one side without the other breaks parity.
 
 15.36 `NativeFn`s bypass frame push and depth counting (pure host
@@ -983,7 +982,7 @@ Builtins without that membership set keep the plain `BUILTINS[name](*values)`
 shape.
 
 15.53 **Adding a native module** (the `lists` pattern): implementations live
-in `roly/stdlib.py` next to the other natives (user rule 2026-09-13: fold
+in `roly/stdlib.py` next to the other natives (user rule: fold
 features into existing files, do not create new Python modules), registered
 in `NATIVE_MODULE_FNS`, plus an anchor `.roly` file in `roly/lib/` that can
 be empty or comment-only — the module does not exist for `!import` without
@@ -996,13 +995,13 @@ which is why `thfile` no longer exists.
 variables live in separate dicts, and any code path that writes into one
 table must first prove the name is absent from the other — `assign()` and
 fn pre-registration do this, and brace binding in `execute_import` must
-too (both directions, 2026-09-13 and 2026-09-14 split-brain fixes). The
+too (both directions, the split-brain fixes). The
 hole appears exactly where a bind bypasses `assign()`; the fix is a
 one-line globals lookup in the fn branch, not a redesign. The `modules`
-table is a third table under the same rule (Phase 45): the module name is
+table is a third table under the same rule: the module name is
 bound only after `assign()`'s check would have refused it, so both bind
 sites — `assign()` and the import's name bind — do the cross-table lookup.
-Call frames are the fourth pairing under the same rule (Phase 47): a local
+Call frames are the fourth pairing under the same rule: a local
 fn and a frame variable cannot share a name, refused from both sides —
 binding and `assign()` walk the frame chain innermost-first.
 
@@ -1025,11 +1024,11 @@ to a `RolyError` (`input: end of input reached`), never a raw
 `EOFError` traceback.
 
 15.57 **`roly/lib/map.roly` carries engineering comments** — the ONE
-sanctioned exception to the comment-free convention (user grant
-2026-09-15): the file documents a data-structure simulation (hashing,
-probing, ordered merge) whose rationale is not derivable from reading the
-code, and it is the reference example of "a program a user could have
-written". Do not take this as license to comment other files — their "why"
+sanctioned exception to the comment-free convention (user grant): the file
+documents a data-structure simulation (hashing, probing, ordered merge)
+whose rationale is not derivable from reading the code, and it is the
+reference example of "a program a user could have written". Do not take
+this as license to comment other files — their "why"
 lives here.
 
 15.58 **There is no error-free exact type test in pure Roly** — `len`
@@ -1045,7 +1044,7 @@ bool/str/list and still cannot split int from float without
 `contains(".", str(v))`). If exact runtime type tests ever become
 load-bearing, the answer is a host builtin, not more probing.
 
-15.59 **Params duck-type, NativeFns do not** (Phase 37): user functions
+15.59 **Params duck-type, NativeFns do not**: user functions
 accept any value and let the body fail at the operation that needs it,
 but `invoke_function` still runs exact per-param checks on every
 `NativeFn` — `sort_list("ab")` errors at the call, while a pure-Roly
@@ -1056,16 +1055,16 @@ is also two-headed: `parse_parameter` validates `: type` against the six
 known names (a typo like `: integr` stays a ParseError) and then drops
 it — annotations are decoration, and the AST carries bare names only.
 
-15.60 **`map_merge`'s duplicate check is chain-wide, not first-entry**
-(fixed 2026-09-18): entries sort by stored hash and `7` vs `"7"` collide
-(both render through `str()`), so a right-side key match must scan the
+15.60 **`map_merge`'s duplicate check is chain-wide, not first-entry**:
+entries sort by stored hash and `7` vs `"7"` collide (both render through
+`str()`), so a right-side key match must scan the
 entire equal-hash run — the first-entry version kept BOTH keys and the left
 value won (`map_get` returned a's value with the phantom pair still in the
 map), violating the documented right-wins merge. The fixed walk emits a's
 non-duplicate entries in place and defers the whole b run to the next hash
 boundary, so a deduplicated key survives only in b's entry.
 
-15.61 **`.` is resolved at RUN time, not parse time** (Phase 44): the parser
+15.61 **`.` is resolved at RUN time, not parse time**: the parser
 cannot know whether `m.x` is a module member or a built-in method — a fn
 body parses before any later `import` runs. `f_member_chain` therefore keys
 on `owner in I.modules` (a plain-name base that is currently a module alias)
@@ -1086,15 +1085,15 @@ work on closed handles; `read`/`write`/`seek`/`tell`/`read_lines` do not.
 There is no `rmdir` — `mkdir` is create-only and that is the whole
 directory surface.
 
-15.63 **`close()` is idempotent and `delete()` closes first** (Phase 44
-decisions): calling `close()` twice is legal — no error, no state change —
-and `delete()` silently closes an open stream before unlinking so a handle
+15.63 **`close()` is idempotent and `delete()` closes first**: calling
+`close()` twice is legal — no error, no state change — and `delete()`
+silently closes an open stream before unlinking so a handle
 never leaks a file descriptor. `seek` and `tell` are BYTE offsets (Python
 parity), so `tell()` after a multi-byte write is the encoded length, and a
 seek into the middle of a UTF-8 character surfaces the honest decode error
 on the next read rather than being rounded.
 
-15.64 Local fns (Phase 47) capture lexically at the definition site: the
+15.64 Local fns capture lexically at the definition site: the
 `LocalFn` wrapper stores the defining `frame_chain()` — own frame plus the
 chain below it, never the caller's frame. Binding happens when the
 statement executes (no hoist: a call above the line is `undefined
@@ -1108,283 +1107,70 @@ parameter named like an outer local fn shadows the READ
 (`print(g)` shows the parameter) while the CALL still reaches the enclosing
 `LocalFn` — binding a value and calling the same name resolve differently.
 
-## 16. Decision History & Evolutionary Phases
+## 16. Design Decisions & Rationale
 
-- **Phase 0 (2026-09-06)** — skeleton: hand-written lexer/parser/interpreter,
-  print, variables, `+ - * /` (floor), comparisons, if/else, while; `grammar`
-  file; the three error classes. Everything stdlib-only Python.
-- **Phase 1** — strings (double-quoted, `\" \\ \n \t` escapes).
-- **Phase 2** — hardening: nesting limit, iterative evaluator, ASCII-only
-  tokens, `BrokenPipeError` handling, strict type equality.
-- **Phase 3** — `break`/`continue` (innermost only, parse-time check).
-- **Phase 4** — `guide/index.html` (single page, cream/black, sharp corners,
-  no animation).
-- **Phase 5** — functions: typed params, separate fn table,
-  pre-registration, depth 200, `ReturnSignal`.
-- **Phase 6** — `TRUE`/`FALSE` literals, unary minus, conversion builtins.
-  User decision: NO floats (reversed in Phase 30).
-- **Phase 7** — `tests/rolypip/` per-feature showcases.
-- **Phase 8** — else-if chains as a flat `elifs` list (depth-free).
-  (Reversed in Phase 40.)
-- **Phase 9** — standard library: auto-load, no import keyword, reserved
-  names, `lib_depth` frame lock (after the `digit_sum` global-clobber bug).
-- **Phase 10** — string builtins `format`/`len`/`char`; `format` proven
-  unwritable in pure Roly → host builtin.
-- **Phase 11** — modules/import. First build restricted members via braces;
-  **user corrected: braces never restrict** — redesign to
-  ModuleAlias/ModuleFunctionRef with live reads. Single-interpreter context
-  swap over per-module interpreters.
-- **Phase 12** — bug hunts: true comparison chains, `fail()` builtin, honest
-  value-read errors (`x = len`), arity-before-args, `RecursionError`
-  wrapping, brace split-brain collision fix.
-- **Phase 13** — lists: phase 1 (11 builtins, immutability decision),
-  phase 2 (read-only subscript operator, DOT/LBRACKET tokens), then list
-  literals (trailing comma rejected).
-- **Phase 14** — standalone exe: `builder/` package, lib-next-to-exe,
-  frozen-path resolution, PyInstaller 6.22.2 as dev dep.
-- **Phase 15** — expression statements (call/module-call lines) + the
-  one-line rule with bracket exceptions.
-- **Phase 16 (2026-09-12)** — performance pass: **compiler to closures**
-  (evaluator deleted), loop-compiled spines, var fast path, native
-  `sort_list`/`join`/`reverse_list`, `gc` tuning, `slots=True`, interned
-  identifiers. ~3.1x on the arith bench.
-- **Phase 17 (2026-09-12)** — library pruning: only real-logic functions
-  stay; 40 lib names total (37 Roly + 3 native); `mod()` reuse rule.
-- **Phase 18 (2026-09-12)** — test suite rewrite: error-only, 7 files,
-  ~100 tests; correctness verified through the real CLI.
-- **Phase 19 (2026-09-12)** — internals.md rewritten from a chronological
-  log into this document (topical reference).
-- **Phase 20 (2026-09-12)** — `!import`: the library becomes opt-in. Lib
-  files are real modules resolved from `roly/lib/` (`!` prefix, no
-  fallback, clash via `from_lib`); lib names un-reserved;
-  `lib_depth`/`reserved` machinery deleted; natives injected into the
-  `lists` module.
-- **Phase 21 (2026-09-12)** — `digits` module removed (user decision);
-  `pad` now measures width with `len(str(m))` instead of `digit_count`.
-- **Phase 22 (2026-09-12)** — returns become optional: a fn falling off
-  its body yields the `MISSING` sentinel, erroring only when the value is
-  used; empty blocks (`{ }`) become parse errors everywhere.
-- **Phase 23 (2026-09-12)** — `;` statement separator (strict — nothing
-  trailing, never inside expressions) and `{ ... }` as the intentional
-  empty-block placeholder.
-- **Phase 24 (2026-09-13)** — bug-hunt fixes: circular imports detected by
-  resolved path (entry named like a lib module no longer false-positives);
-  one-line rule extended to the `(` after `if`/`while`/`print` and fn param
-  lists; fn/var name collisions rejected on the global write path; lists
-  render Roly-style (`[1, "a"]`) in `print`/`str`/`format` via `to_str`
-  recursion (print now routes through `to_str` in the compiler).
-- **Phase 25 (2026-09-13)** — `thfile` module: 11 native file operations
-  (read/write/append/delete/exists/size/read_lines/mkdir/list_dir/rename/copy).
-  `NativeFn` callables now receive the interpreter (`callable(I, *args)`);
-  `entry_base_dir` added to support entry-relative paths. Fail-loud errors,
-  `rename` dst guard, UTF-8 only. First native module after `lists` —
-  establishes the anchor-file pattern (15.53).
-- **Phase 26 (2026-09-13)** — bug-hunt round 3, three fixes: native injection
-  moved to fresh-load-only (a native module imported by two importers died on
-  a false `defined twice` — the cache-hit path re-injected); thfile binary
-  reads raise a clean `not valid UTF-8 text` error instead of leaking a Python
-  traceback (`UnicodeDecodeError` has no `strerror`); `native_join` renders
-  through `to_str` restoring the pure-Roly output parity (`["a"]`, not
-  Python's `['a']`).
-- **Phase 27 (2026-09-14)** — bug-hunt round 2 continued: 6500-case
-  differential fuzz against Python (arithmetic, precedence, comparison
-  chains, format) found zero mismatches. One confirmed bug fixed: brace fn
-  over an importer variable created a split-brain name (`print(x)` read the
-  variable, `x(3)` called the module fn, `x = 6` errored). User chose the
-  strict option after a language survey (Rust/Go/JS error on import
-  collisions; Python silently rebinds): now `'x' is already a variable
-  name`, completing the collision matrix (15.54).
-- **Phase 28 (2026-09-14)** — bug-hunt round 2, second fix: non-UTF-8 entry
-  files and module files leaked raw Python tracebacks (both read sites
-  caught only `OSError`). Both now go through `stdlib._io_reason` (moved to
-  `builtins._io_reason` in Phase 44) —
-  `the file is not valid UTF-8 text` — and the CLI's read errors are
-  lowercase like every other Roly error (15.55).
-- **Phase 29 (2026-09-15)** — `input(prompt)` builtin (12th): Python-style
-  user input. User-pinned semantics: prompt REQUIRED and str-typed (unlike
-  Python's optional prompt), return is ALWAYS str — `int(input(...))` is
-  the numeric read; a bare `input(...)` statement reads and discards.
-  EOF → clean `RolyError`. No rolypip showcase — an interactive script
-  would hang the glob-discovered smoke run.
-- **Phase 30 (2026-09-15)** — `float` type + `float()` builtin (13th).
-  Python-parity semantics, user-pinned in four decisions: full promotion
-  (`1 + 0.5` → `1.5`, `1 == 1.0`, `[1] == [1.0]`; bools stay excluded —
-  `1 + TRUE` errors); `/` floors only two ints, any float operand makes it
-  true division; `float()` strings follow Python's grammar minus
-  whitespace/underscores/`inf`/`nan` (but `float(".5")`/`float("1.")`
-  convert, unlike the literal grammar); `int(f)` truncates toward zero,
-  `int(inf)`/`int(nan)` error. Operation error messages changed
-  "requires integer operands" → "requires numeric operands" (compiler OPS
-  + `_require_number_element`); `sort_list`/`sum_list`/`max_list`/`min_list`
-  accept numbers. Lexer: dot must be followed by a digit, exponent via
-  no-advance lookahead (15.8). Verified with a 4000-case differential fuzz
-  against Python (0 mismatches) plus edge probes (inf, -0.0, 1e-400 → 0.0,
-  big-int precision loss). Same-day bug hunt: int/float `+ - * /` and
-  `float(int)` leaked raw `OverflowError` tracebacks when the int exceeded
-  the double range — now the clean `integer too large to convert to float`
-  (comparisons never overflow; Python compares int/float exactly), pinned
-  by a 5000-case fuzz that mixed ~300-digit int leaves in (1678 overflow
-  paths, 0 mismatches) and a 6000-case literal fuzz (0 crashes, 0 value
-  mismatches).
-- **Phase 31 (2026-09-15)** — `ord(c)` builtin (14th): the Unicode code
-  point of a single character, the inverse of `char`-style indexing.
-  (Its own inverse, `chr`, arrived in Phase 43.)
-  Strict: a non-str argument or a str of length ≠ 1 is an error. The
-  guide's keyword/builtin counts are no longer hardcoded per spot — a
-  tiny script at the end of `guide/index.html` fills
-  `<span data-count="keywords|builtins">` from one `counts` object;
-  update THAT (and the Keywords row listing) when adding names.
-- **Phase 32 (2026-09-15)** — `insert(l, i, x)` builtin (15th): places a
-  value at a 0-based position, rest shift right. `i == len` appends (the
-  one relaxation vs `set`/`get`, which require a position below len);
-  negative or `> len` is an error. User-pinned 0-based indexing
-  ("باید از 0 شروع بشه"). Replaced the guide's manual
-  loop-based insertion example.
-- **Phase 33 (2026-09-15)** — `delete_at(l, i)` builtin (16th): drops the
-  element at a 0-based position, rest shift left. Strict `get`-style
-  bounds (no `i == len` here; there is nothing to delete at the end
-  position). The lib's pure-Roly `remove_at` was deleted in the same
-  change (user decision) — `delete_at` fully replaces it; showcase,
-  lib_err and invariant references migrated.
-- **Phase 34 (2026-09-15)** — `concat(a, b)` builtin (17th): joins two
-  lists into a new one. Deliberately a builtin rather than reopening `+`:
-  the operator stays numbers-or-strings only, so `l + m` keeps erroring
-  and the type story of `+` doesn't fork.
-- **Phase 35 (2026-09-15)** — `map_equal(a, b)` builtin (18th):
-  order-independent equality for `[[key, value], ...]` pair lists, the
-  map idiom on top of plain lists (no dict type exists). Full spec was
-  user-supplied: length mismatch → FALSE; each pair of a must find an
-  equal pair in b; duplicate keys allowed; comparisons route through
-  `roly_equal`. Same change, user decision: matching is multiset
-  (consumed) — the first draft's non-consuming scan broke symmetry
-  (`map_equal(a,b)` ≠ `map_equal(b,a)` on duplicate keys); the user
-  supplied the comparison table proving consumed matching is the only
-  symmetric, intuitive choice.
-- **Phase 36 (2026-09-15)** — the `map` library module (26 pure-Roly
-  functions): a hash map simulated over plain lists as `[[hash, key, box]]`
-  sorted by hash, djb2/`mod` hashing in a 1000003 window, lower-bound
-  binary search + linear probing over the collision chain, in-place upsert,
-  hash-reusing ordered merge (right wins) and push-trick shape validation.
-  Built on the five Phase 31–35 builtins (`ord`, `insert`, `delete_at`,
-  `concat`, `map_equal`) exactly as the user planned — they were added for
-  this module. Values are boxed in one-item lists because typed params
-  cannot take "any value" (the user's put/put_str sketch); int keys get the
-  `_i` family. `show` renders `{name: Ali, age: 31}` per the user's
-  requested shape. Engineering comments are allowed in map.roly only
-  (15.57).
-- **Phase 37 (2026-09-15)** — duck-typed parameters (user decision: params
-  accept anything, exactly like Python; the old strictness was a flaw, not
-  a feature). `FnDef.params` became `list[str]`; a frame is
-  `dict(zip(params, args))`. An optional `: type` annotation survives as
-  pure decoration — still validated to be one of the six type names
-  (unknown type stays a parse error), never enforced, old code runs
-  unchanged. Type errors now surface at use sites
-  (`operator '+' requires numeric operands`) instead of the call;
-  `NativeFn` params (lists natives, thfile) KEEP their strict checks —
-  host code cannot duck-type safely. map.roly collapsed the same day from
-  26 to 16 functions: no boxing needed, one `map_set(m, k, v)` for every
-  key/value type, hashing unified to djb2 over `str(key)` so every value
-  type can be a key (hash by `str()`, equality by `==`: `7` ≠ `"7"`, `1` ≠ `1.0`).
-- **Phase 38 (2026-09-18)** — hardening round: list rendering now emits
-  every Roly string escape. `to_str`'s list branch routes string elements
-  through `_escape_for_list` (`\\` first, then `\"`, `\n`, `\t`), so a
-  printed list holding tabs/newlines/backslashes stays one re-lexable line
-  instead of breaking the output (Phase 24 escaped `"` only). The one-line
-  rule was widened to the remaining binding sites — the `if` after `else`
-  (dropped with `else if` in Phase 40), the module name after
-  `import`/`!import`, the import brace list, the
-  member name after `.`, and the type after a parameter `:` — each pinned by
-  a par_err test; and a lone identifier statement now reports the
-  assignment fallback message instead of the misleading `'=' must follow`
-  one (that message fires only when an `=`/compound operator really sits on
-  the next line).
-- **Phase 39 (2026-09-18)** — `map_merge` fix (15.60): duplicate detection
-  now scans the full equal-hash chain in the right input, so colliding keys
-  like `7`/`"7"` merge right-wins with no phantom extra entry; verified via
-  CLI probes (collision pairs, disjoint and empty sides, 15-key overlap).
-- **Phase 40 (2026-09-18)** — `else if` removed (user decision): `if` takes
-  at most one optional `else` block; chains nest an `if` inside `else` and
-  pay real parser depth. Touched: parser (`parse_if`), `If` node (`elifs`
-  field deleted), compiler branch, grammar, guide, the par_err pin
-  (`expected '{', got 'if'`), and the rolypip/invariant programs that used
-  ladders (rewritten as nested `else { if ... }`).
-- **Phase 41 (2026-09-18)** — parser same-line holes closed (the H1–H3
-  findings): a required block's `{` must sit on its introducer's line
-  (`if (...)`, `else`, `while (...)`, `fn name(...)`), a function name must
-  follow `fn`, and an import brace list must fit on one line; each pinned in
-  par_err, valid programs unaffected (bare `{` statements stay free).
-- **Phase 42 (2026-09-18)** — grammar spec corrections: the comparison rule
-  is `( comparison_op additive )*`, not `+` — a bare additive has always
-  been a valid expression (zero comparison ops) — fixed in both the
-  `grammar` file and the guide's embedded copy, whose `if_statement` rule
-  also dropped its stale `else if` alternative left from Phase 40.
-- **Phase 43 (2026-09-18)** — two findings from a /tmp bug-hunt round
-  (JSON parser + `let x: int = 32` lexer/parser written in Roly, the
-  programs live outside the repo):
-  1. `chr(n)` builtin (19th), the missing inverse of `ord`. Until now a
-     pure-Roly program could read a code point out of a string but never
-     build one back, so a JSON decoder could not turn `\b`/`\f`/`\r`/
-     `\uXXXX` into characters (and the lexer's `\" \\ \n \t`-only escape
-     set means those characters cannot be written as literals either).
-     Exact int (bools rejected), range `0..0x10FFFF`, surrogates rejected
-     with a clean error.
-  2. thfile `read`/`write`/`append`/`read_lines` now open with
-     `newline=""` — they were using Python's universal-newline translation,
-     so `read`→`write` silently dropped CR bytes (a 6-byte CRLF file came
-     back as 4 bytes) while `size`/`copy` stayed byte-based. `size` remains
-     a byte count, so `size(f) != len(read(f))` for CRLF or multi-byte
-     files is expected, not a bug (see the file-handle specifics in §9).
-- **Phase 44 (2026-09-20)** — built-in METHODS (user request): file handling
-  without an import. Rethought from the user's decisions: a sixth value type
-  `file` (a `FileHandle` from `open(path, mode)` — `"r"`/`"w"`/`"a"`, one
-  read/write stream, byte `tell`/`seek`), 11 methods via `.` (`read`
-  `read_lines` `write` `seek` `tell` `close` + path methods `exists` `size`
-  `rename` `copy` `delete`), and `open`/`mkdir`/`list_dir` as global builtins
-  (19 → 22). The `thfile` module was DELETED — its 11 operations all have a
-  new home, and `: file` became a valid (decorative) annotation. Dot access
-  is now ONE runtime-resolved node: `Member` replaced `ModuleVar`/`ModuleCall`
-  and `f_member_chain` picks module vs method per call (15.61); `x = m.a` on
-  an unimported name now reports `undefined variable`. Equality between
-  handles is identity; `print(f)` renders `file("a.txt")`; method calls
-  count a step. This is the phase where `builtins.py` took over
-  `_io_reason`/`_io_fail` (15.55) and `BUILTINS_WITH_INTERP` was introduced
-  (15.52).
-- **Phase 45 (2026-09-21)** — module-name split-brain fix (bug hunt): a
-  plain `import mod` bound the name into the `modules` table only, so a
-  variable or function of the same name could coexist — bare `mod` read the
-  value while `mod.x` read the module. Both bind sites now cross-check the
-  third table: `assign()` (locals included) refuses a module name
-  (`'mod' is already imported`) and `execute_import` refuses a name already
-  bound as a value (`'mod' is already a variable name` / `... a function
-  name`, either source order — FnDef pre-registration makes a later
-  `fn mod` visible to an earlier `import mod` line). Pinned in mod_err,
-  guide bullet added, 15.54 extended to the third table.
-- **Phase 46 (2026-09-21)** — audit cleanup (bug hunt): the `f_chain` bool
-  check (`comparison must produce a bool`) was unreachable — all six
-  comparison ops return Python bools — so it is gone; §7 and 15.27 dropped
-  the claim. Doc corrections: format errors are Roly's own messages, not
-  Python `str.format` word-for-word (§10 table, 15.32); map key identity is
-  a hash bucket found by `str()` plus the `==` test inside the run, not
-  "key identity follows `str()`" (§11 map bullet, Phase 37 note); the
-  guide's `list("roly")` comment now shows `["r", "o", "l", "y"]`.
-- **Phase 47 (2026-09-21)** — local (nested) functions (user request): `fn`
-  is allowed inside a function body at any block depth (top-level blocks
-  still refuse; `import` stays top-level only). The definition statement
-  binds a `LocalFn(function, chain)` into the current frame, capturing the
-  defining `frame_chain()`; `lookup`, `assign` and a new `call_compiled`
-  frame path walk that chain innermost-first — full lexical capture
-  (enclosing locals read AND written, sibling calls, self-recursion,
-  two-level nesting) with globals still shadowable. Strict in-frame naming
-  mirrors the 15.54 dual check (both directions, plus builtin/module
-  names); GC note updated (15.34) — a bound local fn is a live frame cycle
-  reclaimed when the run ends. Touched: parser (placement check), runtime
-  (`LocalFn`), interpreter (`lexical_stack`, `frame_chain`, `local_fn`,
-  `bind_local_fn`, chain walks, `invoke_function(chain)`), compiler
-  (`f_fndef` binds), grammar, guide, syntax showcase, run_err pins.
+The choices that still shape the language, each with the reason it was made —
+reversing one means reversing its reason first. The dated record of when each
+change landed lives in `git log`; this file keeps the "why".
+
+**Surface & semantics**
+
+- **Braces never restrict** module members: the first design was a whitelist
+  and the user corrected it; every member stays reachable as `name.member`
+  (§11).
+- **No `else if`**: `if` takes one optional `else` block and longer ladders
+  nest — the flat `elifs` list was deleted with the syntax (§8).
+- **Comparisons are real chains** (`Chain` AST), not `(a < b) and (b < c)`
+  re-association — `1 == 1 == 1` used to silently evaluate `FALSE` (§7).
+- **A fn falling off its body yields the `MISSING` sentinel**, never an
+  exception; the error belongs at the use site (15.48).
+- **Empty blocks are parse errors**; `{ ... }` is the placeholder and `;` is
+  the strict separator (15.49–15.51).
+- **Lists are immutable by discipline** (callers rebind), indexing is
+  0-based, and `concat` is a builtin rather than a widened `+` — `+` stays
+  numbers-or-strings so its type story does not fork.
+- **Floats are Python-parity by user decision**: promotion on mixed
+  arithmetic, `/` floors only two ints, `float()` takes a strict string
+  grammar, and the arithmetic ops turn `OverflowError` into a clean message
+  (15.5, 15.7).
+- **`input`'s prompt is required and str-typed, the return always str** —
+  Python's optional prompt was deliberately not copied.
+- **Params duck-type like Python** (the old strictness was a flaw, not a
+  feature); `: type` stays decorative; `NativeFn` params keep exact checks
+  because host code cannot duck-type safely (15.59).
+- **No dict type exists**: `map` is a lib module over plain lists, and duck
+  typing let its functions collapse to one `map_set(m, k, v)` /
+  `map_get(m, k)` for every key/value type (§11).
+
+**Structure & scope**
+
+- **Functions are not first-class and are pre-registered** before execution,
+  so recursion, mutual recursion and call-before-def all work (§6).
+- **Scope is lexical, never dynamic** — the first implementation let callees
+  read and write caller frames and silently clobbered them (§5).
+- **One interpreter, one budget, one context swap**; per-module interpreters
+  were rejected because alternating calls would multiply the effective
+  depth/budget (§11).
+- **The library is opt-in** (`!import`): it was auto-loaded first, and the
+  `lib_depth` frame lock existed only to contain that design — both are gone,
+  isolation is the module machinery (§5, §10).
+- **Name collisions are refused strictly**, both directions and both source
+  orders — the Rust/Go/JS answer, not Python's silent rebind (15.54).
+- **File I/O lives in the core**: `thfile` was deleted for the `file` value
+  type, its 11 methods and `open`/`mkdir`/`list_dir` (§9).
+
+**Execution engine**
+
+- **The tree-walking evaluator was deleted for the closure compiler** (~3.1x
+  on the arith benchmark); spines compile to loops and gc is disabled during
+  runs (§12, 15.34).
+- **Natives are the escape hatch for hot paths and inject on a fresh load
+  only** (15.46); they must reproduce the pure-Roly behavior bit-for-bit —
+  errors and output alike (15.35).
 
 ## 17. Tests & Maintenance Rules
 
-### Test philosophy (user rules, 2026-09-12)
+### Test philosophy (user rules)
 
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
@@ -1404,6 +1190,9 @@ parameter named like an outer local fn shadows the READ
   or mismatch in these valid programs signals a possible engine bug.
 - Correctness is verified through the real CLI:
   `.venv/bin/python roly.py run file.roly` / `roly.py exec "code"`.
+  Semantics changes are additionally checked by differential fuzzing against
+  Python (arithmetic, precedence, comparison chains, format, float edges)
+  where the two languages are meant to agree.
 - `pytest.ini`: `testpaths = tests`, `python_files = *.py` (no `test_` file
   prefix; test functions still use `test_`).
 
@@ -1430,7 +1219,9 @@ parameter named like an outer local fn shadows the READ
 5. Name-collision sweep: keywords, lib files, and `fn <name>` across tests/,
    syntax/, tests/rolypip/ (the `fn get`/`fn set` incident).
 6. Error-path test appended to the matching `*_err.py` file.
-7. Guide entry.
+7. Guide entry — and bump the `counts` object at the end of
+   `guide/index.html`: it fills every `<span data-count="keywords|builtins">`
+   from that one place, so the prose lists stay free of hardcoded numbers.
 
 ### Adding a method — checklist
 
@@ -1468,7 +1259,8 @@ parameter named like an outer local fn shadows the READ
    `fn_depth`, `bracket_depth`, top-level-only rules).
 5. `roly/compiler.py`: both sides (expression and/or statement branch),
    statement branches open with `count_step()`.
-6. Guide + `syntax/*.roly` example (smoke auto-covers it).
+6. Guide + `syntax/*.roly` example (smoke auto-covers it); a new keyword also
+   bumps the `counts` object (see the builtin checklist).
 7. Error tests for every new rejection message.
 
 ### Adding an AST node
