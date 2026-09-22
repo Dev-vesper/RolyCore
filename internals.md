@@ -7,7 +7,7 @@ reference. The source code carries no comments or docstrings (project
 convention), so the "why" lives here — the file is public and tracked in the
 repository.
 
-Facts below were verified against the source on 2026-09-20. When this document
+Facts below were verified against the source on 2026-09-22. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -21,7 +21,7 @@ and the code disagree, the code wins — then fix this document.
 | `roly/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
 | `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
 | `roly/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. `Member` is the single dot-access node (module member and built-in method alike). |
-| `roly/errors.py` | `LexError`, `ParseError`, `RolyError` — the only exception types the pipeline raises. |
+| `roly/errors.py` | `RolyError` only — the runtime error every other module imports. `LexError` lives in `lexer.py` (carries line/column) and `ParseError` in `parser.py` (carries the offending token). |
 | `roly/builtins.py` | The 22 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `BUILTINS_WITH_INTERP` (the three that need the interpreter), the file-handle methods (`FILE_METHODS`/`FILE_METHOD_ARITIES`, `checked_method`, `member_value`), the `_io_reason`/`_io_fail` pair, `roly_equal`, `format_text`, list primitives. |
 | `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the 3 native `lists` implementations, and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
 | `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
@@ -66,16 +66,18 @@ program     : (import | fn-decl | statement)*
 statement   : assignment | compound-assign | if | while | print
             | break | continue | return | block
             | expression-statement        (call or member-call ONLY)
-expression  : comparison (flat chain of >1 comparison op allowed)
-comparison  : additive ((== != < <= > >=) additive)*
+expression  : comparison
+comparison  : additive ((== != < <= > >=) additive)*   ← Chain node only if ≥1 op
 additive    : multiplicative ((+|-) multiplicative)*     ← iterative spine
 multiplicative: unary ((*|/) unary)*                     ← iterative spine
 unary       : '-' unary | primary
 primary     : atom ('[' expression ']' | '.' IDENT call?)*  ← iterative postfix
 atom        : INT | FLOAT | STRING | TRUE | FALSE | list-literal
-            | IDENT call? | builtin-call
-            | '-' atom | '(' expression ')'
+            | IDENT call? | builtin-call | '(' expression ')'
 ```
+
+(`-` is consumed in `parse_atom` and wraps `parse_primary`, so `-a[0]` is
+`Neg(Subscript)` — the postfix binds first, as the unary rule above says.)
 
 Precedence, loosest to tightest:
 
@@ -153,9 +155,11 @@ Six value types, period: `int`, `str`, `bool`, `list`, `float`, `file`.
   `.5` are parse errors — see 15.8).
 - **bool** is Python `bool`. Because Python `bool` is a subclass of `int`,
   every type check in the pipeline uses *exact* checks (`type(v) is not t`).
-  `TRUE` passed where `int` *or* `float` is declared is a type error, not a
-  quiet `1`; likewise `1 < TRUE` is a runtime error — bools are not numbers
-  in Roly even though they are in Python.
+  A bool is not a number: `1 < TRUE` and `TRUE + 1` are runtime errors
+  (`operator '<' requires numeric operands, got True`), not a quiet `1` —
+  bools are not numbers in Roly even though they are in Python. The explicit
+  doors are `int(TRUE)`/`float(TRUE)` (both `1`/`1.0`); `: type` annotations
+  check nothing (§6), so they are not a third door.
 - **str** is Python `str`. `+` concatenates str+str; `int + str` is an error.
 - **list** is Python `list` but **immutable by discipline**: `push`/`set`
   return *new* lists and callers must rebind (`l = push(l, x)`). `l[i] = x`
@@ -178,7 +182,7 @@ comparison where numbers compare by value across int and float
 types: `[TRUE] != [1]`, `[[1,2]]` compares element-wise, and file handles
 compare by identity. There is no ordering across types.
 
-**Truthiness.** `truthy()` (interpreter.py:348) accepts: `bool` → itself,
+**Truthiness.** `truthy()` (interpreter.py:420) accepts: `bool` → itself,
 `int`/`float` → `!= 0` (so `if (1)` is legal and true), anything else (str,
 list) → runtime error `condition must be a number, got {value!r}`. Note the
 asymmetry: ints are valid conditions, but bools are NOT valid numbers where
@@ -211,10 +215,12 @@ Three separate visibility rules stack:
    fixed the original leak where `digit_sum`'s internal `s` overwrote a
    user's global `s`.
 3. **Module functions** see their own frame + their module's globals. The
-   `module_frames` stack records which module each frame belongs to; a bare
-   assignment inside a *user* fn is always local (there is no way to write a
-   global from inside a user fn), while a module fn whose name exists in the
-   module globals writes through to the module.
+   `module_frames` stack records, per pushed frame, a *bool* — whether that
+   frame belongs to a loaded module (`module_context is not None`) rather
+   than the main program. A bare assignment inside a *user* fn is always
+   local (there is no way to write a global from inside a user fn), while a
+   module fn whose name exists in the module globals writes through to the
+   module.
 
 Lookup order: the frame chain — own frame, then captured frames innermost
 first — → globals (with `ModuleAlias` unwrapping on read, §11). The
@@ -263,8 +269,11 @@ fn name (a, b) { ... return expr }
   operands`). An optional `: type` annotation is allowed and PURELY
   COSMETIC — parsed, validated to be one of the six type names (anything
   else stays a parse error), then dropped; old annotated code runs
-  unchanged. Names must be unique and not keyword / builtin names —
-  checked at registration with the matching message (§14).
+  unchanged. Names must be unique (parse-time `duplicate parameter '{p}'`)
+  and must not be builtin names (registration checks that one:
+  `parameter '{p}' of '{f}' is a builtin and cannot be redefined`); a
+  keyword can never get through — the parser matches `IDENT` for a
+  parameter name.
 - **Invocation order** (`call_compiled` → `invoke_function`), in exact order:
   1. `count_step()` — a call is a step.
   2. Builtins checked FIRST (`BUILTINS` before the user fn table — a user
@@ -350,8 +359,10 @@ Dispatch rules that matter:
   called `BUILTINS[name](self, *values)`; every other builtin gets values
   only. Anything needing run context (here `I.entry_base_dir`) must come
   through that first argument (the same rule as `NativeFn`, 15.52).
-- In the parser, `TYPE_TOKENS` + `(` parse as builtin calls in `parse_atom`;
-  bare `x = int` is a parse error (same treatment as a keyword).
+- In the parser, `BUILTIN_NAMES` (the five type-named builtins) + `(` parse
+  as builtin calls in `parse_atom`; bare `x = int` is a parse error (same
+  treatment as a keyword). The sixth type name, `file`, has no call form —
+  its token in a value slot is a parse error with its own message.
 - Reading a builtin as a value fails honestly: `x = len` → `'len' is a
   builtin, not a value`.
 - `format` is a host builtin on purpose: it was proven unwritable in pure
@@ -401,8 +412,11 @@ lifecycle. Eleven methods, all dispatched through `checked_method`:
   `method 'write' expects a str, got 1`, `file is closed`.
 - A bare member read is always an error:
   `'read' is a method, call it as file("a.txt").read()` — the receiver is
-  rendered with `to_str`, so a variable makes no difference to the wording
-  and the message stays true for arbitrary receiver expressions.
+  rendered with `repr(value)`, so a variable makes no difference to the
+  wording and the message stays true for arbitrary receiver expressions.
+  A non-handle receiver fails earlier, on the receiver check:
+  `l.read` on a list is `method 'read' expects a file handle, got [1, 'a']`
+  (Python repr, not Roly's `to_str` rendering).
 - Absolute paths pass through; relative ones resolve against the entry
   program's directory (`I.entry_base_dir`, never the swapped `base_dir`).
   Directory creation has no undo (`delete` is file-only), so the rolypip
@@ -614,8 +628,12 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
     fixes — before them, a name could live in both tables at once, with
     reads seeing the variable and calls seeing the function). Brace vars
     may silently overwrite importer globals.
-- Module fns cannot see caller frames (`module_frames` boundary, §5) — the
-  same bug family as the old lib leak, fixed the same way.
+- Module fns cannot see caller frames — visibility is the frame chain (own
+  frame + the chain captured at the definition site, which is empty for a
+  global/module fn) followed by the swapped-in globals; the caller's frame
+  is simply not on that list. `module_frames` is a separate per-frame BOOL
+  and governs only write-through vs local assignment (§5). The same bug
+  family as the old lib leak, fixed the same way.
 - `run()` returns an alias-dereferenced copy of globals, so host code never
   sees `ModuleAlias` wrappers.
 
@@ -674,10 +692,11 @@ so the tuning was moot.)
 
 ## 14. Error Reporting
 
-Three classes only (`roly/errors.py`): `LexError` (line/column),
-`ParseError` (token description: `... got {describe(token)}`), `RolyError`
-(everything runtime — with the module wrapper adding
-`error in module 'x': ...` at load time only).
+Three exception classes, each defined where it is raised: `LexError` in
+`lexer.py` (carries line/column), `ParseError` in `parser.py` (carries the
+token; message shape `... got {describe(token)}`), and `RolyError` in
+`errors.py` — the only one other modules import (everything runtime — with
+the module wrapper adding `error in module 'x': ...` at load time only).
 
 Message conventions that tests match on:
 
@@ -725,13 +744,15 @@ identifier isn't followed by `=`. This rewind is why the statement whitelist
 lives after the peek — only a `Call` or a `Member` with a non-None `args`
 list may stand as an expression statement.
 
-15.4 Builtin call parsing keys off `TYPE_TOKENS`/`BUILTIN_NAMES` + `(` in
-`parse_atom`. A new builtin that is also a type name needs `TYPE_TOKENS`
-membership too, or `x = int`-style parse handling diverges. Type names are
-not values: the `file` token in an expression slot is a parse error
-(`'file' is a type, not a value — open(path, mode) returns a file handle`);
-the annotation check also reads `TYPE_TOKENS`, so a new type name is one
-edit in `tokens.py` plus whatever the parser needs.
+15.4 Builtin call parsing keys off `parser.BUILTIN_NAMES` + `(` in
+`parse_atom` — a five-entry table of the type-named builtins
+(`int/str/bool/list/float`), NOT all of `TYPE_TOKENS`. A new builtin that is
+also a type name needs an entry in BOTH (`BUILTIN_NAMES` here,
+`TYPE_TOKENS` for annotations), or `x = int`-style parse handling diverges.
+Type names are not values: the `file` token in an expression slot is a
+parse error (`'file' is a type, not a value — open(path, mode) returns a
+file handle`); the annotation check also reads `TYPE_TOKENS`, so a new type
+name is one edit in `tokens.py` plus whatever the parser needs.
 
 15.5 Python's `bool ⊂ int` trap: all pipeline type checks are exact
 (`type(v) is not t`). `TRUE` is not an `int` argument, nor a `float`
@@ -787,8 +808,11 @@ observable through error ordering; it is deliberately identical to the old
 interpreter's.
 
 15.17 `BUILTINS` is checked *before* the user fn table at every call, and
-registration rejects collisions — but the parser ALSO reserves builtin names.
-Three places must agree: parser reservation, registration check, dispatch.
+registration rejects collisions — but the parser's reservation covers only
+the five type-named builtins (`parser.BUILTIN_NAMES`); every other builtin
+name is an ordinary IDENT at parse time, so `x = len` parses and fails at
+run time. Three places must agree: parser reservation (the type-named
+five), registration check (all 22 names), dispatch.
 
 15.18 **Adding a builtin can break user code that defines a fn of the same
 name** — this actually happened: new builtins broke module tests defining
@@ -815,10 +839,12 @@ unflattened.
 wrapped (`error in module 'x': ...`), later call errors are raw. Don't wrap
 twice.
 
-15.24 Circular-import detection is NAME-based at the top of
-`execute_import`, before the seeded self entry; the entry script is seeded
-via `entry_path`, which is what stops a module from importing the main
-program.
+15.24 Circular-import detection is PATH-based: after the name/clash checks
+and after `resolve_import_path`, `execute_import` tests the resolved path
+against the `loading` stack (`if path in [p for _, p in self.loading]` —
+the stack holds `(name, path)` pairs, hence the list comprehension). The
+entry script is seeded into that stack via `entry_path` in `__init__`, which
+is what stops a module from importing the main program.
 
 15.25 Module top-level prints are discarded (`out=_silent_out`); the swap is
 only active during the initial load run, not later calls.
@@ -851,7 +877,13 @@ variadic — therefore ABSENT from `BUILTIN_ARITIES` (absent = variadic is
 the convention).
 
 15.33 `MAX_NESTING` guards recursive descent (parens/blocks), not flat
-spines. A 10k-term flat sum parses fine; `((((...))))` 101 deep does not.
+spines. A 10k-term flat sum parses fine; `enter()` raises once the counter
+goes past 100, so what matters is the PEAK — an enclosing construct holds
+its slot while the nested one runs, including the innermost statement's own
+`parse_expression`. From source: 99 nested parens parse and 100 fail
+(`nesting too deep (limit is 100)`), 99 nested bare blocks parse and 100
+fail, but only 98 nested `if` blocks inside a fn body — the innermost
+condition adds one level on top of the fn body's own block.
 
 15.34 `gc.disable()` during runs assumes values can't form cycles — true
 except for local fns (Phase 47): a `LocalFn` in a frame holds the frame
@@ -923,7 +955,7 @@ line) passes. The sentinel must never leak into a global, a list, or an
 argument — every non-discard consumer checks it.
 
 15.49 Empty blocks are rejected in `parse_block` at ONE place — every block
-kind (fn, if, elif, else, while, bare) flows through it. New block-shaped
+kind (fn, if, else, while, bare) flows through it. New block-shaped
 syntax must route through `parse_block` to inherit the check. `{ ... }`
 goes through the same place: the ELLIPSIS must be followed immediately by
 `}`.
@@ -1070,7 +1102,11 @@ function`), a frame name binds once (strict), and `lookup`/`assign`/
 `call_compiled` walk the chain innermost-first — reading a `LocalFn` as a
 value raises `'{name}' is a function, call it as {name}(...)`.
 `invoke_function` gained the `chain` argument; arity-before-args, step
-accounting and the depth-200 guard are shared with global fns.
+accounting and the depth-200 guard are shared with global fns. One asymmetry
+to know: `local_fn()` walks the chain and SKIPS non-`LocalFn` bindings, so a
+parameter named like an outer local fn shadows the READ
+(`print(g)` shows the parameter) while the CALL still reaches the enclosing
+`LocalFn` — binding a value and calling the same name resolve differently.
 
 ## 16. Decision History & Evolutionary Phases
 
@@ -1353,7 +1389,7 @@ accounting and the depth-200 guard are shared with global fns.
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / ~153 tests.
+  every file. Currently 7 files / 155 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
@@ -1388,7 +1424,9 @@ accounting and the depth-200 guard are shared with global fns.
 2. Arity in `BUILTIN_ARITIES` — or deliberately absent if variadic.
 3. If it needs the interpreter (path bases, limits), add it to
    `BUILTINS_WITH_INTERP` and give it the `(I, *values)` shape (15.52).
-4. If type-like: `TYPE_TOKENS` in `roly/tokens.py` + parser atom handling.
+4. If it is also a type name: `TYPE_TOKENS` in `roly/tokens.py` AND
+   `parser.BUILTIN_NAMES` (a type-only name like `file` is an explicit
+   `parse_atom` branch instead, with its own message).
 5. Name-collision sweep: keywords, lib files, and `fn <name>` across tests/,
    syntax/, tests/rolypip/ (the `fn get`/`fn set` incident).
 6. Error-path test appended to the matching `*_err.py` file.
