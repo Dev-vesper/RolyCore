@@ -7,7 +7,7 @@ reference. The source code carries no comments or docstrings (project
 convention), so the "why" lives here — the file is public and tracked in the
 repository.
 
-Facts below were verified against the source on 2026-09-22. When this document
+Facts below were verified against the source on 2026-09-23. When this document
 and the code disagree, the code wins — then fix this document.
 
 ---
@@ -17,23 +17,27 @@ and the code disagree, the code wins — then fix this document.
 | Path | Responsibility |
 |---|---|
 | `roly.py` | CLI entry point. `run file.roly` / `exec "code"`. Prints only program `print()` output; errors go to stderr as `error: {msg}` with exit code 1. Handles `BrokenPipeError` by redirecting stdout to devnull. |
-| `roly/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (17 entries), `TYPE_TOKENS` (int/str/bool/list/float/file). |
-| `roly/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
-| `roly/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
-| `roly/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. `Member` is the single dot-access node (module member and built-in method alike). |
-| `roly/errors.py` | `RolyError` only — the runtime error every other module imports. `LexError` lives in `lexer.py` (carries line/column) and `ParseError` in `parser.py` (carries the offending token). |
-| `roly/builtins.py` | The 22 builtin implementations, `BUILTINS` dispatch dict, `BUILTIN_ARITIES`, `BUILTINS_WITH_INTERP` (the three that need the interpreter), the file-handle methods (`FILE_METHODS`/`FILE_METHOD_ARITIES`, `checked_method`, `member_value`), the `_io_reason`/`_io_fail` pair, `roly_equal`, `format_text`, list primitives. |
-| `roly/stdlib.py` | Standard-library support: `resolve_lib_dir()` (frozen builds resolve next to the exe), the `NativeFn` class, the 3 native `lists` implementations, and `NATIVE_MODULE_FNS` mapping module names to their natives. Lib loading itself goes through the normal module machinery. |
-| `roly/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
-| `roly/runtime.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`), the `FileHandle` value type, and module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). Splits out to break the interpreter↔compiler import cycle. |
-| `roly/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. |
-| `roly/utils/runner.py` | `run_source()` — the single entry the CLI, tests and smoke all use. Wraps `RecursionError` into a clean depth message. |
-| `roly/lib/*.roly` | The standard library itself: 5 modules — 49 pure-Roly functions in math/fmt/strings/lists/map — imported explicitly with `!import`. |
+| `roly/__init__.py` | The embedding surface — one `import roly` gives `run_source`, `Interpreter`, `RolyError`, `LexError`, `ParseError`, `Registry`, `default_registry`, `FileSystem`, `terminal` (§19). |
+| `roly/runner.py` | `run_source()` — the composition root. Builds every default (adapters, registry, lib dir, natives), injects them into the interpreter, owns the process-wide settings (`sys.setrecursionlimit`, the gc toggle) and wraps `RecursionError` into the clean depth message. |
+| `roly/adapters/filesystem.py` | The only module that knows `pathlib`/`shutil`: the `FileSystem` port (cwd/join/absolute/parent/stem/is_dir/is_file/exists/read_text/open/mkdir/listdir/stat_size/rename/unlink/copy). It lets `OSError`/`UnicodeDecodeError` through — wording them belongs to the core (§19). |
+| `roly/adapters/terminal.py` | The only module that knows `print`/`input`: `write` (program output) and `read` (the `input` prompt). |
+| `roly/frontend/tokens.py` | `T` token enum, `Token` frozen dataclass (type/value/line/column), `KEYWORDS` map (17 entries), `TYPE_TOKENS` set (int/str/bool/list/float/file). |
+| `roly/frontend/lexer.py` | Hand-written scanner. Two-char/one-char operator tables, string escapes, `//` line comments, `sys.intern` on identifiers, ASCII-only identifier rule, line/column tracking. |
+| `roly/frontend/parser.py` | Recursive-descent parser producing the AST. Owns the nesting limit, loop-depth and fn-depth tracking, the one-line rule, and all parse-time semantic checks. |
+| `roly/frontend/ast.py` | 12 expression + 12 statement node types, all `@dataclass(slots=True)`. `If` is a two-branch node: `then_block` plus an optional `else_block`. `Member` is the single dot-access node (module member and built-in method alike). |
+| `roly/diagnostics/errors.py` | `RolyError` plus the shared `_io_reason` wording for failed OS calls (§14). `LexError` lives in `lexer.py` (carries line/column) and `ParseError` in `parser.py` (carries the offending token). |
+| `roly/builtins/` | The plugin layer: the 22 builtin implementations split by topic (`collections.py`, `conversion.py`, `io.py`, `text.py`), the five dispatch tables (`BUILTINS`, `BUILTIN_ARITIES`, `BUILTINS_WITH_INTERP`, `FILE_METHODS`, `FILE_METHOD_ARITIES`) in `__init__.py`, and `Registry`/`default_registry()` that bundles them for injection (§19). |
+| `roly/stdlib/` | Standard-library support: `loader.py` (`resolve_lib_dir()` — frozen builds resolve next to the exe), `natives.py` (the 3 native `lists` implementations + `NATIVE_MODULE_FNS`), and `modules/*.roly` — the library itself. Lib loading goes through the normal module machinery. |
+| `roly/runtime/compiler.py` | Compiles the AST to nested Python closures. All evaluation logic lives here since the performance pass. |
+| `roly/runtime/values.py` | Language value semantics: `to_str`, `roly_equal`, the list/text index and argument checks (`require_list`, `require_index`, `list_get`, `text_char`) and the method-dispatch checks (`checked_method`, `member_value`). |
+| `roly/runtime/handles.py` | The `MISSING` sentinel, the `FileHandle` value type, the callable handles (`LocalFn`, `NativeFn`) and the module wrappers (`ModuleEntry`/`ModuleAlias`/`ModuleFunctionRef`). |
+| `roly/runtime/signals.py` · `limits.py` | Control-flow signals (`BreakSignal`/`ContinueSignal`/`ReturnSignal`) and the two numeric guards (`DEFAULT_MAX_STEPS`, `MAX_CALL_DEPTH`). Split out to break the interpreter↔compiler import cycle. |
+| `roly/runtime/interpreter.py` | `Interpreter`: program execution, function invocation, scoping, module machinery (load/import/context swap), step accounting, limits. Reaches the host only through the ports it was constructed with (§19). |
 | `builder/` + `build.py` | Standalone-exe build: `platform.py` (exe name), `engine.py` (PyInstaller command + runner), `libs.py` (lib folder sync). `build.py` is a thin argparse shell. |
 | `grammar` | The EBNF grammar. Authoritative for syntax shape — read it before touching the parser. |
 | `guide/index.html` | Single-page user guide. Documents every feature, including desugarings (`l[i]` ≡ `get(l, i)`). |
 | `syntax/*.roly` | Example programs, one per feature area; run by the smoke test. |
-| `tests/` | Error-only test suite (7 files) + `tests/rolypip/` per-feature showcase programs (also smoke-covered). |
+| `tests/` | Error-only test suite (7 files) + `invariantTests/` (value + architecture assertions) + `tests/rolypip/` per-feature showcase programs (also smoke-covered). |
 | `internals.md` | This file. |
 
 ## 2. Pipeline
@@ -47,12 +51,16 @@ source ──lexer──▶ tokens ──parser──▶ AST ──compiler─�
 - **Parser** raises `ParseError`. It is recursive descent with a nesting
   counter, but builds *iterative* spines for left-associative operators
   (see §12 — this shape is load-bearing).
-- **Compiler** (`roly/compiler.py`) turns each statement/expression node into
-  a closure `I -> value` (or `I -> None` for statements) exactly once.
-  Top-level statements are compiled eagerly; fn bodies lazily on first call.
-  Unknown operators fail at compile time, not run time.
+- **Compiler** (`roly/runtime/compiler.py`) turns each statement/expression
+  node into a closure `I -> value` (or `I -> None` for statements) exactly
+  once. Top-level statements are compiled eagerly; fn bodies lazily on first
+  call. Unknown operators fail at compile time, not run time.
 - **Interpreter** drives the closures, owns all mutable state (globals,
   function table, modules, step counter) and all runtime errors (`RolyError`).
+- **Runner** performs the composition: it picks the adapters and plugin
+  tables, hands them to the interpreter, and owns what is genuinely
+  process-wide — the recursion limit and the gc toggle (§19). The core never
+  constructs its own dependencies.
 
 The old tree-walking evaluator (`eval`/`exec_statement` with an explicit
 stack) was deleted in the performance pass. Do not resurrect it.
@@ -310,7 +318,7 @@ AST, not sugar.
 
 ## 8. Control Flow Signals
 
-`BreakSignal`, `ContinueSignal`, `ReturnSignal` (runtime.py) propagate as
+`BreakSignal`, `ContinueSignal`, `ReturnSignal` (signals.py) propagate as
 Python exceptions through the compiled closures:
 
 - `break`/`continue` bind to the **innermost `while` only**, enforced at
@@ -346,7 +354,7 @@ Python exceptions through the compiled closures:
 | `fail(msg)` | 1 | Raises `RolyError(msg)` — the sanctioned way lib fns reject input. |
 | `input(prompt)` | 1 | Prompt must be a str (required). Wraps Python's `input()`: writes the prompt to the REAL stdout, reads one line, returns it as a str with the trailing newline stripped. EOF → `input: end of input reached`. Always returns str — `int(input(...))` is the sanctioned numeric read. |
 | `format(...)` | variadic | `{}` sequential and `{n}` reusable positional placeholders; `{{`/`}}` escapes; mixing auto and manual numbering is an error; error messages are Roly's own (`format: cannot mix '{}' and '{n}' placeholders`). |
-| `open(path, mode)` | 2 | Opens a file and returns a `file` handle. Mode is `"r"` (must exist), `"w"` (create/truncate), `"a"` (create, writes always append). Relative paths resolve against the entry program's directory. Needs the interpreter (path base) — see `BUILTINS_WITH_INTERP`. |
+| `open(path, mode)` | 2 | Opens a file and returns a `file` handle. Mode is `"r"` (must exist), `"w"` (create/truncate), `"a"` (create, writes always append). Relative paths resolve against the entry program's directory. Needs the interpreter (path base + the fs port) — see `BUILTINS_WITH_INTERP`. |
 | `mkdir(path)` | 1 | Single-level directory creation (`parents=False`); `TRUE` on success, `mkdir: cannot make directory '<path>': <reason>` otherwise. |
 | `list_dir(path)` | 1 | Sorted list of the entry names in a directory; `list_dir: cannot list '<path>': <reason>` otherwise. |
 
@@ -354,10 +362,11 @@ Dispatch rules that matter:
 
 - `BUILTIN_ARITIES` drives arity checks; an **absent entry means variadic**
   (`format`, `list`). Arity is checked before arguments are evaluated.
-- `BUILTINS_WITH_INTERP = {"open", "mkdir", "list_dir"}` — those three are
-  called `BUILTINS[name](self, *values)`; every other builtin gets values
-  only. Anything needing run context (here `I.entry_base_dir`) must come
-  through that first argument (the same rule as `NativeFn`, 15.52).
+- `BUILTINS_WITH_INTERP = {"input", "open", "mkdir", "list_dir"}` — those four
+  are called `BUILTINS[name](self, *values)`; every other builtin gets values
+  only. Anything needing run context (here `I.entry_base_dir`, `I.fs` and
+  `I.read_input`) must come through that first argument (the same rule as
+  `NativeFn`, 15.52).
 - In the parser, `BUILTIN_NAMES` (the five type-named builtins) + `(` parse
   as builtin calls in `parse_atom`; bare `x = int` is a parse error (same
   treatment as a keyword). The sixth type name, `file`, has no call form —
@@ -371,7 +380,8 @@ Dispatch rules that matter:
 **File handles and methods** (they replaced the `thfile` module).
 
 `f = open("a.txt", "w")` returns the one handle that owns the whole
-lifecycle. Eleven methods, all dispatched through `checked_method`:
+lifecycle. Eleven methods, each `(I, handle, *args)` and all dispatched
+through the interpreter's `I.method_call` (registry tables, §19):
 
 | Method | Arity | Behavior notes |
 |---|---|---|
@@ -382,9 +392,9 @@ lifecycle. Eleven methods, all dispatched through `checked_method`:
 | `f.tell()` | 0 | Current byte offset. |
 | `f.close()` | 0 | Closes the stream. Idempotent — closing twice is a no-op, not an error. Returns `TRUE`. |
 | `f.exists()` | 0 | Path exists — works after close. |
-| `f.size()` | 0 | `stat().st_size` — a raw **byte** count, so `size(f) != len(f.read())` for multi-byte UTF-8 or CRLF (they measure different things). |
+| `f.size()` | 0 | `stat_size` on the port — a raw **byte** count, so `size(f) != len(f.read())` for multi-byte UTF-8 or CRLF (they measure different things). |
 | `f.rename(dst)` | 1 | Refuses when dst exists (`rename: 'b.txt' already exists`); moves the handle onto the new path, so `f.name`/`f.path` follow and `print(f)` shows the new name. |
-| `f.copy(dst)` | 1 | `shutil.copyfile` — overwrites an existing dst (unlike rename). Works while the handle is open (every write is already flushed). |
+| `f.copy(dst)` | 1 | The port's `copy` (`shutil.copyfile` in the default adapter) — overwrites an existing dst (unlike rename). Works while the handle is open (every write is already flushed). |
 | `f.delete()` | 0 | Closes the stream first, then unlinks — deterministic on Windows too. |
 
 - **Stream model**: opened in *binary* mode (`r`→`rb+`, `w`→`wb+`, `a`→`ab+`)
@@ -438,7 +448,7 @@ unless `gcd` came in through braces (then the existing collision rules apply).
 | `lists.roly` (4) | `sum_list max_list min_list sublist` |
 | `map.roly` (16) | internals `_hash _lower_bound _find _put_h _validate`; public `new_map map_set map_get map_has map_del map_size map_keys map_values map_items map_merge show` |
 
-Plus **3 native functions** (`NativeFn` in stdlib.py): the `lists` members
+Plus **3 native functions** (`NativeFn` in `stdlib/natives.py`): the `lists` members
 `sort_list`/`join`/`reverse_list`, injected for speed. `native_sort_list`
 scans for non-number elements first purely so `join`'s
 `operator '+' requires numeric operands` error surfaces bit-for-bit as
@@ -541,7 +551,7 @@ Design rules:
 import mathutils                 import mathutils {gcd, lcm}
 x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
 
-!import math {gcd}               !import strings    // from roly/lib/
+!import math {gcd}               !import strings    // from roly/stdlib/modules/
 ```
 
 - `import` and `!import` are keywords, **top-level only** (stricter than
@@ -549,8 +559,9 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   `!` is allowed only immediately before `import`, on the same line; the
   parser enforces this with the same-line rule (`'import' must follow '!' on
   the same line`).
-- **`!import` resolves ONLY the lib dir** (`stdlib.LIB_DIR`); `import`
-  resolves ONLY `base_dir`. Neither falls back to the other. A program may
+- **`!import` resolves ONLY the lib dir** (the injected `lib_dir` provider,
+  default `stdlib.LIB_DIR`); `import` resolves ONLY `base_dir`. Neither falls
+  back to the other. A program may
   not take the same name from both sources: `import math` + `!import math`
   → `'math' is already imported` (tracked via `ModuleEntry.from_lib`).
 - **A module name is a third table** (`modules`) and follows the 15.54
@@ -566,7 +577,7 @@ x = mathutils.gcd(4, 6)          y = gcd(4, 6)      // brace form
   importer re-injected into the same entry and died on the `defined twice`
   guard). The guard itself still protects against a lib file defining a fn
   with a native's name. A native-only module needs an anchor `.roly` file in
-  `roly/lib/` (comment-only is fine) or `!import` cannot find it (15.53).
+  `roly/stdlib/modules/` (comment-only is fine) or `!import` cannot find it (15.53).
 - Everything else about a lib module is plain module behavior:
 - **Braces never restrict.** All members are always reachable as
   `name.member` with or without braces; braces additionally bind the listed
@@ -668,6 +679,10 @@ speedup on the arith benchmark.
 - Operators live in the `OPS` dict in compiler.py — including the
   `==`/`!=` entries that route through `roly_equal` and `op_add`'s str+str
   branch. An unknown operator is a compile-time `unknown operator` error.
+- **Member dispatch asks the interpreter**: `f_member_chain` calls
+  `I.member_error` / `I.method_call` (which read the injected registry's
+  method tables) instead of importing them. Receiver check, method lookup,
+  arity check, argument evaluation — same order, same wording (§19).
 
 Exact-parity rules from the performance pass (all preserved on purpose):
 step accounting per statement execution, arity-before-args, compound-assign
@@ -682,7 +697,7 @@ spot-checks guard.
 | Parser nesting | `MAX_NESTING = 100` | parser `enter`/`leave` on every recursive descent path (expressions AND blocks). Deep *flat* expressions don't hit it (iterative spines); deep *parenthesized* ones do. |
 | Steps | `DEFAULT_MAX_STEPS = 10_000_000` | `count_step()` at the head of every compiled statement closure, plus one per call. A `Block` counts per execution, so a while body counts once per iteration. Modules share the single budget. |
 | Call depth | `MAX_CALL_DEPTH = 200` | frame push check; `sys.setrecursionlimit(10000)` gives the closure stack headroom; `run_source` wraps any residual `RecursionError` into the clean depth message. |
-| GC | disabled during run | `gc.disable()` on entry, restored after. Values still cannot form cycles by themselves (no mutable lists, no first-class functions; a `FileHandle` only points at its path strings and its Python stream) with ONE exception: a `LocalFn` stored in a frame holds that frame chain, so a fn with captured locals is a real reference cycle — it stays uncollected for the rest of the run and is reclaimed when `run`'s `finally` re-enables GC. |
+| GC | disabled during run | `run_source` calls `gc.disable()` and restores it in a `finally`. Values still cannot form cycles by themselves (no mutable lists, no first-class functions; a `FileHandle` only points at its path strings and its Python stream) with ONE exception: a `LocalFn` stored in a frame holds that frame chain, so a fn with captured locals is a real reference cycle — it stays uncollected for the rest of the run and is reclaimed when that `finally` re-enables GC. |
 
 Other tunings: `@dataclass(slots=True)` on all AST nodes,
 `sys.set_int_max_str_digits(0)`. (The gc collect/freeze after lib load was
@@ -714,10 +729,11 @@ Message conventions that tests match on:
   `'m' is already imported` (import vs `!import` clash),
   `library 'x' not found (looked for {path})`.
 - File reads (CLI entry + module loads + `FileHandle.read`/`read_lines`):
-  `cannot read ...: {reason}` from `builtins._io_reason` — strerror with the
-  first letter lowercased, or `the file is not valid UTF-8 text` for decode
-  failures. The helper lives in `builtins.py` because it is the lowest module
-  both `interpreter.py` and `roly.py` can import.
+  `cannot read ...: {reason}` from `diagnostics/errors.py._io_reason` —
+  strerror with the first letter lowercased, or `the file is not valid UTF-8
+  text` for decode failures. The helper lives in the errors module because it
+  is the lowest module every reader can import: `roly.py`, the interpreter
+  and the builtins.
 - Methods: `expects a file handle`, `file has no method 'x'`,
   `'x' is a method, call it as {owner}.x()` — receiver, method-exists, arity
   and then argument types, in that order. Stream methods add
@@ -886,9 +902,9 @@ condition adds one level on top of the fn body's own block.
 
 15.34 `gc.disable()` during runs assumes values can't form cycles — true
 except for local fns: a `LocalFn` in a frame holds the frame
-chain, a cycle that survives the run until `run`'s `finally` re-enables GC
-(§13 table). First-class functions or mutable lists would break the
-assumption outright.
+chain, a cycle that survives the run until `run_source`'s `finally`
+re-enables GC (§13 table). First-class functions or mutable lists would break
+the assumption outright.
 
 15.35 Native lib fns (`sort_list`/`join`/`reverse_list`) must reproduce the
 old pure-Roly behavior bit-for-bit — ERRORS (the `native_sort_list`
@@ -907,7 +923,9 @@ under pytest (tests/ is on sys.path, no `__init__.py`). Any test file name
 must not collide with a package name.
 
 15.38 In frozen builds the lib folder must sit NEXT TO the exe — it is NOT
-bundled inside. `resolve_lib_dir()` switches on `sys.frozen`.
+bundled inside. `resolve_lib_dir()` switches on `sys.frozen`, and the default
+`lib_dir` provider reads its result at call time, so the frozen path and the
+monkeypatchable one are the same code path (15.47).
 
 15.39 `smoke.py` auto-discovers every `syntax/*.roly` and
 `tests/rolypip/**/*.roly` by glob — a new showcase program is covered the
@@ -919,10 +937,15 @@ convention — this file is the only place rationale is recorded. Update it in
 the same change as the code it describes.
 
 15.41 The CLI shows ONLY `print()` output; anything the host prints (debug,
-tracing) leaks into program output and breaks that contract.
+tracing) leaks into program output and breaks that contract. Program output
+has exactly one sink — `I.out`, which the runner wires to `terminal.write`
+(§19); the core itself never prints.
 
 15.42 `run_source` is the single entry point (CLI, tests, smoke). New
-run-options belong there, not in ad-hoc `Interpreter` constructions.
+run-options belong in its keyword list — and, for anything the core needs,
+as an injected port — never as ad-hoc `Interpreter` constructions: the
+`Interpreter` requires its registry and ports and has no working defaults of
+its own (§19).
 
 15.43 `!` lexes as `T.BANG` only because `TWO_CHAR_OPS` is matched before
 `ONE_CHAR_OPS` — `!=` is unaffected, but any future `!`-prefixed operator
@@ -940,14 +963,19 @@ declared at the top of the lib files (`fmt` → `math {mod}`).
 15.46 Native fns (`sort_list`/`join`/`reverse_list`) are injected into the
 `lists` module after load and ONLY on the `from_lib` path AND only on a
 fresh load — a `module_cache` hit must not re-inject (the double-import
-bug). A user module named `lists` gets nothing, and a collision with a fn
-the module itself defined raises "defined twice".
+bug). They arrive through the `native_fns` port (default:
+`NATIVE_MODULE_FNS`, read at call time). A user module named `lists` gets
+nothing, and a collision with a fn the module itself defined raises
+"defined twice".
 
-15.47 `stdlib.LIB_DIR` is read at `!import` time, never captured at Python
-import time — that is what makes the missing-lib-dir test monkeypatchable.
+15.47 The lib dir is read at `!import` time through the injected `lib_dir`
+provider (default: `lambda: stdlib.LIB_DIR`), never captured at Python import
+time — that is what makes the missing-lib-dir test monkeypatchable. The same
+rule applies to `native_fns`, and both exist so a host can serve libraries
+from somewhere that is not the disk at all (§19).
 
 15.48 A fn that falls off its body returns the `MISSING` sentinel from
-`runtime.py` — NOT an exception. The error fires only where the value is
+`runtime/handles.py` — NOT an exception. The error fires only where the value is
 USED: `f_call`/`f_module_call` raise `did not return a value` unless the
 call was compiled with `discard=True`, which only `ExprStmt` (a bare call
 line) passes. The sentinel must never leak into a global, a list, or an
@@ -970,26 +998,27 @@ every branch (statement, fn, import) — that single point is what makes
 `;` fails. There is no empty statement: `;` alone or `;;` is an error.
 
 15.52 **Host functions receive the interpreter**: the `NativeFn` call in
-`invoke_function` and the `BUILTINS_WITH_INTERP` dispatch in the builtin
-call path (`BUILTINS[name](self, *values)` for `open`/`mkdir`/`list_dir`)
-both hand over the running `I`. Anything needing run context (path base,
-limits) must come through that `I` — never from a module-level capture.
+`invoke_function`, the `BUILTINS_WITH_INTERP` dispatch in the builtin call
+path (`open`/`mkdir`/`list_dir`/`input`), and every file method
+(`file_read(I, handle, ...)` — the handle slot is shifted by one) all hand
+over the running `I`. Anything needing run context (the fs port, the lib
+dir, limits) must come through that `I` — never from a module-level capture.
 User file paths resolve against `I.entry_base_dir`, captured once in
 `__init__` and never swapped; using `I.base_dir` instead would resolve user
-paths into `roly/lib/` whenever a module fn is on the stack, because
-`load_module`/`run_in_module` swap `base_dir` to the module's own directory.
-Builtins without that membership set keep the plain `BUILTINS[name](*values)`
-shape.
+paths into the library directory whenever a module fn is on the stack,
+because `load_module`/`run_in_module` swap `base_dir` to the module's own
+directory. Builtins without that membership set keep the plain
+`BUILTINS[name](*values)` shape.
 
 15.53 **Adding a native module** (the `lists` pattern): implementations live
-in `roly/stdlib.py` next to the other natives (user rule: fold
+in `roly/stdlib/natives.py` next to the other natives (user rule: fold
 features into existing files, do not create new Python modules), registered
-in `NATIVE_MODULE_FNS`, plus an anchor `.roly` file in `roly/lib/` that can
-be empty or comment-only — the module does not exist for `!import` without
-the anchor. Arity/type checks come free through `NativeFn.params`. Errors
-must be `RolyError`s carrying the full path, not Python tracebacks. FILE I/O
-is deliberately NOT in this shape — it is core builtins plus methods (§9),
-which is why `thfile` no longer exists.
+in `NATIVE_MODULE_FNS`, plus an anchor `.roly` file in `roly/stdlib/modules/`
+that can be empty or comment-only — the module does not exist for `!import`
+without the anchor. Arity/type checks come free through `NativeFn.params`.
+Errors must be `RolyError`s carrying the full path, not Python tracebacks.
+FILE I/O is deliberately NOT in this shape — it is core builtins plus
+methods (§9), which is why `thfile` no longer exists.
 
 15.54 **The two tables make every bind site a dual check**: functions and
 variables live in separate dicts, and any code path that writes into one
@@ -1008,22 +1037,24 @@ binding and `assign()` walk the frame chain innermost-first.
 15.55 **`UnicodeDecodeError` is a `ValueError`, not an `OSError`**: every
 site that decodes a user file must catch it explicitly, or a non-UTF-8
 file leaks a raw Python traceback. Three sites, one shared reason helper
-(`builtins._io_reason`): the CLI entry read (`roly.py`), module loads
-(`load_module`), and the file methods `read`/`read_lines`. Reusing the
+(`diagnostics/errors.py._io_reason`): the CLI entry read (`roly.py`), module
+loads (`load_module`), and the file methods `read`/`read_lines`. Reusing the
 helper also lowercases strerror everywhere, so read errors match the
 language's lowercase message style.
 
-15.56 **`input` bypasses `out` on purpose**: the prompt is written by
-Python's `input()` to the REAL stdout, not through the interpreter's
-redirectable `out` callback — so a prompt always reaches the terminal even
-when `out` is captured (tests) or silenced (module load). Consequences: a
-module calling `input` at load time prints its prompt and blocks on stdin
-despite `_silent_out`; and `input` as a bare statement is a legal `Call`
-ExprStmt — the line is read and discarded, matching Python. EOF must map
-to a `RolyError` (`input: end of input reached`), never a raw
-`EOFError` traceback.
+15.56 **`input` bypasses `out` on purpose**: the prompt is written by the
+`read_input` port (default `terminal.read` → Python's `input()`) to the REAL
+stdout, not through the interpreter's redirectable `out` callback — so a
+prompt always reaches the terminal even when `out` is captured (tests) or
+silenced (module load). Consequences: a module calling `input` at load time
+prints its prompt and blocks on stdin despite `_silent_out`; and `input` as a
+bare statement is a legal `Call` ExprStmt — the line is read and discarded,
+matching Python. The port keeps `input` testable without a terminal, while
+the `EOFError` mapping to a `RolyError` (`input: end of input reached`) stays
+in the builtin, never a raw traceback. Being interpreter-aware is why `input`
+sits in `BUILTINS_WITH_INTERP`.
 
-15.57 **`roly/lib/map.roly` carries engineering comments** — the ONE
+15.57 **`roly/stdlib/modules/map.roly` carries engineering comments** — the ONE
 sanctioned exception to the comment-free convention (user grant): the file
 documents a data-structure simulation (hashing, probing, ordered merge)
 whose rationale is not derivable from reading the code, and it is the
@@ -1069,7 +1100,8 @@ cannot know whether `m.x` is a module member or a built-in method — a fn
 body parses before any later `import` runs. `f_member_chain` therefore keys
 on `owner in I.modules` (a plain-name base that is currently a module alias)
 and routes to `read_module_var`/`call_module_compiled`; everything else goes
-through `member_value`/`checked_method`. Consequence, accepted and pinned:
+through `I.member_error`/`I.method_call` (the registry-backed method tables,
+§19). Consequence, accepted and pinned:
 `x = m.a` on a name that was never imported is now `undefined variable 'm'`
 (it used to say `module 'm' is not imported`). Do not "fix" the parser into
 a static resolution — a body defined before its import must keep working.
@@ -1158,6 +1190,21 @@ change landed lives in `git log`; this file keeps the "why".
   orders — the Rust/Go/JS answer, not Python's silent rebind (15.54).
 - **File I/O lives in the core**: `thfile` was deleted for the `file` value
   type, its 11 methods and `open`/`mkdir`/`list_dir` (§9).
+- **The engine owns no host**: the file system, the terminal, the library
+  directory and the builtin tables all arrive as injected ports, and the
+  runner is the only place that picks real implementations. The reason is
+  embedding — Roly is meant to run inside CaseCode, and a host that cannot
+  supply its own filesystem, output sink or builtin set has to monkeypatch
+  the engine instead of using it (§19).
+- **Plugin tables are data, not imports**: the interpreter reads its builtins,
+  arities and method tables from a `Registry` the composition root hands it,
+  so `runtime/` and `frontend/` never import `builtins/`, `stdlib/` or
+  `adapters/`. The layer rule is enforced by a test, not by discipline
+  (§17) — the reason the migration is worth anything is that it can't silently
+  rot back.
+- **The package root is the embedding surface**: `import roly` exposes
+  `run_source` plus the pieces a host needs to build a custom environment, so
+  no host reaches into `roly.runtime.*` for the public path (§19).
 
 **Execution engine**
 
@@ -1175,7 +1222,7 @@ change landed lives in `git log`; this file keeps the "why".
 - Tests assert ERRORS ONLY — the right exception class and message. Never
   program values, printed output, final env, or AST shapes.
 - Minimal volume: the whole suite stays small enough for an agent to read
-  every file. Currently 7 files / 155 tests.
+  every file. Currently 7 files / 157 tests.
 - A test is written only when forced to debug something. No speculative
   coverage.
 - `smoke.py` is the exception: every `syntax/*.roly` and
@@ -1187,7 +1234,14 @@ change landed lives in `git log`; this file keeps the "why".
   `;` form — determinism, library laws, rendering, conversion round-trips,
   evaluation order). Each program prints its computed result; the test
   compares captured output against the expected lines. Any error, traceback
-  or mismatch in these valid programs signals a possible engine bug.
+  or mismatch in these valid programs signals a possible engine bug. It also
+  carries the two architecture guards: `test_layer_boundaries` (an `ast` walk
+  over every `roly/**/*.py` that fails if a core module imports a plugin or
+  adapter, if `frontend/` reaches into `runtime/`, or if anything outside
+  `runner.py`/`roly/__init__.py` imports `adapters/`) and
+  `test_embedded_runtime` (runs a program plus an `import` and a `!import`
+  against a dict-backed filesystem, with no disk and no stdout — the proof
+  the ports are real, 15.40).
 - Correctness is verified through the real CLI:
   `.venv/bin/python roly.py run file.roly` / `roly.py exec "code"`.
   Semantics changes are additionally checked by differential fuzzing against
@@ -1205,15 +1259,16 @@ change landed lives in `git log`; this file keeps the "why".
 | `mod_err.py` | module errors (circular, members, collisions, isolation, wrapping) |
 | `cli_err.py` | CLI surface errors (bad usage, missing files) |
 | `smoke.py` | every showcase program runs clean |
-| `invariantTests/invariants.py` | output-comparison invariants over valid programs (the value-asserting exception) |
+| `invariantTests/invariants.py` | output-comparison invariants over valid programs (the value-asserting exception) + the layer-rule and embedded-runtime guards |
 
 ### Adding a builtin — checklist
 
-1. Implementation + `BUILTINS` entry in `roly/builtins.py`.
+1. Implementation in the matching `roly/builtins/*.py` + a `BUILTINS` entry
+   in `roly/builtins/__init__.py`.
 2. Arity in `BUILTIN_ARITIES` — or deliberately absent if variadic.
-3. If it needs the interpreter (path bases, limits), add it to
+3. If it needs the interpreter (path bases, ports, limits), add it to
    `BUILTINS_WITH_INTERP` and give it the `(I, *values)` shape (15.52).
-4. If it is also a type name: `TYPE_TOKENS` in `roly/tokens.py` AND
+4. If it is also a type name: `TYPE_TOKENS` in `roly/frontend/tokens.py` AND
    `parser.BUILTIN_NAMES` (a type-only name like `file` is an explicit
    `parse_atom` branch instead, with its own message).
 5. Name-collision sweep: keywords, lib files, and `fn <name>` across tests/,
@@ -1225,39 +1280,39 @@ change landed lives in `git log`; this file keeps the "why".
 
 ### Adding a method — checklist
 
-1. Implementation in `roly/builtins.py` with the `(handle, *args)` shape —
-   the handle is always the first parameter; error messages name the method
-   (`method 'x' expects ...`), never the receiver type only.
+1. Implementation in `roly/builtins/io.py` with the `(I, handle, *args)`
+   shape — the interpreter first, then the handle; error messages name the
+   method (`method 'x' expects ...`), never the receiver type only.
 2. Register in `FILE_METHODS` and `FILE_METHOD_ARITIES`; the arity table is
    checked before arguments are evaluated (15.12), so a wrong arity must not
    reach the body.
 3. Type checks inside the body are exact (`type(v) is not str`), and any
    stream access starts with `_require_stream` so `file is closed` wins over
-   argument-type errors.
+   argument-type errors. Host access goes through `I.fs`, never `pathlib`.
 4. Error-path test in `run_err.py` (the file-method family).
 5. Guide entry + the `grammar` member-call rule if the call shape changed.
 
 ### Adding a lib function — checklist
 
-1. Goes in the matching `roly/lib/<topic>.roly` (math/fmt/strings/
+1. Goes in the matching `roly/stdlib/modules/<topic>.roly` (math/fmt/strings/
    lists) — declare cross-deps with `!import` at the top (15.45).
 2. Must pass the design rule: real logic only, no one-liners.
 3. Reject invalid input with `fail("...")` — never return a wrong answer.
 4. Reuse existing lib fns and builtins (`mod()` for remainders, string
    width via `len(str(n))`).
-5. If it's a hot path, consider a `NativeFn` in `roly/stdlib.py` instead —
-   register it in `NATIVE_MODULE_FNS`, error messages reproduced
+5. If it's a hot path, consider a `NativeFn` in `roly/stdlib/natives.py`
+   instead — register it in `NATIVE_MODULE_FNS`, error messages reproduced
    bit-for-bit (15.35).
 6. Guide + a rolypip showcase (add the `!import` line).
 
 ### Adding a keyword / operator / statement — checklist
 
-1. `roly/tokens.py`: `T` member + `KEYWORDS`/operator map.
-2. `roly/lexer.py` tables if it's an operator.
+1. `roly/frontend/tokens.py`: `T` member + `KEYWORDS`/operator map.
+2. `roly/frontend/lexer.py` tables if it's an operator.
 3. `grammar` file first (it is authoritative — update it BEFORE the parser).
-4. `roly/ast.py` node + `roly/parser.py` production (mind `loop_depth`,
-   `fn_depth`, `bracket_depth`, top-level-only rules).
-5. `roly/compiler.py`: both sides (expression and/or statement branch),
+4. `roly/frontend/ast.py` node + `roly/frontend/parser.py` production (mind
+   `loop_depth`, `fn_depth`, `bracket_depth`, top-level-only rules).
+5. `roly/runtime/compiler.py`: both sides (expression and/or statement branch),
    statement branches open with `count_step()`.
 6. Guide + `syntax/*.roly` example (smoke auto-covers it); a new keyword also
    bumps the `counts` object (see the builtin checklist).
@@ -1278,7 +1333,7 @@ spot-check via the CLI.
 ### Conventions
 
 - No comments or docstrings in code — rationale lives here (15.40). The
-  single exception: `roly/lib/map.roly` (15.57).
+  single exception: `roly/stdlib/modules/map.roly` (15.57).
 - Commit style: grouped section commits, short sentence, no signature.
 - File extension `.roly`. Pipeline dependency is stdlib-only; pytest and
   PyInstaller are dev-only.
@@ -1287,21 +1342,83 @@ spot-check via the CLI.
 
 **CLI** (`roly.py`): `run file.roly` and `exec "inline code"`. Runs through
 `run_source` with `base_dir`/`entry_path` set from the file so module
-resolution works. Only program `print()` output goes to stdout; errors print
-`error: {msg}` to stderr and exit 1; entry-file read failures (missing,
-unreadable, non-UTF-8) print `error: cannot read '{file}': {reason}` via
-`builtins._io_reason`; `BrokenPipeError` is swallowed by
-redirecting stdout to devnull (safe `| head` usage).
+resolution works — every other port is left at its runner default (real
+filesystem, terminal I/O, the plugin registry). Only program `print()` output
+goes to stdout; errors print `error: {msg}` to stderr and exit 1; entry-file
+read failures (missing, unreadable, non-UTF-8) print
+`error: cannot read '{file}': {reason}` via `diagnostics/errors.py._io_reason`;
+`BrokenPipeError` is swallowed by redirecting stdout to devnull (safe `| head`
+usage).
 
 **Build** (`python build.py [--clean]`): thin argparse over `builder/` —
 - `platform.py`: `exe_name()` → `roly.exe` on Windows, `roly` elsewhere.
 - `engine.py`: `pyinstaller_command` is testable data; `run_pyinstaller`
   passes explicit `--distpath`/`--workpath`/`--specpath` so cwd doesn't
   matter.
-- `libs.py`: `sync_lib` — rmtree + copytree of `roly/lib/` into the dist
+- `libs.py`: `sync_lib` — rmtree + copytree of `roly/stdlib/modules/` into the dist
   (the lib is NOT bundled by PyInstaller; 15.38).
 - Builds are platform-native: build on the target OS. `*.spec` is gitignored.
 - PyInstaller 6.22.2 is a dev dependency in `.venv`.
+
+## 19. Ports & Embedding
+
+The core (frontend + runtime + diagnostics) is host-free: it does not import
+`pathlib`, does not print, and does not know where the standard library lives.
+Everything it needs from the outside arrives as a **port** — a duck-typed
+object or callable handed to the interpreter. There is no ABC, no Protocol and
+no DI container; the contract is "has these methods", exactly like `NativeFn`.
+
+| Port | Default (built in `runner.py`) | Used for |
+|---|---|---|
+| `fs` | `adapters/filesystem.py.FileSystem` | every path operation: `cwd`, `is_absolute`, `join`, `absolute`, `parent`, `stem`, `is_dir`, `is_file`, `exists`, `read_text`, `open`, `mkdir`, `listdir`, `stat_size`, `rename`, `unlink`, `copy` |
+| `out` | `adapters/terminal.py.write` | program output (`print` / `I.out`) |
+| `read_input` | `adapters/terminal.py.read` | the `input` builtin's prompt — the one port with a real stdout side channel (15.56) |
+| `lib_dir` | `lambda: stdlib.LIB_DIR` | where `!import` looks, read at call time (15.47) |
+| `native_fns` | `lambda name: NATIVE_MODULE_FNS.get(name, {})` | the native functions injected on a fresh `!import` (15.46) |
+| `registry` | `builtins.default_registry()` | `Registry(functions, arities, with_interp, methods, method_arities)` — the 22 builtins and the 11 file methods |
+
+**Layer rule** (enforced by `test_layer_boundaries` in
+`tests/invariantTests/invariants.py`, not by discipline):
+
+- `runtime/`, `frontend/` and `diagnostics/` never import `builtins/`,
+  `stdlib/`, `adapters/` or `runner`.
+- `frontend/` never imports `runtime/` — the annotation token set is a set of
+  token types, not a runtime type map.
+- `adapters/` is imported by `runner.py` and `roly/__init__.py` and nothing
+  else. Plugin layers may import the core (that is why `NativeFn` lives in
+  `runtime/handles.py`), never the other way round.
+
+**Paths are opaque to the core.** A path value is whatever the `fs` port
+returns — `pathlib.Path` for the default adapter, a string for a memory
+adapter — and the core only ever hands it back to the same port. `FileHandle`
+stores such a value and the original string (`name`) separately; all messages
+quote the string, which is why they read the same under any adapter.
+
+**Errors stay in the core.** Adapter methods let `OSError` and
+`UnicodeDecodeError` propagate; catching them, wording them
+(`_io_fail`/`_io_reason`) and typing the argument checks happen in the builtins
+and the interpreter, so a custom adapter cannot change a single message.
+
+**Embedding** (the point of all of it — CaseCode runs Roly as a library):
+
+```python
+import roly
+
+roly.run_source(
+    source,                       # str
+    out=my_output,                # port: callable(value: str)
+    read_input=my_prompt,         # port: callable(prompt: str) -> str
+    fs=my_fs,                     # port: the FileSystem surface above
+    lib_dir=lambda: my_lib_dir,   # port: () -> path
+    registry=roly.default_registry(),
+)
+```
+
+`run_source` keeps its old keyword-only additions (`max_steps`, `base_dir`,
+`entry_path`); the ports are additional keywords and every one of them
+defaults to the real thing. A host that supplies all of them runs Roly with
+no disk, no stdout and whichever builtin tables it hands in — see
+`test_embedded_runtime` for a working example.
 
 ---
 

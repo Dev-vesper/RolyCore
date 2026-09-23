@@ -79,6 +79,45 @@ The `lib` folder must stay next to the executable — the engine loads the stand
 - Nesting of parentheses and blocks is limited to 100 levels; deeper programs fail with a clean parse error instead of a Python traceback.
 - Integer division floors toward negative infinity: `7 / 2` is `3`.
 
+## Using Roly as a library
+
+The engine is a plain package — `import roly` and call `run_source`, no subprocess and no disk required if you supply the ports:
+
+```python
+import roly
+
+out = []
+roly.run_source('print("hi from " + str(2 * 21))', out=out.append)
+print(out)  # ['hi from 42']
+```
+
+`run_source(source, ...)` takes the program as a string and returns the final global environment. Optional keywords: `max_steps`, `base_dir`, `entry_path`, plus the ports a host can replace — `out` (program output), `read_input` (the `input` prompt), `fs` (filesystem), `lib_dir` (where `!import` resolves), `native_fns` and `registry` (the builtin tables). Every one of them defaults to the real thing, so passing nothing behaves exactly like the CLI.
+
+A custom port is any object with the right methods — for example an in-memory filesystem implementing `cwd`, `join`, `absolute`, `parent`, `stem`, `is_dir`, `is_file`, `exists`, `read_text`, `open`, `mkdir`, `listdir`, `stat_size`, `rename`, `unlink` and `copy`. Roly then never touches the disk:
+
+```python
+import roly
+
+files = {"/mem/mod.roly": "fn twice (n: int) { return n * 2 }\n"}
+
+class MemoryFS:
+    def cwd(self): return "/mem"
+    def is_absolute(self, path): return path.startswith("/")
+    def join(self, base, path): return base + "/" + path
+    def absolute(self, path): return path
+    def parent(self, path): return path.rsplit("/", 1)[0]
+    def stem(self, path): return path.rsplit("/", 1)[1].split(".")[0]
+    def is_dir(self, path): return any(f.startswith(path + "/") for f in files)
+    def is_file(self, path): return path in files
+    def read_text(self, path): return files[path]
+
+out = []
+roly.run_source("import mod\nprint(mod.twice(21))", out=out.append, fs=MemoryFS())
+print(out)  # ['42']
+```
+
+`roly` re-exports everything a host needs: `run_source`, `Interpreter`, `RolyError`, `LexError`, `ParseError`, `Registry`, `default_registry`, `FileSystem` and `terminal`. See "Ports & Embedding" in [internals.md](internals.md) for the port contracts and the layering rules that keep the core host-free.
+
 ## Internals
 
 For a deep dive into the engine — architecture, module layout, design decisions, and the full evolution history — read [internals.md](internals.md).
