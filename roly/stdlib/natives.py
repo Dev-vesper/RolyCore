@@ -1,17 +1,5 @@
-import sys
-from pathlib import Path
-
 from roly.builtins import to_str
 from roly.diagnostics.errors import RolyError
-
-
-def resolve_lib_dir():
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent / "lib"
-    return Path(__file__).resolve().parent / "lib"
-
-
-LIB_DIR = resolve_lib_dir()
 
 
 class NativeFn:

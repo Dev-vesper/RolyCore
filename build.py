@@ -26,7 +26,7 @@ def main(argv=None):
     if args.clean and DIST.exists():
         shutil.rmtree(DIST)
     run_pyinstaller(ROOT, DIST)
-    sync_lib(ROOT / "roly" / "lib", DIST / "lib")
+    sync_lib(ROOT / "roly" / "stdlib" / "modules", DIST / "lib")
     print(f"built {DIST / exe_name()}")
     print(f"bundled libraries in {DIST / 'lib'}")
     return 0
