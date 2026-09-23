@@ -1,6 +1,6 @@
 from roly.interpreter import DEFAULT_MAX_STEPS, Interpreter, RolyError
-from roly.lexer import LexError, Lexer
-from roly.parser import ParseError, Parser
+from roly.frontend.lexer import LexError, Lexer
+from roly.frontend.parser import ParseError, Parser
 
 
 def run_source(source, max_steps=DEFAULT_MAX_STEPS, out=None, base_dir=None, entry_path=None):

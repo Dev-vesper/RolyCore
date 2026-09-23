@@ -2,7 +2,7 @@ import gc
 import sys
 from pathlib import Path
 
-from roly.ast import FnDef
+from roly.frontend.ast import FnDef
 from roly.builtins import (
     BUILTINS,
     BUILTIN_ARITIES,
@@ -13,8 +13,8 @@ from roly.builtins import (
 )
 from roly.compiler import compile_statement
 from roly.diagnostics.errors import RolyError
-from roly.lexer import LexError, Lexer
-from roly.parser import ParseError, Parser
+from roly.frontend.lexer import LexError, Lexer
+from roly.frontend.parser import ParseError, Parser
 from roly.runtime import (
     MISSING,
     FileHandle,

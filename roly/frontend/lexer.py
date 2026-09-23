@@ -1,6 +1,6 @@
 import sys
 
-from roly.tokens import KEYWORDS, T, Token
+from roly.frontend.tokens import KEYWORDS, T, Token
 
 TWO_CHAR_OPS = {
     "==": T.EQ,

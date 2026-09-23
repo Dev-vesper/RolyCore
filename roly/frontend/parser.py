@@ -1,4 +1,4 @@
-from roly.ast import (
+from roly.frontend.ast import (
     Assign,
     BinOp,
     Block,
@@ -25,7 +25,7 @@ from roly.ast import (
     Var,
     While,
 )
-from roly.tokens import TYPE_TOKENS, T
+from roly.frontend.tokens import TYPE_TOKENS, T
 
 COMPOUND_OPS = {
     T.PLUS_ASSIGN: "+",

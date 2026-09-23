@@ -1,7 +1,7 @@
 import pytest
 
-from roly.lexer import Lexer
-from roly.parser import ParseError, Parser
+from roly.frontend.lexer import Lexer
+from roly.frontend.parser import ParseError, Parser
 
 
 def parse(source):

@@ -7,8 +7,8 @@ from pathlib import Path
 
 from roly.builtins import _io_reason
 from roly.diagnostics.errors import RolyError
-from roly.lexer import LexError
-from roly.parser import ParseError
+from roly.frontend.lexer import LexError
+from roly.frontend.parser import ParseError
 from roly.utils.runner import run_source
 
 

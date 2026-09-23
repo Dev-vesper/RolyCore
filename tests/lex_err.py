@@ -1,6 +1,6 @@
 import pytest
 
-from roly.lexer import LexError, Lexer
+from roly.frontend.lexer import LexError, Lexer
 
 
 @pytest.mark.parametrize(
