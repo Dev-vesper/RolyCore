@@ -3,7 +3,7 @@ import pytest
 from roly.frontend.ast import BinOp, Num
 from roly.runtime.compiler import compile_expression
 from roly.diagnostics.errors import RolyError
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 
 def raises(match, source, **kwargs):

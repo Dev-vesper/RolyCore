@@ -3,7 +3,7 @@ import pytest
 from roly.diagnostics.errors import RolyError
 from roly.frontend.lexer import Lexer
 from roly.frontend.parser import ParseError, Parser
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 
 def parse(source):

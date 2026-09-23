@@ -9,7 +9,7 @@ from roly.builtins import _io_reason
 from roly.diagnostics.errors import RolyError
 from roly.frontend.lexer import LexError
 from roly.frontend.parser import ParseError
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

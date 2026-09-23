@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SYNTAX_DIR = ROOT / "syntax"

@@ -2,7 +2,7 @@ import pytest
 
 import roly.stdlib as stdlib
 from roly.diagnostics.errors import RolyError
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 
 def raises(match, source, **kwargs):

@@ -1,4 +1,4 @@
-from roly.utils.runner import run_source
+from roly.runner import run_source
 
 
 def invariant(source, expected):
