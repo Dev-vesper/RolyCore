@@ -26,7 +26,6 @@ from roly.frontend.ast import (
     Var,
     While,
 )
-from roly.builtins import checked_method, member_value
 from roly.diagnostics.errors import RolyError
 from roly.runtime.handles import MISSING, ModuleAlias
 from roly.runtime.signals import BreakSignal, ContinueSignal, ReturnSignal
@@ -236,9 +235,9 @@ def compile_expression(node, discard=False):
                 value = base_fn(I)
             for name, args in pending:
                 if args is None:
-                    member_value(value, name, repr(value))
+                    I.member_error(value, name, repr(value))
                 I.count_step()
-                impl = checked_method(value, name, len(args))
+                impl = I.method_call(value, name, len(args))
                 value = impl(value, *[arg_fn(I) for arg_fn in args])
             return value
 

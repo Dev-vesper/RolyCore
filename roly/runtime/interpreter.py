@@ -3,12 +3,7 @@ import sys
 from pathlib import Path
 
 from roly.frontend.ast import FnDef
-from roly.builtins import (
-    BUILTINS,
-    BUILTIN_ARITIES,
-    BUILTINS_WITH_INTERP,
-    _io_reason,
-)
+from roly.builtins import _io_reason
 from roly.runtime.compiler import compile_statement
 from roly.diagnostics.errors import RolyError
 from roly.frontend.lexer import LexError, Lexer
@@ -23,7 +18,7 @@ from roly.runtime.handles import (
 )
 from roly.runtime.limits import DEFAULT_MAX_STEPS, MAX_CALL_DEPTH
 from roly.runtime.signals import ReturnSignal
-from roly.runtime.values import list_get, text_char
+from roly.runtime.values import checked_method, list_get, member_value, text_char
 from roly import stdlib
 from roly.stdlib import NativeFn
 
@@ -37,14 +32,22 @@ def _silent_out(value):
 
 
 class Interpreter:
-    def __init__(self, max_steps=DEFAULT_MAX_STEPS, out=None, base_dir=None, entry_path=None):
+    def __init__(
+        self,
+        max_steps=DEFAULT_MAX_STEPS,
+        out=None,
+        base_dir=None,
+        entry_path=None,
+        registry=None,
+    ):
         self.max_steps = max_steps
         self.steps = 0
         self.globals = {}
         self.locals_stack = []
         self.lexical_stack = []
         self.functions = {}
-        self.builtin_names = set(BUILTINS)
+        self.registry = registry
+        self.builtin_names = set(self.registry.functions)
         self.out = out if out is not None else _stdout_print
         self.call_depth = 0
         self.module_frames = []
@@ -143,7 +146,7 @@ class Interpreter:
 
     def call_compiled(self, name, arg_fns):
         self.count_step()
-        if name in BUILTINS:
+        if name in self.registry.functions:
             return self.call_builtin_compiled(name, arg_fns)
         local = self.local_fn(name)
         if local is not None:
@@ -172,16 +175,16 @@ class Interpreter:
             )
 
     def call_builtin_compiled(self, name, arg_fns):
-        arity = BUILTIN_ARITIES.get(name)
+        arity = self.registry.arities.get(name)
         if arity is not None and len(arg_fns) != arity:
             raise RolyError(
                 f"builtin '{name}' expects {arity} "
                 f"argument{'s' if arity != 1 else ''}, got {len(arg_fns)}"
             )
         values = [arg_fn(self) for arg_fn in arg_fns]
-        if name in BUILTINS_WITH_INTERP:
-            return BUILTINS[name](self, *values)
-        return BUILTINS[name](*values)
+        if name in self.registry.with_interp:
+            return self.registry.functions[name](self, *values)
+        return self.registry.functions[name](*values)
 
     def invoke_function(self, name, function, args, chain=()):
         if isinstance(function, NativeFn):
@@ -425,6 +428,18 @@ class Interpreter:
         if type(base) is str:
             return text_char(base, index)
         return list_get(base, index)
+
+    def method_call(self, value, name, count):
+        return checked_method(
+            self.registry.methods,
+            self.registry.method_arities,
+            value,
+            name,
+            count,
+        )
+
+    def member_error(self, value, name, owner):
+        member_value(self.registry.methods, value, name, owner)
 
     def lookup(self, name):
         for frame in self.frame_chain():

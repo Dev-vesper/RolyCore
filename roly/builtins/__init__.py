@@ -14,11 +14,11 @@ from roly.builtins.collections import (
 )
 from roly.builtins.conversion import to_bool, to_float, to_int, to_str, roly_equal
 from roly.builtins.io import (
+    FILE_METHODS,
+    FILE_METHOD_ARITIES,
     _io_reason,
-    checked_method,
     list_dir_native,
     make_dir,
-    member_value,
     open_file,
     read_input,
 )
@@ -81,3 +81,22 @@ BUILTIN_ARITIES = {
     "mkdir": 1,
     "list_dir": 1,
 }
+
+
+class Registry:
+    def __init__(self, functions, arities, with_interp, methods, method_arities):
+        self.functions = functions
+        self.arities = arities
+        self.with_interp = with_interp
+        self.methods = methods
+        self.method_arities = method_arities
+
+
+def default_registry():
+    return Registry(
+        BUILTINS,
+        BUILTIN_ARITIES,
+        BUILTINS_WITH_INTERP,
+        FILE_METHODS,
+        FILE_METHOD_ARITIES,
+    )

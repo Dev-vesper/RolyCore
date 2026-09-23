@@ -222,35 +222,3 @@ FILE_METHOD_ARITIES = {
     "copy": 1,
     "delete": 0,
 }
-
-
-def _argument_count(count):
-    if count == 0:
-        return "no arguments"
-    if count == 1:
-        return "1 argument"
-    return f"{count} arguments"
-
-
-def _method_impl(value, name):
-    if type(value) is not FileHandle:
-        raise RolyError(f"method '{name}' expects a file handle, got {value!r}")
-    function = FILE_METHODS.get(name)
-    if function is None:
-        raise RolyError(f"file has no method '{name}'")
-    return function
-
-
-def checked_method(value, name, count):
-    function = _method_impl(value, name)
-    arity = FILE_METHOD_ARITIES[name]
-    if arity != count:
-        raise RolyError(
-            f"method '{name}' expects {_argument_count(arity)}, got {count}"
-        )
-    return function
-
-
-def member_value(value, name, owner):
-    _method_impl(value, name)
-    raise RolyError(f"'{name}' is a method, call it as {owner}.{name}()")

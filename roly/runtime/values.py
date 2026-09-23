@@ -1,4 +1,5 @@
 from roly.diagnostics.errors import RolyError
+from roly.runtime.handles import FileHandle
 
 
 def _escape_for_list(text):
@@ -66,3 +67,35 @@ def text_char(s, i):
     if i < 0 or i >= len(s):
         raise RolyError(f"char: index {i} out of range for length {len(s)}")
     return s[i]
+
+
+def _argument_count(count):
+    if count == 0:
+        return "no arguments"
+    if count == 1:
+        return "1 argument"
+    return f"{count} arguments"
+
+
+def _method_impl(methods, value, name):
+    if type(value) is not FileHandle:
+        raise RolyError(f"method '{name}' expects a file handle, got {value!r}")
+    function = methods.get(name)
+    if function is None:
+        raise RolyError(f"file has no method '{name}'")
+    return function
+
+
+def checked_method(methods, arities, value, name, count):
+    function = _method_impl(methods, value, name)
+    arity = arities[name]
+    if arity != count:
+        raise RolyError(
+            f"method '{name}' expects {_argument_count(arity)}, got {count}"
+        )
+    return function
+
+
+def member_value(methods, value, name, owner):
+    _method_impl(methods, value, name)
+    raise RolyError(f"'{name}' is a method, call it as {owner}.{name}()")
