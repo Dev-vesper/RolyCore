@@ -5,8 +5,7 @@ import os
 import sys
 from pathlib import Path
 
-from roly.builtins import _io_reason
-from roly.diagnostics.errors import RolyError
+from roly.diagnostics.errors import RolyError, _io_reason
 from roly.frontend.lexer import LexError
 from roly.frontend.parser import ParseError
 from roly.runner import run_source

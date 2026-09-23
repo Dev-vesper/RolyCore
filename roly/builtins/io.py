@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-from roly.diagnostics.errors import RolyError
+from roly.diagnostics.errors import RolyError, _io_reason
 from roly.runtime.handles import FileHandle
 
 
@@ -12,13 +12,6 @@ def read_input(prompt):
         return input(prompt)
     except EOFError:
         raise RolyError("input: end of input reached")
-
-
-def _io_reason(error):
-    if isinstance(error, UnicodeDecodeError):
-        return "the file is not valid UTF-8 text"
-    text = error.strerror or str(error)
-    return text[:1].lower() + text[1:]
 
 
 def _io_fail(op, action, error):

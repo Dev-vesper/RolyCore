@@ -3,9 +3,8 @@ import sys
 from pathlib import Path
 
 from roly.frontend.ast import FnDef
-from roly.builtins import _io_reason
 from roly.runtime.compiler import compile_statement
-from roly.diagnostics.errors import RolyError
+from roly.diagnostics.errors import RolyError, _io_reason
 from roly.frontend.lexer import LexError, Lexer
 from roly.frontend.parser import ParseError, Parser
 from roly.runtime.handles import (

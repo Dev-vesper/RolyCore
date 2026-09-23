@@ -16,7 +16,6 @@ from roly.builtins.conversion import to_bool, to_float, to_int, to_str, roly_equ
 from roly.builtins.io import (
     FILE_METHODS,
     FILE_METHOD_ARITIES,
-    _io_reason,
     list_dir_native,
     make_dir,
     open_file,
