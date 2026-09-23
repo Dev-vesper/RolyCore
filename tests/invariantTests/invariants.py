@@ -1,3 +1,6 @@
+import ast
+from pathlib import Path
+
 from roly.runner import run_source
 
 
@@ -370,3 +373,93 @@ def test_list_string_escapes():
         '!import lists {join}\nprint(join([["\\n"]], ","))',
         '["\\n"]',
     )
+
+
+def _imported_modules(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    names = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            names.append(node.module or "")
+    return names
+
+
+def test_layer_boundaries():
+    root = Path(__file__).resolve().parents[2]
+    rules = {
+        "diagnostics": ("roly.builtins", "roly.stdlib", "roly.adapters", "roly.runner"),
+        "frontend": (
+            "roly.builtins",
+            "roly.stdlib",
+            "roly.adapters",
+            "roly.runner",
+            "roly.runtime",
+        ),
+        "runtime": ("roly.builtins", "roly.stdlib", "roly.adapters", "roly.runner"),
+    }
+    for path in sorted((root / "roly").rglob("*.py")):
+        for name in _imported_modules(path):
+            for prefix in rules.get(path.parent.name, ()):
+                assert not name.startswith(prefix), f"{path} imports {name}"
+            if name.startswith("roly.adapters"):
+                allowed = (
+                    path.parent == root / "roly"
+                    and path.name in ("runner.py", "__init__.py")
+                )
+                assert allowed, f"{path} imports {name}"
+
+
+class _MemoryFS:
+    def __init__(self, files):
+        self.files = files
+
+    def cwd(self):
+        return "/mem"
+
+    def is_absolute(self, path):
+        return path.startswith("/")
+
+    def join(self, base, path):
+        return base + "/" + path
+
+    def absolute(self, path):
+        return path if self.is_absolute(path) else self.join(self.cwd(), path)
+
+    def parent(self, path):
+        return path.rsplit("/", 1)[0]
+
+    def stem(self, path):
+        return path.rsplit("/", 1)[1].split(".")[0]
+
+    def is_dir(self, path):
+        return any(name.startswith(path + "/") for name in self.files)
+
+    def is_file(self, path):
+        return path in self.files
+
+    def read_text(self, path):
+        return self.files[path]
+
+
+def test_embedded_runtime():
+    fs = _MemoryFS(
+        {
+            "/mem/mod.roly": "fn twice (n: int) { return n * 2 }\n",
+            "/memlib/extra.roly": "fn triple (n: int) { return n * 3 }\n",
+        }
+    )
+    lines = []
+    run_source(
+        "import mod\n"
+        "!import extra {triple}\n"
+        "print(mod.twice(21))\n"
+        "print(triple(2))\n"
+        'print(input(""))\n',
+        out=lines.append,
+        fs=fs,
+        lib_dir=lambda: "/memlib",
+        read_input=lambda prompt: "typed:" + prompt,
+    )
+    assert lines == ["42", "6", "typed:"]
