@@ -1,15 +1,12 @@
-import shutil
-from pathlib import Path
-
 from roly.diagnostics.errors import RolyError, _io_reason
 from roly.runtime.handles import FileHandle
 
 
-def read_input(prompt):
+def read_input(I, prompt):
     if type(prompt) is not str:
         raise RolyError(f"builtin 'input' expects a str, got {prompt!r}")
     try:
-        return input(prompt)
+        return I.read_input(prompt)
     except EOFError:
         raise RolyError("input: end of input reached")
 
@@ -19,17 +16,15 @@ def _io_fail(op, action, error):
 
 
 def _resolve_path(I, path):
-    target = Path(path)
-    if target.is_absolute():
-        return target
-    return I.entry_base_dir / target
+    if I.fs.is_absolute(path):
+        return I.fs.absolute(path)
+    return I.fs.join(I.entry_base_dir, path)
 
 
-def _method_path(handle, path):
-    target = Path(path)
-    if target.is_absolute():
-        return target
-    return handle.base / target
+def _method_path(I, handle, path):
+    if I.fs.is_absolute(path):
+        return I.fs.absolute(path)
+    return I.fs.join(handle.base, path)
 
 
 OPEN_MODES = {"r": "rb+", "w": "wb+", "a": "ab+"}
@@ -45,7 +40,7 @@ def open_file(I, path, mode):
         raise RolyError(f'open: mode must be "r", "w" or "a", got {mode!r}')
     target = _resolve_path(I, path)
     try:
-        stream = target.open(binary)
+        stream = I.fs.open(target, binary)
     except OSError as error:
         _io_fail("open", f"open '{path}'", error)
     return FileHandle(target, path, I.entry_base_dir, stream)
@@ -55,7 +50,7 @@ def make_dir(I, path):
     if type(path) is not str:
         raise RolyError(f"builtin 'mkdir' expects a str path, got {path!r}")
     try:
-        _resolve_path(I, path).mkdir()
+        I.fs.mkdir(_resolve_path(I, path))
     except OSError as error:
         _io_fail("mkdir", f"make directory '{path}'", error)
     return True
@@ -65,7 +60,7 @@ def list_dir_native(I, path):
     if type(path) is not str:
         raise RolyError(f"builtin 'list_dir' expects a str path, got {path!r}")
     try:
-        return sorted(entry.name for entry in _resolve_path(I, path).iterdir())
+        return I.fs.listdir(_resolve_path(I, path))
     except OSError as error:
         _io_fail("list_dir", f"list '{path}'", error)
 
@@ -81,7 +76,7 @@ def _close_stream(handle):
         handle.stream = None
 
 
-def _read_text(handle, op):
+def _read_text(I, handle, op):
     _require_stream(handle)
     try:
         data = handle.stream.read()
@@ -93,12 +88,12 @@ def _read_text(handle, op):
         _io_fail(op, f"read '{handle.name}'", error)
 
 
-def file_read(handle):
-    return _read_text(handle, "read")
+def file_read(I, handle):
+    return _read_text(I, handle, "read")
 
 
-def file_read_lines(handle):
-    content = _read_text(handle, "read_lines")
+def file_read_lines(I, handle):
+    content = _read_text(I, handle, "read_lines")
     if content == "":
         return []
     lines = content.split("\n")
@@ -107,7 +102,7 @@ def file_read_lines(handle):
     return [line[:-1] if line.endswith("\r") else line for line in lines]
 
 
-def file_write(handle, content):
+def file_write(I, handle, content):
     _require_stream(handle)
     if type(content) is not str:
         raise RolyError(f"method 'write' expects a str, got {content!r}")
@@ -119,7 +114,7 @@ def file_write(handle, content):
     return True
 
 
-def file_seek(handle, offset):
+def file_seek(I, handle, offset):
     _require_stream(handle)
     if type(offset) is not int:
         raise RolyError(f"method 'seek' expects an int offset, got {offset!r}")
@@ -132,36 +127,36 @@ def file_seek(handle, offset):
     return True
 
 
-def file_tell(handle):
+def file_tell(I, handle):
     _require_stream(handle)
     return handle.stream.tell()
 
 
-def file_close(handle):
+def file_close(I, handle):
     _close_stream(handle)
     return True
 
 
-def file_exists(handle):
-    return handle.path.exists()
+def file_exists(I, handle):
+    return I.fs.exists(handle.path)
 
 
-def file_size(handle):
+def file_size(I, handle):
     try:
-        return handle.path.stat().st_size
+        return I.fs.stat_size(handle.path)
     except OSError as error:
         _io_fail("size", f"get the size of '{handle.name}'", error)
 
 
-def file_rename(handle, path):
+def file_rename(I, handle, path):
     if type(path) is not str:
         raise RolyError(f"method 'rename' expects a str path, got {path!r}")
-    target = _method_path(handle, path)
-    if target.exists():
+    target = _method_path(I, handle, path)
+    if I.fs.exists(target):
         raise RolyError(f"rename: '{path}' already exists")
     _close_stream(handle)
     try:
-        handle.path.rename(target)
+        I.fs.rename(handle.path, target)
     except OSError as error:
         _io_fail("rename", f"rename '{handle.name}' to '{path}'", error)
     handle.path = target
@@ -169,20 +164,20 @@ def file_rename(handle, path):
     return True
 
 
-def file_copy(handle, path):
+def file_copy(I, handle, path):
     if type(path) is not str:
         raise RolyError(f"method 'copy' expects a str path, got {path!r}")
     try:
-        shutil.copyfile(handle.path, _method_path(handle, path))
+        I.fs.copy(handle.path, _method_path(I, handle, path))
     except OSError as error:
         _io_fail("copy", f"copy '{handle.name}' to '{path}'", error)
     return True
 
 
-def file_delete(handle):
+def file_delete(I, handle):
     _close_stream(handle)
     try:
-        handle.path.unlink()
+        I.fs.unlink(handle.path)
     except OSError as error:
         _io_fail("delete", f"delete '{handle.name}'", error)
     return True

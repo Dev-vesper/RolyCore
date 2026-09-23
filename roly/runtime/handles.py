@@ -50,3 +50,9 @@ class LocalFn:
     def __init__(self, function, chain):
         self.function = function
         self.chain = chain
+
+
+class NativeFn:
+    def __init__(self, params, callable):
+        self.params = params
+        self.callable = callable

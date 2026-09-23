@@ -10,7 +10,13 @@ class FileSystem:
         return Path(path).is_absolute()
 
     def join(self, base, path):
-        return base / Path(path)
+        return Path(base) / path
+
+    def parent(self, path):
+        return path.parent
+
+    def stem(self, path):
+        return path.stem
 
     def absolute(self, path):
         return Path(path).resolve()

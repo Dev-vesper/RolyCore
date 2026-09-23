@@ -238,7 +238,7 @@ def compile_expression(node, discard=False):
                     I.member_error(value, name, repr(value))
                 I.count_step()
                 impl = I.method_call(value, name, len(args))
-                value = impl(value, *[arg_fn(I) for arg_fn in args])
+                value = impl(I, value, *[arg_fn(I) for arg_fn in args])
             return value
 
         return f_member_chain

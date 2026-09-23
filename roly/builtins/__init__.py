@@ -56,7 +56,7 @@ BUILTINS = {
     "list_dir": list_dir_native,
 }
 
-BUILTINS_WITH_INTERP = {"open", "mkdir", "list_dir"}
+BUILTINS_WITH_INTERP = {"input", "open", "mkdir", "list_dir"}
 
 BUILTIN_ARITIES = {
     "int": 1,

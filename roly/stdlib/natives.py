@@ -1,11 +1,6 @@
 from roly.builtins import to_str
 from roly.diagnostics.errors import RolyError
-
-
-class NativeFn:
-    def __init__(self, params, callable):
-        self.params = params
-        self.callable = callable
+from roly.runtime.handles import NativeFn
 
 
 def _require_number_element(op, value):

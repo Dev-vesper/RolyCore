@@ -1,7 +1,3 @@
-import gc
-import sys
-from pathlib import Path
-
 from roly.frontend.ast import FnDef
 from roly.runtime.compiler import compile_statement
 from roly.diagnostics.errors import RolyError, _io_reason
@@ -14,16 +10,11 @@ from roly.runtime.handles import (
     ModuleAlias,
     ModuleEntry,
     ModuleFunctionRef,
+    NativeFn,
 )
 from roly.runtime.limits import DEFAULT_MAX_STEPS, MAX_CALL_DEPTH
 from roly.runtime.signals import ReturnSignal
 from roly.runtime.values import checked_method, list_get, member_value, text_char
-from roly import stdlib
-from roly.stdlib import NativeFn
-
-
-def _stdout_print(value):
-    print(value)
 
 
 def _silent_out(value):
@@ -38,6 +29,10 @@ class Interpreter:
         base_dir=None,
         entry_path=None,
         registry=None,
+        fs=None,
+        read_input=None,
+        lib_dir=None,
+        native_fns=None,
     ):
         self.max_steps = max_steps
         self.steps = 0
@@ -47,20 +42,23 @@ class Interpreter:
         self.functions = {}
         self.registry = registry
         self.builtin_names = set(self.registry.functions)
-        self.out = out if out is not None else _stdout_print
+        self.fs = fs
+        self.read_input = read_input
+        self.lib_dir = lib_dir
+        self.native_fns = native_fns
+        self.out = out
         self.call_depth = 0
         self.module_frames = []
         self.module_context = None
-        self.base_dir = Path(base_dir) if base_dir is not None else Path.cwd()
+        self.base_dir = base_dir if base_dir is not None else self.fs.cwd()
         self.entry_base_dir = self.base_dir
         self.modules = {}
         self.module_cache = {}
         self.loading = []
         self.fn_compiled = {}
         if entry_path is not None:
-            entry = Path(entry_path).resolve()
-            self.loading.append((entry.stem, entry))
-        sys.setrecursionlimit(10_000)
+            entry = self.fs.absolute(entry_path)
+            self.loading.append((self.fs.stem(entry), entry))
 
     @property
     def env(self):
@@ -80,13 +78,7 @@ class Interpreter:
         return None
 
     def run(self, program):
-        gc_enabled = gc.isenabled()
-        gc.disable()
-        try:
-            self.execute_program(program)
-        finally:
-            if gc_enabled:
-                gc.enable()
+        self.execute_program(program)
         return {name: self.deref(value) for name, value in self.globals.items()}
 
     def deref(self, value):
@@ -257,16 +249,19 @@ class Interpreter:
 
     def resolve_import_path(self, module_name, from_lib):
         if from_lib:
-            if not stdlib.LIB_DIR.is_dir():
+            lib_dir = self.lib_dir()
+            if not self.fs.is_dir(lib_dir):
                 raise RolyError(
                     f"cannot find the standard library "
-                    f"directory '{stdlib.LIB_DIR}'"
+                    f"directory '{lib_dir}'"
                 )
-            return (stdlib.LIB_DIR / f"{module_name}.roly").resolve()
-        return (self.base_dir / f"{module_name}.roly").resolve()
+            return self.fs.absolute(self.fs.join(lib_dir, f"{module_name}.roly"))
+        return self.fs.absolute(
+            self.fs.join(self.base_dir, f"{module_name}.roly")
+        )
 
     def inject_native_fns(self, entry, module_name):
-        for name, function in stdlib.NATIVE_MODULE_FNS.get(module_name, {}).items():
+        for name, function in self.native_fns(module_name).items():
             if name in entry.functions:
                 raise RolyError(f"library function '{name}' is defined twice")
             entry.functions[name] = function
@@ -287,14 +282,14 @@ class Interpreter:
 
     def load_module(self, module_name, path, from_lib=False):
         kind = "library" if from_lib else "module"
-        if not path.is_file():
+        if not self.fs.is_file(path):
             raise RolyError(
                 f"{kind} '{module_name}' not found (looked for {path})"
             )
         self.loading.append((module_name, path))
         try:
             try:
-                source = path.read_text(encoding="utf-8")
+                source = self.fs.read_text(path)
             except (OSError, UnicodeDecodeError) as error:
                 raise RolyError(
                     f"cannot read {kind} '{module_name}': "
@@ -328,7 +323,7 @@ class Interpreter:
             self.globals = module_globals
             self.functions = module_functions
             self.modules = module_imports
-            self.base_dir = path.parent
+            self.base_dir = self.fs.parent(path)
             self.out = _silent_out
             self.module_context = entry
             try:
@@ -393,7 +388,7 @@ class Interpreter:
         self.globals = entry.globals
         self.functions = entry.functions
         self.modules = entry.imports
-        self.base_dir = entry.path.parent
+        self.base_dir = self.fs.parent(entry.path)
         self.module_context = entry
         try:
             return self.invoke_function(name, function, args)
