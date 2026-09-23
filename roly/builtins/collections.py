@@ -1,5 +1,10 @@
-from roly.builtins.conversion import roly_equal
 from roly.diagnostics.errors import RolyError
+from roly.runtime.values import (
+    list_get,
+    require_index,
+    require_list,
+    roly_equal,
+)
 
 
 def make_list(*values):
@@ -11,20 +16,6 @@ def make_list(*values):
     if type(value) is not str:
         raise RolyError(f"builtin 'list' expects a str, got {value!r}")
     return list(value)
-
-
-def require_list(name, value):
-    if type(value) is not list:
-        raise RolyError(f"builtin '{name}' expects a list, got {value!r}")
-
-
-def require_index(name, index, length):
-    if type(index) is not int:
-        raise RolyError(f"builtin '{name}' expects an int index, got {index!r}")
-    if index < 0 or index >= length:
-        raise RolyError(
-            f"{name}: index {index} out of range for length {length}"
-        )
 
 
 def list_push(items, value):
@@ -82,12 +73,6 @@ def map_equal(a, b):
             return False
         del remaining[found]
     return True
-
-
-def list_get(items, index):
-    require_list("get", items)
-    require_index("get", index, len(items))
-    return items[index]
 
 
 def list_set(items, index, value):

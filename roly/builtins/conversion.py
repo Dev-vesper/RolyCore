@@ -1,17 +1,9 @@
 from roly.diagnostics.errors import RolyError
+from roly.runtime.values import roly_equal, to_str
 
 DIGITS = "0123456789"
 
 _INF = float("inf")
-
-
-def _escape_for_list(text):
-    return (
-        text.replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("\n", "\\n")
-        .replace("\t", "\\t")
-    )
 
 
 def to_int(value):
@@ -34,21 +26,6 @@ def to_int(value):
     if not text or not all(c in DIGITS for c in text):
         raise RolyError(f"cannot convert {value!r} to int")
     return sign * int(text)
-
-
-def to_str(value):
-    if type(value) is str:
-        return value
-    if type(value) is bool:
-        return "True" if value else "False"
-    if type(value) is list:
-        parts = [
-            '"' + _escape_for_list(item) + '"' if type(item) is str
-            else to_str(item)
-            for item in value
-        ]
-        return "[" + ", ".join(parts) + "]"
-    return str(value)
 
 
 def to_bool(value):
@@ -103,18 +80,3 @@ def to_float(value):
     if i != len(text):
         raise RolyError(f"cannot convert {value!r} to float")
     return float(text)
-
-
-def roly_equal(left, right):
-    if type(left) is list and type(right) is list:
-        if len(left) != len(right):
-            return False
-        for a, b in zip(left, right):
-            if not roly_equal(a, b):
-                return False
-        return True
-    left_is_number = type(left) is int or type(left) is float
-    right_is_number = type(right) is int or type(right) is float
-    if left_is_number and right_is_number:
-        return left == right
-    return type(left) is type(right) and left == right

@@ -8,8 +8,6 @@ from roly.builtins import (
     BUILTIN_ARITIES,
     BUILTINS_WITH_INTERP,
     _io_reason,
-    list_get,
-    text_char,
 )
 from roly.runtime.compiler import compile_statement
 from roly.diagnostics.errors import RolyError
@@ -25,6 +23,7 @@ from roly.runtime.handles import (
 )
 from roly.runtime.limits import DEFAULT_MAX_STEPS, MAX_CALL_DEPTH
 from roly.runtime.signals import ReturnSignal
+from roly.runtime.values import list_get, text_char
 from roly import stdlib
 from roly.stdlib import NativeFn
 

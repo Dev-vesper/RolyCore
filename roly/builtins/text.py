@@ -1,19 +1,12 @@
 from roly.builtins.conversion import DIGITS, to_str
 from roly.diagnostics.errors import RolyError
+from roly.runtime.values import text_char
 
 
 def text_len(value):
     if type(value) is not str and type(value) is not list:
         raise RolyError(f"builtin 'len' expects a str or a list, got {value!r}")
     return len(value)
-
-
-def text_char(s, i):
-    if type(s) is not str or type(i) is not int:
-        raise RolyError(f"builtin 'char' expects (str, int), got ({s!r}, {i!r})")
-    if i < 0 or i >= len(s):
-        raise RolyError(f"char: index {i} out of range for length {len(s)}")
-    return s[i]
 
 
 def text_ord(s):
