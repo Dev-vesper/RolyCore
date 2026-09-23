@@ -11,24 +11,22 @@ from roly.builtins import (
     list_get,
     text_char,
 )
-from roly.compiler import compile_statement
+from roly.runtime.compiler import compile_statement
 from roly.diagnostics.errors import RolyError
 from roly.frontend.lexer import LexError, Lexer
 from roly.frontend.parser import ParseError, Parser
-from roly.runtime import (
+from roly.runtime.handles import (
     MISSING,
     FileHandle,
     LocalFn,
     ModuleAlias,
     ModuleEntry,
     ModuleFunctionRef,
-    ReturnSignal,
 )
+from roly.runtime.limits import DEFAULT_MAX_STEPS, MAX_CALL_DEPTH
+from roly.runtime.signals import ReturnSignal
 from roly import stdlib
 from roly.stdlib import NativeFn
-
-DEFAULT_MAX_STEPS = 10_000_000
-MAX_CALL_DEPTH = 200
 
 
 def _stdout_print(value):

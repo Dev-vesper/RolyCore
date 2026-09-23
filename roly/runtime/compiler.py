@@ -28,13 +28,8 @@ from roly.frontend.ast import (
 )
 from roly.builtins import checked_method, member_value, roly_equal, to_str
 from roly.diagnostics.errors import RolyError
-from roly.runtime import (
-    BreakSignal,
-    ContinueSignal,
-    MISSING,
-    ModuleAlias,
-    ReturnSignal,
-)
+from roly.runtime.handles import MISSING, ModuleAlias
+from roly.runtime.signals import BreakSignal, ContinueSignal, ReturnSignal
 
 MISS = object()
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from roly.runtime import FileHandle
+from roly.runtime.handles import FileHandle
 
 
 class T(Enum):
