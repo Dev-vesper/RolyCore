@@ -2,7 +2,7 @@ import pytest
 
 from roly.ast import BinOp, Num
 from roly.compiler import compile_expression
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.utils.runner import run_source
 
 

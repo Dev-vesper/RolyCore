@@ -1,6 +1,6 @@
 import pytest
 
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.lexer import Lexer
 from roly.parser import ParseError, Parser
 from roly.utils.runner import run_source

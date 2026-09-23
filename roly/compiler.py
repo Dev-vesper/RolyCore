@@ -27,7 +27,7 @@ from roly.ast import (
     While,
 )
 from roly.builtins import checked_method, member_value, roly_equal, to_str
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.runtime import (
     BreakSignal,
     ContinueSignal,

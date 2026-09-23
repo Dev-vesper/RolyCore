@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from roly.builtins import _io_reason
-from roly.interpreter import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.lexer import LexError
 from roly.parser import ParseError
 from roly.utils.runner import run_source

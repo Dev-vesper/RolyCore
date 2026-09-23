@@ -1,7 +1,7 @@
 import pytest
 
 import roly.stdlib as stdlib
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.utils.runner import run_source
 
 

@@ -2,7 +2,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.runtime import FileHandle
 
 sys.set_int_max_str_digits(0)

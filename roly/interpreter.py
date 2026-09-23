@@ -12,7 +12,7 @@ from roly.builtins import (
     text_char,
 )
 from roly.compiler import compile_statement
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 from roly.lexer import LexError, Lexer
 from roly.parser import ParseError, Parser
 from roly.runtime import (

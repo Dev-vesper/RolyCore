@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from roly.builtins import to_str
-from roly.errors import RolyError
+from roly.diagnostics.errors import RolyError
 
 
 def resolve_lib_dir():
